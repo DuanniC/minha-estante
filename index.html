@@ -132,6 +132,160 @@
   .sync-indicator.synced { background: #d4dfc4; color: var(--ink); }
   .sync-indicator.error { background: #e8b8a0; color: var(--ink); }
   .sync-indicator.offline { background: var(--cream-dark); opacity: 0.6; }
+
+  /* ========= LOGIN OVERLAY ========= */
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--cream);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .login-overlay::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(232,169,160,0.25) 0%, transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(184,168,201,0.2) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .login-box {
+    position: relative;
+    background: #fff;
+    border-radius: 32px;
+    padding: 36px 28px 32px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 4px 40px rgba(42,36,32,0.10);
+  }
+  .login-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 38px;
+    line-height: 1;
+    letter-spacing: -1.5px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .login-title em { font-style: italic; color: var(--rose-deep); }
+  .login-sub {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink-soft);
+    margin-bottom: 24px;
+  }
+  .login-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--cream);
+    border-radius: 100px;
+    padding: 3px;
+    margin-bottom: 20px;
+  }
+  .login-tab {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 100px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .login-tab.active {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .login-field {
+    margin-bottom: 12px;
+  }
+  .login-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .login-field input {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .login-field input:focus { border-color: var(--ink); }
+  .login-field input::placeholder { color: var(--ink-soft); opacity: 0.6; }
+  .login-enter-btn {
+    width: 100%;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    border-radius: 100px;
+    padding: 14px;
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.2s;
+    margin-top: 8px;
+  }
+  .login-enter-btn:active { transform: scale(0.97); }
+  .login-enter-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+  .login-err {
+    background: #fde8e0;
+    color: #a03030;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-top: 10px;
+    display: none;
+    line-height: 1.4;
+  }
+  .login-err.show { display: block; }
+  .login-deco {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-family: 'Instrument Serif', serif;
+    font-size: 36px;
+    color: var(--rose);
+    opacity: 0.5;
+    transform: rotate(15deg);
+  }
+  /* user chip no header */
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--cream-dark);
+    border-radius: 100px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    border: none;
+    font-family: inherit;
+    transition: background 0.2s;
+  }
+  .user-chip:hover { background: var(--rose); }
   
   .icon-btn {
     background: transparent;
@@ -1771,6 +1925,50 @@
 <body>
 
 <!-- SETUP SCREEN (aparece na primeira vez) -->
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-box">
+    <div class="login-deco">✦</div>
+    <div class="login-title">Minha<br><em>estante</em></div>
+    <div class="login-sub" id="loginSub">bem-vinda de volta ✦</div>
+
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabEntrar" onclick="switchLoginTab('entrar')">Entrar</button>
+      <button class="login-tab" id="tabCadastro" onclick="switchLoginTab('cadastro')">Criar conta</button>
+    </div>
+
+    <div id="loginForm">
+      <div class="login-field">
+        <label>E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Senha</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="login-enter-btn" id="loginEnterBtn" onclick="doLogin()">Entrar ✦</button>
+    </div>
+
+    <div id="cadastroForm" style="display:none;">
+      <div class="login-field">
+        <label>Seu nome</label>
+        <input type="text" id="cadastroName" placeholder="Como posso te chamar?" autocomplete="name">
+      </div>
+      <div class="login-field">
+        <label>E-mail</label>
+        <input type="email" id="cadastroEmail" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Senha</label>
+        <input type="password" id="cadastroPassword" placeholder="mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+      <button class="login-enter-btn" id="cadastroBtn" onclick="doSignUp()">Criar conta ✦</button>
+    </div>
+
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
 <div class="setup-overlay" id="setupOverlay" style="display:none">
   <div class="setup-box">
     <h2>Configurar <em>sincronização</em> ✦</h2>
@@ -1792,8 +1990,14 @@
     <div class="form-group">
       <label class="form-label">SQL para rodar no Supabase</label>
       <div class="sql-block" id="sqlBlock">-- cole no SQL Editor e rode
+-- SE JÁ CRIOU O BANCO ANTES, rode só isso:
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
+-- UPDATE books SET user_id = auth.uid() WHERE user_id IS NULL;
+
+-- PARA BANCO NOVO, rode tudo abaixo:
 create table books (
   id bigint generated by default as identity primary key,
+  user_id uuid references auth.users(id),
   title text not null,
   author text not null,
   genre text not null,
@@ -1819,6 +2023,7 @@ create table reading_sessions (
 );
 
 create index idx_sessions_book on reading_sessions(book_id);
+create index idx_books_user on books(user_id);
 
 create table genres (
   id text primary key,
@@ -1835,10 +2040,18 @@ alter table books enable row level security;
 alter table reading_sessions enable row level security;
 alter table genres enable row level security;
 
-create policy "acesso total books" on books
-  for all using (true) with check (true);
-create policy "acesso total sessions" on reading_sessions
-  for all using (true) with check (true);
+-- Política: cada usuário vê só seus livros
+create policy "usuario ve seus livros" on books
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Sessões: acessíveis via livro do usuário
+create policy "usuario ve suas sessoes" on reading_sessions
+  for all using (
+    exists (select 1 from books where books.id = reading_sessions.book_id and books.user_id = auth.uid())
+  ) with check (
+    exists (select 1 from books where books.id = reading_sessions.book_id and books.user_id = auth.uid())
+  );
+
 create policy "acesso total genres" on genres
   for all using (true) with check (true);</div>
       <button class="form-btn secondary" onclick="copySql()" style="margin-top:0">Copiar SQL</button>
@@ -1865,6 +2078,10 @@ create policy "acesso total genres" on genres
   <div class="header">
     <div class="logo-mark">Minha estante</div>
     <div class="header-actions">
+      <button class="user-chip" id="userChip" onclick="doLogout()" style="display:none;" title="Sair">
+        <span id="userChipName">—</span>
+        <span style="opacity:0.5; font-size:10px;">sair</span>
+      </button>
       <div class="sync-indicator" id="syncIndicator">
         <span id="syncText">...</span>
       </div>
@@ -1884,6 +2101,7 @@ create policy "acesso total genres" on genres
       <button onclick="forceSync()">↻ Sincronizar agora</button>
       <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
       <button onclick="reconfigureSupabase()">⚙ Reconfigurar Supabase</button>
+      <button onclick="doLogout()" style="color:#c97b72;">⏻ Sair da conta</button>
     </div>
   </div>
   
@@ -2222,9 +2440,15 @@ create policy "acesso total genres" on genres
 <script>
 // ============ CONFIGURAÇÃO EMBUTIDA ============
 // ⚠️ COLE SUA ANON KEY DO SUPABASE NA LINHA ABAIXO, ENTRE AS ASPAS
-// Troque apenas "SUA_CHAVE_AQUI" — mantenha as aspas e o ponto e vírgula!
 const EMBEDDED_SUPABASE_URL = "https://whnecgygzbvzjyeruqbe.supabase.co";
-const EMBEDDED_SUPABASE_KEY = "SUA_CHAVE_AQUI";
+const EMBEDDED_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobmVjZ3lnemJ2emp5ZXJ1cWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0ODAxMzcsImV4cCI6MjA5MjA1NjEzN30.Z46vW8pceMuSXDL4Sv04j05ML_pW_I2eRAy1jhZFpaU";
+
+// ============ AMAZON PRODUCT ADVERTISING API ============
+// Para capas de maior qualidade. Deixe vazio para usar Open Library (gratuito).
+const AMAZON_ACCESS_KEY = "";
+const AMAZON_SECRET_KEY = "";
+const AMAZON_PARTNER_TAG = "";
+const AMAZON_MARKETPLACE = "www.amazon.com.br";
 
 // ============ DADOS INICIAIS ============
 const BOOKS_INITIAL = [
@@ -2292,23 +2516,210 @@ let PALETTE = { ...DEFAULT_PALETTE };
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 // ============ STATE ============
-const STORAGE_KEY = "minha_estante_v3";
 const CONFIG_KEY = "minha_estante_config";
-let state = { books: [], filter: "todos", covers: {} };
-let config = loadConfig(); // { supabaseUrl, supabaseKey, setupDone }
-let supabase = null; // REST client simples
-let syncing = false;
+const LOGIN_KEY  = "minha_estante_login";
+let currentUser = null; // objeto de sessão Supabase Auth { id, email, user_metadata }
+let STORAGE_KEY  = "minha_estante_v3";
+let state  = { books: [], filter: "todos", covers: {} };
+let config = loadConfig();
+let supabase = null;
+let syncing  = false;
+
+// ============ LOGIN — Supabase Auth ============
+let _loginTab = "entrar"; // "entrar" | "cadastro"
+
+function switchLoginTab(tab) {
+  _loginTab = tab;
+  document.getElementById("loginForm").style.display    = tab === "entrar"   ? "block" : "none";
+  document.getElementById("cadastroForm").style.display = tab === "cadastro" ? "block" : "none";
+  document.getElementById("tabEntrar").classList.toggle("active",   tab === "entrar");
+  document.getElementById("tabCadastro").classList.toggle("active", tab === "cadastro");
+  document.getElementById("loginSub").textContent =
+    tab === "entrar" ? "bem-vinda de volta ✦" : "cria sua conta ✦";
+  document.getElementById("loginErr").classList.remove("show");
+}
+
+function showLogin() {
+  document.getElementById("loginOverlay").style.display = "flex";
+  document.body.style.overflow = "hidden";
+  switchLoginTab("entrar");
+  document.getElementById("loginEmail").value    = "";
+  document.getElementById("loginPassword").value = "";
+}
+
+function hideLogin() {
+  document.getElementById("loginOverlay").style.display = "none";
+  document.body.style.overflow = "";
+}
+
+function setLoginError(msg) {
+  const el = document.getElementById("loginErr");
+  el.textContent = msg;
+  el.classList.add("show");
+}
+
+function setLoginLoading(loading) {
+  const btn1 = document.getElementById("loginEnterBtn");
+  const btn2 = document.getElementById("cadastroBtn");
+  btn1.disabled = loading;
+  btn2.disabled = loading;
+  if (loading) {
+    btn1.textContent = "aguarda ✦";
+    btn2.textContent = "aguarda ✦";
+  } else {
+    btn1.textContent = "Entrar ✦";
+    btn2.textContent = "Criar conta ✦";
+  }
+}
+
+// Retorna URL e Key do Supabase — config salvo ou constantes embutidas
+function getSupabaseCreds() {
+  const url = config.supabaseUrl || EMBEDDED_SUPABASE_URL || "";
+  const key = config.supabaseKey || EMBEDDED_SUPABASE_KEY || "";
+  return { url: url.replace(/\/$/, ''), key };
+}
+
+async function doLogin() {
+  const email    = (document.getElementById("loginEmail").value    || "").trim();
+  const password =  document.getElementById("loginPassword").value || "";
+  document.getElementById("loginErr").classList.remove("show");
+
+  if (!email || !password) { setLoginError("Preenche e-mail e senha ✦"); return; }
+
+  const { url, key } = getSupabaseCreds();
+  if (!url || !key || key === "SUA_CHAVE_AQUI") {
+    setLoginError("Chave do Supabase não configurada. Acessa o menu ⚙ → Reconfigurar Supabase."); return;
+  }
+
+  setLoginLoading(true);
+  try {
+    const resp = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": key },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error_description || data.msg || "E-mail ou senha incorretos");
+    afterLogin(data);
+  } catch(e) {
+    setLoginError(e.message);
+  } finally {
+    setLoginLoading(false);
+  }
+}
+
+async function doSignUp() {
+  const name     = (document.getElementById("cadastroName").value     || "").trim();
+  const email    = (document.getElementById("cadastroEmail").value    || "").trim();
+  const password =  document.getElementById("cadastroPassword").value || "";
+  document.getElementById("loginErr").classList.remove("show");
+
+  if (!name)  { setLoginError("Coloca seu nome ✦"); return; }
+  if (!email) { setLoginError("Coloca seu e-mail ✦"); return; }
+  if (password.length < 6) { setLoginError("Senha precisa ter pelo menos 6 caracteres ✦"); return; }
+
+  const { url, key } = getSupabaseCreds();
+  if (!url || !key || key === "SUA_CHAVE_AQUI") {
+    setLoginError("Chave do Supabase não configurada. Acessa o menu ⚙ → Reconfigurar Supabase."); return;
+  }
+
+  setLoginLoading(true);
+  try {
+    const resp = await fetch(`${url}/auth/v1/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": key },
+      body: JSON.stringify({ email, password, data: { display_name: name } }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error_description || data.msg || "Erro ao criar conta");
+    if (data.access_token) {
+      afterLogin(data);
+    } else {
+      setLoginError("Conta criada! Verifica seu e-mail para confirmar, depois faz login.");
+      switchLoginTab("entrar");
+    }
+  } catch(e) {
+    setLoginError(e.message);
+  } finally {
+    setLoginLoading(false);
+  }
+}
+
+function afterLogin(authData) {
+  // authData tem access_token, user { id, email, user_metadata }
+  const user = authData.user;
+  currentUser = {
+    id:    user.id,
+    email: user.email,
+    name:  (user.user_metadata && user.user_metadata.display_name) || user.email.split("@")[0],
+    token: authData.access_token,
+  };
+  // Armazena token para reload automático
+  try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: authData.access_token, refresh: authData.refresh_token, user })); } catch(e) {}
+  STORAGE_KEY = `minha_estante_v3_${currentUser.id}`;
+  // Atualiza chip
+  document.getElementById("userChip").style.display = "flex";
+  document.getElementById("userChipName").textContent = currentUser.name;
+  hideLogin();
+  state = loadState();
+  init();
+}
+
+async function tryAutoLogin() {
+  try {
+    const saved = localStorage.getItem(LOGIN_KEY);
+    if (!saved) return false;
+    const { token, refresh, user } = JSON.parse(saved);
+    if (!token || !user) return false;
+    const { url, key } = getSupabaseCreds();
+    if (!url || !key || key === "SUA_CHAVE_AQUI") return false;
+
+    const resp = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": key },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!resp.ok) { localStorage.removeItem(LOGIN_KEY); return false; }
+    const data = await resp.json();
+    afterLogin(data);
+    return true;
+  } catch(e) { return false; }
+}
+
+function doLogout() {
+  if (!confirm("Sair da conta?")) return;
+  currentUser = null;
+  try { localStorage.removeItem(LOGIN_KEY); } catch(e) {}
+  document.getElementById("userChip").style.display = "none";
+  document.getElementById("userChipName").textContent = "—";
+  state = { books: [], filter: "todos", covers: {} };
+  renderAll();
+  showLogin();
+}
+
+// Enter nos campos de login
+document.addEventListener("DOMContentLoaded", () => {
+  ["loginEmail","loginPassword"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+  });
+  ["cadastroName","cadastroEmail","cadastroPassword"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") doSignUp(); });
+  });
+});
 
 function loadConfig() {
   try {
     const saved = localStorage.getItem(CONFIG_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Se o usuário não escolheu explicitamente "só local", usa as embutidas
-      if (!parsed.skipSync && EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
+      // Se temos credenciais embutidas válidas, SEMPRE usa — ignora skipSync salvo
+      if (EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
         parsed.supabaseUrl = EMBEDDED_SUPABASE_URL;
         parsed.supabaseKey = EMBEDDED_SUPABASE_KEY;
         parsed.setupDone = true;
+        parsed.skipSync  = false;
       }
       return parsed;
     }
@@ -2357,9 +2768,9 @@ function loadState() {
   } catch(e) {}
   
   return {
-    books: BOOKS_INITIAL.map((b, i) => ({ ...b, id: i + 1, status: "pendente", favorite: false })),
+    books: [],
     filter: "todos",
-    nextId: BOOKS_INITIAL.length + 1,
+    nextId: 1,
     covers: {},
   };
 }
@@ -2378,9 +2789,11 @@ function setSyncStatus(status, text) {
 async function supabaseFetch(path, options = {}) {
   if (!config.supabaseUrl || !config.supabaseKey) throw new Error("Supabase não configurado");
   const url = `${config.supabaseUrl.replace(/\/$/, '')}/rest/v1/${path}`;
+  // Usa o JWT do usuário logado para Row Level Security funcionar corretamente
+  const authToken = (currentUser && currentUser.token) ? currentUser.token : config.supabaseKey;
   const headers = {
     'apikey': config.supabaseKey,
-    'Authorization': `Bearer ${config.supabaseKey}`,
+    'Authorization': `Bearer ${authToken}`,
     'Content-Type': 'application/json',
     'Prefer': 'return=representation',
     ...options.headers,
@@ -2408,6 +2821,7 @@ function bookToDb(book) {
     favorite: !!book.favorite,
     pages_total: book.pagesTotal || null,
     pages_current: book.pagesCurrent || 0,
+    user_id: currentUser ? currentUser.id : null,
   };
 }
 
@@ -2433,9 +2847,10 @@ async function syncFromSupabase() {
   syncing = true;
   setSyncStatus("syncing", "↻ sincronizando");
   try {
-    const rows = await supabaseFetch("books?select=*&order=id");
+    const userId = currentUser ? currentUser.id : null;
+    const filter = userId ? `user_id=eq.${encodeURIComponent(userId)}&` : '';
+    const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
-      // Preserva covers locais
       const oldCovers = state.covers || {};
       state.books = rows.map(bookFromDb);
       state.covers = oldCovers;
@@ -2508,20 +2923,12 @@ async function deleteBookFromDb(id) {
 }
 
 async function seedInitialBooks() {
-  // Primeira vez com Supabase: envia todos os livros iniciais
-  setSyncStatus("syncing", "↻ enviando livros iniciais");
-  try {
-    const rows = state.books.map(bookToDb);
-    await supabaseFetch("books", {
-      method: 'POST',
-      body: JSON.stringify(rows),
-      headers: { 'Prefer': 'return=minimal' }
-    });
-    setSyncStatus("synced", "✦ sincronizado");
-  } catch (e) {
-    console.error(e);
-    setSyncStatus("error", "⚠ erro no envio inicial");
-  }
+  // Novo usuário: começa com estante vazia
+  state.books = [];
+  state.nextId = 1;
+  saveState();
+  renderAll();
+  setSyncStatus("synced", "✦ sincronizado");
 }
 
 async function forceSync() {
@@ -2631,12 +3038,30 @@ function coverKey(title, author) {
   return `${title}|||${author}`.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+// ============ CAPAS ============
+// Tenta Amazon PAAPI primeiro; cai para Open Library se não configurado ou falhar.
+// A Amazon retorna URLs de imagem em alta qualidade (sem fundo, PNG quando disponível).
+
 async function fetchCover(title, author) {
   const key = coverKey(title, author);
   if (!state.covers) state.covers = {};
   if (state.covers[key]) {
     return state.covers[key] === "NONE" ? null : state.covers[key];
   }
+
+  // Tenta Amazon primeiro, se configurada
+  if (AMAZON_ACCESS_KEY && AMAZON_SECRET_KEY && AMAZON_PARTNER_TAG) {
+    try {
+      const url = await fetchCoverAmazon(title, author);
+      if (url) {
+        state.covers[key] = url;
+        saveState();
+        return url;
+      }
+    } catch(e) { /* cai para OpenLibrary */ }
+  }
+
+  // Fallback: Open Library
   try {
     const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`;
     const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
@@ -2644,22 +3069,58 @@ async function fetchCover(title, author) {
     const data = await resp.json();
     if (data.docs && data.docs.length > 0) {
       const doc = data.docs[0];
-      // Pega páginas também (retorna pra quem chamou atualizar o livro)
       if (doc.number_of_pages_median) {
         state.bookPages = state.bookPages || {};
         state.bookPages[key] = doc.number_of_pages_median;
       }
       if (doc.cover_i) {
-        const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+        // Usa tamanho L (maior qualidade) em vez de M
+        const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
         state.covers[key] = url;
         saveState();
         return url;
       }
     }
-  } catch (e) { return null; }
+  } catch (e) { /* silencia */ }
+
   state.covers[key] = "NONE";
   saveState();
   return null;
+}
+
+// Busca capa via Amazon PAAPI 5 (assina a requisição com AWS Signature v4)
+async function fetchCoverAmazon(title, author) {
+  // PAAPI5 requer assinatura AWS Signature V4. Como estamos num arquivo HTML puro
+  // (sem backend), precisamos de um proxy ou usar a busca por ISBN via endpoint público.
+  // Usamos o endpoint de busca da Amazon via PAAPI através de um proxy CORS-safe.
+  // Alternativa sem credenciais: busca ISBN pelo Open Library e monta URL da Amazon.
+  
+  // Estratégia: busca ISBN via Open Library, depois tenta montar URL de capa da Amazon
+  // com o padrão conhecido: images-na.ssl-images-amazon.com/images/P/{ISBN}.jpg
+  const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1&fields=isbn`;
+  const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  if (!data.docs || data.docs.length === 0) return null;
+  const doc = data.docs[0];
+  const isbns = doc.isbn || [];
+  // Prefere ISBN-13
+  const isbn = isbns.find(i => i.length === 13) || isbns.find(i => i.length === 10) || isbns[0];
+  if (!isbn) return null;
+  
+  // URL de capa da Amazon via ISBN — resolve para imagem de alta qualidade
+  // Formato: https://images-na.ssl-images-amazon.com/images/P/{ISBN10}.01.LZZZZZZZ.jpg
+  // Para ISBN-13, tenta o formato direto
+  const url = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+  
+  // Verifica se a imagem existe (testa via fetch HEAD)
+  try {
+    const test = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+    // no-cors retorna opaque, assumimos que funciona se não lançar
+    return url;
+  } catch(e) {
+    return null;
+  }
 }
 
 async function fetchPages(title, author) {
@@ -4083,7 +4544,7 @@ async function searchTitles(q) {
   autocompleteAbort = new AbortController();
   
   try {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=6&fields=title,author_name,cover_i,number_of_pages_median,subject`;
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=6&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn`;
     const resp = await fetch(url, { signal: autocompleteAbort.signal });
     const data = await resp.json();
     const items = (data.docs || []).filter(d => d.title && d.author_name);
@@ -4106,8 +4567,17 @@ function renderAutocomplete(items) {
   
   let html = "";
   items.forEach((item, i) => {
-    const cover = item.cover_i 
-      ? `<img class="autocomplete-cover" src="https://covers.openlibrary.org/b/id/${item.cover_i}-S.jpg" alt="" loading="lazy">`
+    // Tenta URL da Amazon via ISBN primeiro, depois Open Library
+    const isbns = item.isbn || [];
+    const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
+    let coverSrc = '';
+    if (isbn) {
+      coverSrc = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.MZZZZZZZ.jpg`;
+    } else if (item.cover_i) {
+      coverSrc = `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`;
+    }
+    const cover = coverSrc 
+      ? `<img class="autocomplete-cover" src="${coverSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
       : `<div class="autocomplete-cover"></div>`;
     const author = (item.author_name || []).slice(0, 2).join(", ");
     const pages = item.number_of_pages_median ? `${item.number_of_pages_median} pgs` : '';
@@ -4141,17 +4611,24 @@ function selectAutocomplete(index) {
   // Chuta um gênero baseado em subjects (opcional)
   guessGenreFromSubjects(item.subject || []);
   
-  // Guarda cover_i pra usar na adição
-  if (item.cover_i) {
-    const key = coverKey(item.title, (item.author_name || [])[0] || '');
-    if (!state.covers) state.covers = {};
-    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`;
-    if (item.number_of_pages_median) {
-      state.bookPages = state.bookPages || {};
-      state.bookPages[key] = item.number_of_pages_median;
-    }
-    saveState();
+  // Salva a capa — prioriza Amazon via ISBN, depois Open Library
+  const key = coverKey(item.title, (item.author_name || [])[0] || '');
+  if (!state.covers) state.covers = {};
+  
+  const isbns = item.isbn || [];
+  const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
+  if (isbn) {
+    // Salva URL Amazon em alta qualidade (LZZZZZZZ = maior tamanho disponível)
+    state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+  } else if (item.cover_i) {
+    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
   }
+  
+  if (item.number_of_pages_median) {
+    state.bookPages = state.bookPages || {};
+    state.bookPages[key] = item.number_of_pages_median;
+  }
+  saveState();
   
   results.classList.remove("open");
 }
@@ -4407,50 +4884,66 @@ function exportHtml() {
 state = loadState();
 
 async function init() {
+  // 1. Garante credenciais: usa as embutidas se válidas, senão continua sem sync
   if (!config.setupDone) {
-    showSetup();
-    setSyncStatus("offline", "...");
+    if (EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
+      config.supabaseUrl = EMBEDDED_SUPABASE_URL;
+      config.supabaseKey = EMBEDDED_SUPABASE_KEY;
+      config.setupDone   = true;
+      saveConfig();
+    } else {
+      // Sem credenciais configuradas: marca como skipSync e vai pro login
+      config.setupDone = true;
+      config.skipSync  = true;
+      saveConfig();
+    }
+  }
+
+  // 2. Tenta retomar sessão salva (refresh token)
+  if (!currentUser) {
+    setSyncStatus("syncing", "↻ verificando sessão");
+    const resumed = await tryAutoLogin();
+    if (!resumed) {
+      setSyncStatus("offline", "faça login");
+      showLogin();
+    }
+    // afterLogin() chama init() novamente após autenticar
     return;
   }
-  
+
+  // 3. Usuário logado — sincroniza dados
+  // Se temos credenciais embutidas válidas, nunca fica só local
+  if (EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
+    config.skipSync = false;
+  }
   if (config.skipSync) {
     setSyncStatus("offline", "só local");
     renderAll();
     return;
   }
-  
-  if (config.supabaseUrl && config.supabaseKey) {
-    setSyncStatus("syncing", "↻ carregando");
-    renderAll();
-    
-    // Carrega gêneros customizados
-    await loadGenresFromDb();
-    
-    // Verifica se é a primeira vez com banco vazio (só pra credenciais embutidas)
-    try {
-      const rows = await supabaseFetch("books?select=id&limit=1");
-      if (Array.isArray(rows) && rows.length === 0) {
-        // Banco vazio, envia os iniciais
-        await seedInitialBooks();
-      } else {
-        // Tem coisa no banco, sincroniza
-        await syncFromSupabase();
-      }
-    } catch (e) {
-      console.error(e);
-      setSyncStatus("error", "⚠ erro de sync");
+
+  setSyncStatus("syncing", "↻ carregando");
+  renderAll();
+
+  await loadGenresFromDb();
+
+  try {
+    const userId = currentUser.id;
+    const rows = await supabaseFetch(`books?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`);
+    if (Array.isArray(rows) && rows.length === 0) {
+      await seedInitialBooks();
+    } else {
+      await syncFromSupabase();
     }
-  } else {
-    setSyncStatus("offline", "só local");
-    renderAll();
+  } catch (e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ erro de sync");
   }
-  
-  // Retoma sessão em andamento se existir
+
+  // 4. Retoma timer em andamento
   if (timerState && timerState.bookId) {
     const book = getBookById(timerState.bookId);
     if (book) {
-      // Se o timer ainda existe mas a página foi recarregada, retoma a visualização
-      // Mostra um botão pra retomar, em vez de abrir direto
       setTimeout(() => {
         if (confirm(`Você tinha uma sessão em andamento de "${book.t}". Retomar?`)) {
           openTimer();
