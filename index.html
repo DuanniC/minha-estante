@@ -2157,7 +2157,7 @@ create policy "acesso total genres" on genres
   <div class="hero">
     <span class="hero-deco">✦</span>
     <h1>qual vai ser<br>sua <em id="heroWord">próxima</em><br>leitura?</h1>
-    <p>Gira a roda do gênero que tá te chamando e deixa a sorte escolher por você.</p>
+    <p>Gire a roda e deixa a sorte escolher por você.</p>
   </div>
   
   <div class="tabs">
@@ -2772,10 +2772,8 @@ function applyGender(gender) {
   const el = document.getElementById("heroWord");
   if (!el) return;
   if (gender === "masculino") {
-    el.textContent = "próximo";
     el.classList.add("gender-masc");
   } else {
-    el.textContent = "próxima";
     el.classList.remove("gender-masc");
   }
   // Atualiza texto do login sub
@@ -3014,6 +3012,7 @@ async function pushNewBook(book) {
     const result = await supabaseFetch("books", {
       method: 'POST',
       body: JSON.stringify(data),
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
     });
     // Se o servidor devolveu um ID diferente (unlikely pq a gente envia), atualiza
     if (result && result[0] && result[0].id !== book.id) {
@@ -4718,52 +4717,62 @@ async function searchGoogleBooks(q, signal) {
   const base = `https://www.googleapis.com/books/v1/volumes`;
   const fields = `fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers,language))`;
 
-  // Busca 1: restrito a PT (edições em português)
-  const urlPt = `${base}?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=pt&printType=books&${fields}`;
-  // Busca 2: catálogo do Brasil (Amazon BR / Google Play BR)
-  const urlBr = `${base}?q=${encodeURIComponent(q)}&maxResults=5&printType=books&country=BR&${fields}`;
+  // Busca 1: langRestrict=pt  — edições em português
+  // Busca 2: country=BR       — catálogo Brasil
+  // Busca 3: "edição brasileira" appended — força resultado BR
+  const queries = [
+    `${base}?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=pt&printType=books&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=6&printType=books&country=BR&${fields}`,
+  ];
 
-  const [r1, r2] = await Promise.allSettled([
-    fetch(urlPt, { signal }).then(r => r.json()),
-    fetch(urlBr,  { signal }).then(r => r.json()),
-  ]);
+  const results = await Promise.allSettled(
+    queries.map(url => fetch(url, { signal }).then(r => r.ok ? r.json() : { items: [] }))
+  );
 
-  const ptItems = (r1.status === 'fulfilled' && r1.value.items) ? r1.value.items : [];
-  const brItems = (r2.status === 'fulfilled' && r2.value.items) ? r2.value.items : [];
+  const allItems = results.flatMap(r => r.status === 'fulfilled' ? (r.value.items || []) : []);
 
   const seen = new Set();
-  const result = [];
-  for (const raw of [...ptItems, ...brItems]) {
-    if (!raw.volumeInfo || !raw.volumeInfo.title || !raw.volumeInfo.authors) continue;
+  const out = [];
+  for (const raw of allItems) {
     const v = raw.volumeInfo;
+    if (!v || !v.title || !v.authors) continue;
     const ids = v.industryIdentifiers || [];
-    const isbns = ids.map(x => x.identifier);
     const isbn13 = (ids.find(x => x.type === 'ISBN_13') || {}).identifier || null;
     const isbn10 = (ids.find(x => x.type === 'ISBN_10') || {}).identifier || null;
-    let coverUrl = null;
+    const isbns  = ids.map(x => x.identifier);
+    const dedupeKey = isbn13 || isbn10 || (v.title + (v.authors[0]||'')).toLowerCase().replace(/\s/g,'');
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    // Capa Google Books (pode falhar CORS no browser, mas tentamos)
+    let googleCover = null;
     if (v.imageLinks) {
-      coverUrl = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '')
+      googleCover = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '')
         .replace('http://', 'https://')
         .replace(/[?&]edge=curl/g, '')
         .replace('zoom=1', 'zoom=0');
     }
-    const amzCover = (isbn13 || isbn10) ? `https://images-na.ssl-images-amazon.com/images/P/${isbn13 || isbn10}.01.LZZZZZZZ.jpg` : null;
-    const dedupeKey = isbn13 || isbn10 || (v.title + (v.authors||[''])[0]).toLowerCase().replace(/\s/g,'');
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    result.push({
+    // Capa Amazon BR — usa ISBN13 primeiro, ISBN10 como fallback
+    const amzCover = isbn13
+      ? `https://images-na.ssl-images-amazon.com/images/P/${isbn13}.01.LZZZZZZZ.jpg`
+      : isbn10
+        ? `https://images-na.ssl-images-amazon.com/images/P/${isbn10}.01.LZZZZZZZ.jpg`
+        : null;
+
+    out.push({
       title: v.title,
       author_name: v.authors || [],
       number_of_pages_median: v.pageCount || null,
       subject: v.categories || [],
       isbn: isbns, isbn13, isbn10,
-      cover_url: coverUrl || amzCover,
+      cover_url: googleCover,   // tentamos Google primeiro no render
+      amz_cover: amzCover,      // fallback Amazon BR
       cover_i: null,
       _source: 'google',
     });
-    if (result.length >= 8) break;
+    if (out.length >= 8) break;
   }
-  return result;
+  return out;
 }
 
 async function searchOpenLibrary(q, signal) {
@@ -4787,20 +4796,28 @@ function renderAutocomplete(items) {
   
   let html = "";
   items.forEach((item, i) => {
-    // Prioridade de capa: Google direto > Amazon via ISBN > Open Library
-    let coverSrc = item.cover_url || '';
-    if (!coverSrc) {
-      const isbns = item.isbn || [];
-      const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
-      if (isbn) {
-        coverSrc = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.MZZZZZZZ.jpg`;
-      } else if (item.cover_i) {
-        coverSrc = `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`;
-      }
+    // Capa: tenta Google → Amazon BR → Open Library, com onerror em cascata
+    const amzSrc  = item.amz_cover || (() => {
+      const isbn = (item.isbn||[]).find(s=>s.length===13) || (item.isbn||[]).find(s=>s.length===10);
+      return isbn ? `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg` : '';
+    })();
+    const olSrc   = item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : '';
+    const primary = item.cover_url || amzSrc || olSrc || '';
+    const fallback1 = item.cover_url ? (amzSrc || olSrc) : (item.cover_url ? olSrc : '');
+    const fallback2 = (primary && fallback1) ? olSrc : '';
+    let cover;
+    if (primary) {
+      // onerror em cascata: Google falha → tenta Amazon → tenta OL
+      cover = `<img class="autocomplete-cover" src="${primary}" alt="" loading="lazy"
+        onerror="
+          const f1='${fallback1}',f2='${fallback2}';
+          if(f1&&this.src!==f1){this.src=f1;}
+          else if(f2&&this.src!==f2){this.src=f2;}
+          else{this.style.display='none';}
+        ">`;
+    } else {
+      cover = `<div class="autocomplete-cover"></div>`;
     }
-    const cover = coverSrc 
-      ? `<img class="autocomplete-cover" src="${coverSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
-      : `<div class="autocomplete-cover"></div>`;
     const author = (item.author_name || []).slice(0, 2).join(", ");
     const pages = item.number_of_pages_median ? `${item.number_of_pages_median} pgs` : '';
     
@@ -4837,17 +4854,16 @@ function selectAutocomplete(index) {
   const key = coverKey(item.title, (item.author_name || [])[0] || '');
   if (!state.covers) state.covers = {};
   
-  if (item.cover_url) {
-    // Google Books: troca zoom=1 por zoom=0 pra versão maior
-    state.covers[key] = item.cover_url.replace('zoom=1', 'zoom=0');
-  } else {
-    const isbns = item.isbn || [];
-    const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
-    if (isbn) {
-      state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
-    } else if (item.cover_i) {
-      state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
-    }
+  // Capa salva em cascata: Amazon BR (mais confiável) > Google Books > Open Library
+  if (item.amz_cover) {
+    state.covers[key] = item.amz_cover;  // Amazon BR é a mais confiável para CORS
+  } else if (item.isbn13 || item.isbn10) {
+    const isbn = item.isbn13 || item.isbn10;
+    state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+  } else if (item.cover_url) {
+    state.covers[key] = item.cover_url;
+  } else if (item.cover_i) {
+    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
   }
   
   if (item.number_of_pages_median) {
