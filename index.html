@@ -1285,6 +1285,278 @@
     margin-bottom: 14px;
     white-space: pre;
   }
+  
+  /* ============ TIMER / SESSÕES ============ */
+  .timer-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    color: var(--cream);
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    padding: 30px 24px 40px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .timer-overlay.open { display: flex; }
+  
+  .timer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  
+  .timer-label {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--rose);
+  }
+  
+  .timer-close {
+    background: transparent;
+    border: 1.5px solid var(--cream);
+    color: var(--cream);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  
+  .timer-book-info {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .timer-cover-small {
+    width: 100px;
+    aspect-ratio: 2/3;
+    margin: 0 auto 16px;
+    border-radius: 6px 14px 14px 6px;
+    overflow: hidden;
+    box-shadow: -2px 0 0 rgba(0,0,0,0.2), -4px 4px 12px rgba(0,0,0,0.3);
+  }
+  .timer-cover-small img { width: 100%; height: 100%; object-fit: cover; }
+  
+  .timer-book-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  
+  .timer-book-author {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--cream-dark);
+    opacity: 0.75;
+    margin-bottom: 8px;
+  }
+  
+  .timer-book-pages {
+    font-size: 12px;
+    color: var(--rose);
+    letter-spacing: 0.5px;
+  }
+  
+  .timer-display {
+    font-family: 'Fraunces', serif;
+    font-weight: 200;
+    font-size: 68px;
+    letter-spacing: -2px;
+    text-align: center;
+    margin: 30px 0 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .timer-target {
+    text-align: center;
+    font-size: 12px;
+    color: var(--cream-dark);
+    opacity: 0.6;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+  }
+  
+  .timer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    max-width: 360px;
+    width: 100%;
+    align-self: center;
+  }
+  
+  .timer-btn {
+    padding: 16px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+    transition: transform 0.15s;
+  }
+  
+  .timer-btn:active { transform: scale(0.97); }
+  
+  .timer-btn.primary { background: var(--cream); color: var(--ink); }
+  .timer-btn.secondary { background: transparent; color: var(--cream); border: 1.5px solid var(--cream); }
+  .timer-btn.done { background: var(--rose-deep); color: var(--cream); }
+  
+  .timer-target-setup {
+    background: rgba(244, 236, 216, 0.1);
+    border: 1px solid rgba(244, 236, 216, 0.2);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  .timer-target-label {
+    font-size: 12px;
+    color: var(--cream-dark);
+    opacity: 0.7;
+    flex: 1;
+  }
+  
+  .timer-target-input {
+    background: transparent;
+    border: 1.5px solid var(--cream);
+    border-radius: 10px;
+    color: var(--cream);
+    padding: 6px 10px;
+    width: 68px;
+    font-family: inherit;
+    font-size: 14px;
+    text-align: center;
+  }
+  
+  /* Progress ring */
+  .progress-ring-wrap {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 16px;
+  }
+  
+  .progress-ring {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+  }
+  
+  .progress-ring-track {
+    fill: none;
+    stroke: rgba(244, 236, 216, 0.15);
+    stroke-width: 6;
+  }
+  
+  .progress-ring-fill {
+    fill: none;
+    stroke: var(--rose);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.25, 1, 0.3, 1);
+  }
+  
+  .progress-ring-inner {
+    position: absolute;
+    inset: 18px;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  
+  .progress-ring-inner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .progress-ring-inner .cover-fallback {
+    font-size: 0.7em;
+  }
+  
+  .progress-pct {
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--cream);
+    color: var(--ink);
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border: 2px solid var(--ink);
+  }
+  
+  /* Session list no modal de edição */
+  .sessions-list {
+    margin-top: 16px;
+    background: var(--cream-dark);
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  
+  .sessions-list-title {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  
+  .session-item {
+    padding: 6px 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid rgba(42, 36, 32, 0.1);
+  }
+  
+  .session-item:last-child { border-bottom: none; }
+  .session-item .sess-time { color: var(--ink); font-weight: 600; }
+  
+  /* Progress bar no card do livro lendo */
+  .reading-progress-bar {
+    margin-top: 6px;
+    height: 5px;
+    background: rgba(42, 36, 32, 0.15);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  
+  .reading-progress-fill {
+    height: 100%;
+    background: var(--ink);
+    border-radius: 100px;
+    transition: width 0.5s ease;
+  }
+  
+  .reading-progress-text {
+    font-size: 10px;
+    color: var(--ink);
+    opacity: 0.7;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
 </style>
 </head>
 <body>
@@ -1321,12 +1593,30 @@ create table books (
   end_date date,
   rating int,
   favorite boolean default false,
+  pages_total int,
+  pages_current int default 0,
   created_at timestamptz default now()
 );
 
-alter table books enable row level security;
+create table reading_sessions (
+  id bigint generated by default as identity primary key,
+  book_id bigint not null references books(id) on delete cascade,
+  started_at timestamptz not null,
+  ended_at timestamptz not null,
+  duration_seconds int not null,
+  page_start int,
+  page_end int,
+  created_at timestamptz default now()
+);
 
-create policy "acesso total" on books
+create index idx_sessions_book on reading_sessions(book_id);
+
+alter table books enable row level security;
+alter table reading_sessions enable row level security;
+
+create policy "acesso total books" on books
+  for all using (true) with check (true);
+create policy "acesso total sessions" on reading_sessions
   for all using (true) with check (true);</div>
       <button class="form-btn secondary" onclick="copySql()" style="margin-top:0">Copiar SQL</button>
     </div>
@@ -1459,6 +1749,10 @@ create policy "acesso total" on books
       <label class="form-label">Gênero</label>
       <select class="form-select" id="newGenre"></select>
     </div>
+    <div class="form-group">
+      <label class="form-label">Total de páginas (opcional)</label>
+      <input type="number" class="form-input" id="newPages" min="1" placeholder="deixa vazio pra buscar automático">
+    </div>
     
     <button class="form-btn" onclick="addBook()">Adicionar à estante</button>
   </div>
@@ -1520,9 +1814,109 @@ create policy "acesso total" on books
       </div>
     </div>
     
+    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div class="form-group">
+        <label class="form-label">Página atual</label>
+        <input type="number" class="form-input" id="editPagesCurrent" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total de páginas</label>
+        <input type="number" class="form-input" id="editPagesTotal" min="0">
+      </div>
+    </div>
+    
+    <div id="sessionsListContainer"></div>
+    
     <button class="form-btn" onclick="confirmFinishReading()">Marcar como lido ✦</button>
     <button class="form-btn secondary" onclick="saveEditOnly()" style="margin-top: 10px;">Salvar edição (continuar lendo)</button>
     <button class="form-btn danger" onclick="confirmAbandon()" style="margin-top: 10px;">Abandonar livro</button>
+  </div>
+</div>
+
+<!-- TIMER OVERLAY (tela cheia) -->
+<div class="timer-overlay" id="timerOverlay">
+  <div class="timer-header">
+    <div class="timer-label">sessão de leitura ✦</div>
+    <button class="timer-close" onclick="minimizeTimer()" aria-label="Minimizar">×</button>
+  </div>
+  
+  <div class="timer-book-info">
+    <div class="timer-cover-small" id="timerCover"></div>
+    <div class="timer-book-title" id="timerTitle">—</div>
+    <div class="timer-book-author" id="timerAuthor">—</div>
+    <div class="timer-book-pages" id="timerPages"></div>
+  </div>
+  
+  <div class="timer-target-setup" id="timerTargetSetup">
+    <span class="timer-target-label">Meta de tempo (minutos, opcional)</span>
+    <input type="number" class="timer-target-input" id="timerTargetInput" min="1" placeholder="—">
+  </div>
+  
+  <div class="timer-display" id="timerDisplay">00:00:00</div>
+  <div class="timer-target" id="timerTargetDisplay"></div>
+  
+  <div class="timer-actions">
+    <button class="timer-btn done" id="timerDoneBtn" onclick="stopTimer()">Feito ✦</button>
+    <button class="timer-btn primary" id="timerPauseBtn" onclick="toggleTimer()">Pausar</button>
+    <button class="timer-btn secondary" onclick="cancelTimer()">Cancelar sessão</button>
+  </div>
+</div>
+
+<!-- MODAL SALVAR SESSÃO -->
+<div class="modal-backdrop" id="saveSessionModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Salvar</em> sessão</h2>
+      <button class="modal-close" onclick="closeSaveSession()">×</button>
+    </div>
+    <p class="modal-sub" id="saveSessionBook"></p>
+    
+    <div class="reading-info" id="saveSessionInfo"></div>
+    
+    <div class="form-group" style="margin-top: 16px;">
+      <label class="form-label">Quanto você leu?</label>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="number" class="form-input" id="sessionPageEnd" min="0" placeholder="página atual" style="flex:1">
+        <span style="color: var(--ink-soft); font-size: 13px;" id="sessionPageTotal"></span>
+      </div>
+    </div>
+    
+    <button class="form-btn" onclick="saveSession(false)">Salvar sessão ✦</button>
+    <button class="form-btn secondary" onclick="saveSession(true)" style="margin-top: 10px;">Eu li tudo! Marcar como concluído ✓</button>
+    <button class="form-btn danger" onclick="discardSession()" style="margin-top: 10px;">Desistir (não salvar)</button>
+  </div>
+</div>
+
+<!-- MODAL RESULTADO DA SESSÃO -->
+<div class="modal-backdrop" id="sessionResultModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Você leu! ✦</em></h2>
+      <button class="modal-close" onclick="closeSessionResult()">×</button>
+    </div>
+    <p class="modal-sub" id="sessionResultDate"></p>
+    
+    <div class="progress-ring-wrap">
+      <svg class="progress-ring" viewBox="0 0 180 180">
+        <circle class="progress-ring-track" cx="90" cy="90" r="82"></circle>
+        <circle class="progress-ring-fill" cx="90" cy="90" r="82" id="progressCircle"
+          stroke-dasharray="515.22" stroke-dashoffset="515.22"></circle>
+      </svg>
+      <div class="progress-ring-inner" id="progressInner"></div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+    
+    <div style="text-align: center; margin: 20px 0;">
+      <div style="font-family: 'Instrument Serif', serif; font-style: italic; color: var(--ink-soft); font-size: 13px;">nesta sessão</div>
+      <div id="sessionResultTime" style="font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; margin: 4px 0;">—</div>
+      <div style="font-family: 'Instrument Serif', serif; font-style: italic; color: var(--ink-soft); font-size: 13px;" id="sessionResultPages"></div>
+    </div>
+    
+    <div class="reading-info" id="sessionResultEstimate" style="text-align: center;"></div>
+    
+    <button class="form-btn" onclick="closeSessionResult()" style="margin-top: 16px;">Beleza ✦</button>
   </div>
 </div>
 
@@ -1697,6 +2091,8 @@ function bookToDb(book) {
     end_date: book.endDate || null,
     rating: book.rating || null,
     favorite: !!book.favorite,
+    pages_total: book.pagesTotal || null,
+    pages_current: book.pagesCurrent || 0,
   };
 }
 
@@ -1711,6 +2107,8 @@ function bookFromDb(row) {
     endDate: row.end_date || undefined,
     rating: row.rating || undefined,
     favorite: !!row.favorite,
+    pagesTotal: row.pages_total || undefined,
+    pagesCurrent: row.pages_current || 0,
   };
 }
 
@@ -1929,15 +2327,43 @@ async function fetchCover(title, author) {
     const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
     if (!resp.ok) throw new Error("fetch failed");
     const data = await resp.json();
-    if (data.docs && data.docs.length > 0 && data.docs[0].cover_i) {
-      const url = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-M.jpg`;
-      state.covers[key] = url;
-      saveState();
-      return url;
+    if (data.docs && data.docs.length > 0) {
+      const doc = data.docs[0];
+      // Pega páginas também (retorna pra quem chamou atualizar o livro)
+      if (doc.number_of_pages_median) {
+        state.bookPages = state.bookPages || {};
+        state.bookPages[key] = doc.number_of_pages_median;
+      }
+      if (doc.cover_i) {
+        const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+        state.covers[key] = url;
+        saveState();
+        return url;
+      }
     }
   } catch (e) { return null; }
   state.covers[key] = "NONE";
   saveState();
+  return null;
+}
+
+async function fetchPages(title, author) {
+  const key = coverKey(title, author);
+  if (!state.bookPages) state.bookPages = {};
+  if (state.bookPages[key]) return state.bookPages[key];
+  
+  try {
+    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`;
+    const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.docs && data.docs.length > 0 && data.docs[0].number_of_pages_median) {
+      const pages = data.docs[0].number_of_pages_median;
+      state.bookPages[key] = pages;
+      saveState();
+      return pages;
+    }
+  } catch (e) { return null; }
   return null;
 }
 
@@ -2145,12 +2571,22 @@ function renderGenres() {
         const card = document.createElement("div");
         card.className = `reading-card ${g.color}`;
         card.dataset.bookId = book.id;
-        // Clicar no card abre edição do LIVRO (não do gênero)
         card.onclick = () => openEditModal(book.id);
         
         const dateText = book.startDate ? `desde ${formatDate(book.startDate)}` : "leitura em andamento";
         const coverId = `cover-${book.id}`;
         const favMark = book.favorite ? '<span style="color:var(--heart); margin-left: 6px;">♥</span>' : '';
+        
+        // Progresso de páginas
+        let progressHTML = '';
+        if (book.pagesTotal && book.pagesTotal > 0) {
+          const current = book.pagesCurrent || 0;
+          const pct = Math.min(100, (current / book.pagesTotal) * 100);
+          progressHTML = `
+            <div class="reading-progress-text">pág. ${current} / ${book.pagesTotal} · ${Math.round(pct)}%</div>
+            <div class="reading-progress-bar"><div class="reading-progress-fill" style="width:${pct}%"></div></div>
+          `;
+        }
         
         card.innerHTML = `
           <div class="cover" id="${coverId}">
@@ -2162,10 +2598,11 @@ function renderGenres() {
               <div class="reading-book-title">${escapeHtml(book.t)}${favMark}</div>
               <div class="reading-book-author">${escapeHtml(book.a)}</div>
               <div class="reading-meta">📖 ${dateText}</div>
+              ${progressHTML}
             </div>
             <div class="reading-actions">
-              <button class="reading-btn primary" onclick="event.stopPropagation(); openEditModal(${book.id})">Editar ✦</button>
-              <button class="reading-btn secondary" onclick="event.stopPropagation(); openModal('${key}')">Ver gênero</button>
+              <button class="reading-btn primary" onclick="event.stopPropagation(); startSession(${book.id})">Iniciar sessão ✦</button>
+              <button class="reading-btn secondary" onclick="event.stopPropagation(); openEditModal(${book.id})">Editar</button>
             </div>
           </div>
         `;
@@ -2179,8 +2616,20 @@ function renderGenres() {
           img.onload = () => { coverEl.innerHTML = `<img src="${url}" alt="${escapeHtml(book.t)}">`; };
           img.src = url;
         });
+        
+        // Também busca páginas se ainda não tiver
+        if (!book.pagesTotal) {
+          fetchPages(book.t, book.a).then(pages => {
+            if (pages && !book.pagesTotal) {
+              book.pagesTotal = pages;
+              saveState();
+              pushBook(book);
+              renderAll();
+            }
+          });
+        }
       });
-      return; // só livros lendo, sem genre-card
+      return;
     }
     
     // Card de gênero padrão
@@ -2432,6 +2881,404 @@ function launchConfetti() {
   }
 }
 
+// ============ TIMER / SESSÕES DE LEITURA ============
+const TIMER_KEY = "minha_estante_timer";
+let timerState = loadTimerState();
+let timerInterval = null;
+
+function loadTimerState() {
+  try {
+    const saved = localStorage.getItem(TIMER_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+function saveTimerState() {
+  if (timerState) {
+    try { localStorage.setItem(TIMER_KEY, JSON.stringify(timerState)); } catch(e) {}
+  } else {
+    try { localStorage.removeItem(TIMER_KEY); } catch(e) {}
+  }
+}
+
+function startSession(bookId) {
+  const book = getBookById(bookId);
+  if (!book) return;
+  
+  timerState = {
+    bookId: bookId,
+    startedAt: Date.now(),
+    elapsedBefore: 0, // segundos acumulados antes da última retomada
+    pausedAt: null,
+    pageStart: book.pagesCurrent || 0,
+    targetMinutes: null,
+  };
+  saveTimerState();
+  openTimer();
+}
+
+function openTimer() {
+  if (!timerState) return;
+  const book = getBookById(timerState.bookId);
+  if (!book) {
+    timerState = null;
+    saveTimerState();
+    return;
+  }
+  
+  document.getElementById("timerTitle").textContent = book.t;
+  document.getElementById("timerAuthor").textContent = `por ${book.a}`;
+  
+  if (book.pagesTotal) {
+    const current = book.pagesCurrent || 0;
+    document.getElementById("timerPages").textContent = `página ${current} de ${book.pagesTotal}`;
+  } else {
+    document.getElementById("timerPages").textContent = '';
+  }
+  
+  // Cover
+  const coverEl = document.getElementById("timerCover");
+  coverEl.innerHTML = coverFallbackHTML(book, book.g);
+  fetchCover(book.t, book.a).then(url => {
+    if (url && document.getElementById("timerOverlay").classList.contains("open")) {
+      coverEl.innerHTML = `<img src="${url}" alt="">`;
+    }
+  });
+  
+  // Target
+  document.getElementById("timerTargetInput").value = timerState.targetMinutes || '';
+  updateTargetDisplay();
+  
+  // Pausar/Retomar
+  updatePauseButton();
+  
+  document.getElementById("timerOverlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+  
+  // Inicia update visual
+  if (!timerInterval) {
+    timerInterval = setInterval(updateTimerDisplay, 500);
+  }
+  updateTimerDisplay();
+}
+
+function minimizeTimer() {
+  // Esconde mas mantém rodando
+  document.getElementById("timerOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function updateTargetDisplay() {
+  const input = document.getElementById("timerTargetInput");
+  const val = parseInt(input.value);
+  if (val && val > 0) {
+    timerState.targetMinutes = val;
+    document.getElementById("timerTargetDisplay").textContent = `meta: ${val} min`;
+  } else {
+    timerState.targetMinutes = null;
+    document.getElementById("timerTargetDisplay").textContent = '';
+  }
+  saveTimerState();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const tInput = document.getElementById("timerTargetInput");
+  if (tInput) {
+    tInput.addEventListener('input', updateTargetDisplay);
+  }
+});
+
+function getElapsedSeconds() {
+  if (!timerState) return 0;
+  let total = timerState.elapsedBefore || 0;
+  if (!timerState.pausedAt) {
+    total += Math.floor((Date.now() - timerState.startedAt) / 1000);
+  }
+  return total;
+}
+
+function updateTimerDisplay() {
+  if (!timerState) return;
+  const secs = getElapsedSeconds();
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  const display = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  
+  const el = document.getElementById("timerDisplay");
+  if (el) el.textContent = display;
+  
+  // Se atingiu a meta, vibra (se suportar) e muda cor do display
+  if (timerState.targetMinutes && secs >= timerState.targetMinutes * 60) {
+    if (el && !el.dataset.reached) {
+      el.dataset.reached = "1";
+      el.style.color = "var(--rose)";
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    }
+  }
+  
+  // Alerta de leitura longa (>4h)
+  if (secs > 14400 && el && !el.dataset.longWarned) {
+    el.dataset.longWarned = "1";
+    if (confirm("Você tá lendo há mais de 4 horas. Ainda tá aí? Se não, finaliza que eu ajusto.")) {
+      // continua
+    } else {
+      stopTimer();
+    }
+  }
+}
+
+function toggleTimer() {
+  if (!timerState) return;
+  if (timerState.pausedAt) {
+    // Retomando
+    timerState.startedAt = Date.now();
+    timerState.pausedAt = null;
+  } else {
+    // Pausando
+    timerState.elapsedBefore = (timerState.elapsedBefore || 0) + Math.floor((Date.now() - timerState.startedAt) / 1000);
+    timerState.pausedAt = Date.now();
+  }
+  saveTimerState();
+  updatePauseButton();
+  updateTimerDisplay();
+}
+
+function updatePauseButton() {
+  const btn = document.getElementById("timerPauseBtn");
+  if (!btn || !timerState) return;
+  btn.textContent = timerState.pausedAt ? "Retomar" : "Pausar";
+}
+
+function cancelTimer() {
+  if (!confirm("Cancelar sessão? O tempo lido não vai ser salvo.")) return;
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerState = null;
+  saveTimerState();
+  document.getElementById("timerOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+  renderAll();
+}
+
+function stopTimer() {
+  if (!timerState) return;
+  
+  // Pausa se não estava pausado
+  if (!timerState.pausedAt) {
+    timerState.elapsedBefore = (timerState.elapsedBefore || 0) + Math.floor((Date.now() - timerState.startedAt) / 1000);
+    timerState.pausedAt = Date.now();
+  }
+  
+  const totalSecs = timerState.elapsedBefore;
+  if (totalSecs < 5) {
+    if (!confirm("Menos de 5 segundos registrados. Salvar mesmo assim?")) {
+      document.getElementById("timerOverlay").classList.remove("open");
+      document.body.style.overflow = "";
+      return;
+    }
+  }
+  
+  // Abre modal de salvar
+  openSaveSession();
+}
+
+// ============ SALVAR SESSÃO ============
+let pendingSession = null;
+
+function openSaveSession() {
+  if (!timerState) return;
+  const book = getBookById(timerState.bookId);
+  if (!book) return;
+  
+  const totalSecs = getElapsedSeconds();
+  pendingSession = {
+    bookId: book.id,
+    startedAt: new Date(timerState.startedAt - (timerState.elapsedBefore || 0) * 1000).toISOString(),
+    durationSeconds: totalSecs,
+    pageStart: timerState.pageStart || 0,
+  };
+  
+  document.getElementById("saveSessionBook").textContent = `"${book.t}" — ${book.a}`;
+  
+  const timeStr = formatDuration(totalSecs);
+  const now = new Date();
+  const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} às ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById("saveSessionInfo").innerHTML = `
+    <strong>${dateStr}</strong><br>
+    Tempo lido: <strong>${timeStr}</strong>
+  `;
+  
+  const pageTotal = book.pagesTotal || 0;
+  const pageInput = document.getElementById("sessionPageEnd");
+  pageInput.value = book.pagesCurrent || '';
+  pageInput.max = pageTotal || 9999;
+  document.getElementById("sessionPageTotal").textContent = pageTotal ? `de ${pageTotal}` : '';
+  
+  document.getElementById("saveSessionModal").classList.add("open");
+  // Fecha timer overlay
+  document.getElementById("timerOverlay").classList.remove("open");
+}
+
+function closeSaveSession() {
+  document.getElementById("saveSessionModal").classList.remove("open");
+}
+
+async function saveSession(markAsRead) {
+  if (!pendingSession) return;
+  const book = getBookById(pendingSession.bookId);
+  if (!book) return;
+  
+  const pageEnd = parseInt(document.getElementById("sessionPageEnd").value) || book.pagesCurrent || 0;
+  pendingSession.pageEnd = pageEnd;
+  pendingSession.endedAt = new Date().toISOString();
+  
+  // Atualiza página atual do livro
+  book.pagesCurrent = pageEnd;
+  
+  if (markAsRead) {
+    book.status = "lido";
+    book.endDate = todayISO();
+    if (book.pagesTotal) book.pagesCurrent = book.pagesTotal;
+  }
+  
+  saveState();
+  pushBook(book);
+  
+  // Salva sessão no Supabase
+  try {
+    await pushSession(pendingSession);
+  } catch(e) { console.error(e); }
+  
+  // Fecha tudo e mostra resultado
+  closeSaveSession();
+  clearInterval(timerInterval);
+  timerInterval = null;
+  const sessionData = { ...pendingSession };
+  timerState = null;
+  saveTimerState();
+  pendingSession = null;
+  
+  showSessionResult(book, sessionData);
+  renderAll();
+}
+
+function discardSession() {
+  if (!confirm("Descartar essa sessão? O tempo lido será perdido.")) return;
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerState = null;
+  saveTimerState();
+  pendingSession = null;
+  closeSaveSession();
+  document.getElementById("timerOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+  renderAll();
+}
+
+async function pushSession(session) {
+  if (!config.setupDone || config.skipSync) return;
+  setSyncStatus("syncing", "↻ salvando sessão");
+  try {
+    await supabaseFetch("reading_sessions", {
+      method: 'POST',
+      body: JSON.stringify({
+        book_id: session.bookId,
+        started_at: session.startedAt,
+        ended_at: session.endedAt,
+        duration_seconds: session.durationSeconds,
+        page_start: session.pageStart,
+        page_end: session.pageEnd,
+      }),
+    });
+    setSyncStatus("synced", "✦ sincronizado");
+  } catch(e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ sessão não sincronizou");
+  }
+}
+
+function formatDuration(totalSecs) {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return `${h}h ${m}min ${s}s`;
+  if (m > 0) return `${m}min ${s}s`;
+  return `${s} segundo${s !== 1 ? 's' : ''}`;
+}
+
+// ============ RESULTADO DA SESSÃO ============
+function showSessionResult(book, session) {
+  const today = new Date();
+  const dateStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+  document.getElementById("sessionResultDate").textContent = dateStr;
+  
+  // Cover dentro do círculo
+  const inner = document.getElementById("progressInner");
+  inner.innerHTML = coverFallbackHTML(book, book.g);
+  fetchCover(book.t, book.a).then(url => {
+    if (url) inner.innerHTML = `<img src="${url}" alt="">`;
+  });
+  
+  // Progress ring
+  const current = book.pagesCurrent || 0;
+  const total = book.pagesTotal || 0;
+  const pct = total > 0 ? Math.min(1, current / total) : 0;
+  const circumference = 2 * Math.PI * 82; // r=82
+  const offset = circumference * (1 - pct);
+  const circle = document.getElementById("progressCircle");
+  circle.style.strokeDasharray = circumference;
+  setTimeout(() => { circle.style.strokeDashoffset = offset; }, 100);
+  
+  document.getElementById("progressPct").textContent = total > 0 ? `${Math.round(pct * 100)}%` : 'sem meta';
+  
+  document.getElementById("sessionResultTime").textContent = formatDuration(session.durationSeconds);
+  
+  const pagesRead = Math.max(0, (session.pageEnd || 0) - (session.pageStart || 0));
+  if (total > 0) {
+    document.getElementById("sessionResultPages").textContent = 
+      pagesRead > 0 
+        ? `${pagesRead} página${pagesRead > 1 ? 's' : ''} · agora em ${current}/${total}`
+        : `ainda em ${current}/${total}`;
+  } else {
+    document.getElementById("sessionResultPages").textContent = 
+      pagesRead > 0 ? `${pagesRead} página${pagesRead > 1 ? 's' : ''} lidas` : '';
+  }
+  
+  // Estimativa de tempo restante
+  const pagesLeft = Math.max(0, total - current);
+  if (pagesLeft > 0 && pagesRead > 0 && session.durationSeconds > 0) {
+    const secPerPage = session.durationSeconds / pagesRead;
+    const secsLeft = Math.round(secPerPage * pagesLeft);
+    document.getElementById("sessionResultEstimate").innerHTML = 
+      `Nesse ritmo, faltam <strong>${formatDuration(secsLeft)}</strong> pra terminar ✦`;
+  } else if (pagesLeft > 0) {
+    document.getElementById("sessionResultEstimate").innerHTML = 
+      `<em>Faltam ${pagesLeft} páginas</em>`;
+  } else if (total > 0 && current >= total) {
+    document.getElementById("sessionResultEstimate").innerHTML = 
+      `<em>Você terminou o livro ✦</em>`;
+  } else {
+    document.getElementById("sessionResultEstimate").innerHTML = '';
+  }
+  
+  document.getElementById("sessionResultModal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeSessionResult() {
+  document.getElementById("sessionResultModal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("saveSessionModal").addEventListener("click", (e) => {
+  if (e.target.id === "saveSessionModal") closeSaveSession();
+});
+document.getElementById("sessionResultModal").addEventListener("click", (e) => {
+  if (e.target.id === "sessionResultModal") closeSessionResult();
+});
+
 // ============ INICIAR LEITURA ============
 let readingBookId = null;
 
@@ -2495,6 +3342,8 @@ function openEditModal(bookId) {
   document.getElementById("editModalBook").textContent = `"${book.t}" — ${book.a}`;
   document.getElementById("editStartDate").value = book.startDate || todayISO();
   document.getElementById("editEndDate").value = book.endDate || todayISO();
+  document.getElementById("editPagesCurrent").value = book.pagesCurrent || '';
+  document.getElementById("editPagesTotal").value = book.pagesTotal || '';
   
   const info = book.startDate 
     ? `<strong>Começou em:</strong> ${formatDate(book.startDate)}` 
@@ -2503,8 +3352,48 @@ function openEditModal(bookId) {
   
   renderStars();
   renderFavoriteToggle();
+  renderSessionsList(book.id);
   document.getElementById("editModal").classList.add("open");
   document.body.style.overflow = "hidden";
+  
+  // Busca páginas se não tiver
+  if (!book.pagesTotal) {
+    fetchPages(book.t, book.a).then(pages => {
+      if (pages) {
+        const input = document.getElementById("editPagesTotal");
+        if (input && !input.value) input.value = pages;
+      }
+    });
+  }
+}
+
+async function renderSessionsList(bookId) {
+  const container = document.getElementById("sessionsListContainer");
+  container.innerHTML = '';
+  
+  if (!config.setupDone || config.skipSync) return;
+  
+  try {
+    const sessions = await supabaseFetch(`reading_sessions?book_id=eq.${bookId}&order=started_at.desc&limit=10`);
+    if (!sessions || sessions.length === 0) return;
+    
+    let html = `<div class="sessions-list">
+      <div class="sessions-list-title">últimas sessões · ${sessions.length}</div>`;
+    
+    sessions.forEach(s => {
+      const d = new Date(s.started_at);
+      const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+      const timeStr = formatDuration(s.duration_seconds);
+      const pagesStr = (s.page_end && s.page_start !== null) 
+        ? ` · ${s.page_start}→${s.page_end}` : '';
+      html += `<div class="session-item">
+        <span>${dateStr}${pagesStr}</span>
+        <span class="sess-time">${timeStr}</span>
+      </div>`;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+  } catch(e) { console.error(e); }
 }
 
 function closeEditModal() {
@@ -2543,16 +3432,19 @@ document.querySelectorAll("#starsInput .star").forEach(star => {
 });
 
 function saveEditOnly() {
-  // Salva só alterações (estrelas, favorito, datas) sem mudar status
   if (!editingBookId) return;
   const book = getBookById(editingBookId);
   const startDate = document.getElementById("editStartDate").value;
   const endDate = document.getElementById("editEndDate").value;
+  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
+  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
   
   if (startDate) book.startDate = startDate;
   if (endDate && book.status !== "reading") book.endDate = endDate;
   book.rating = selectedStars || null;
   book.favorite = editingFavorite;
+  if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
+  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
   saveState();
   pushBook(book);
   
@@ -2566,6 +3458,8 @@ function confirmFinishReading() {
   const book = getBookById(editingBookId);
   const startDate = document.getElementById("editStartDate").value;
   const endDate = document.getElementById("editEndDate").value;
+  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
+  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
   if (!endDate) { alert("Escolhe a data de término ✦"); return; }
   
   book.status = "lido";
@@ -2573,6 +3467,8 @@ function confirmFinishReading() {
   book.endDate = endDate;
   book.rating = selectedStars || null;
   book.favorite = editingFavorite;
+  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
+  book.pagesCurrent = !isNaN(pagesCurrent) ? pagesCurrent : (book.pagesTotal || 0);
   saveState();
   pushBook(book);
   
@@ -2586,11 +3482,15 @@ function confirmAbandon() {
   if (!confirm("Marcar como abandonado? Sem julgamentos ✦")) return;
   const book = getBookById(editingBookId);
   const endDate = document.getElementById("editEndDate").value;
+  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
+  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
   
   book.status = "abandoned";
   if (endDate) book.endDate = endDate;
   if (selectedStars) book.rating = selectedStars;
   book.favorite = editingFavorite;
+  if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
+  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
   saveState();
   pushBook(book);
   
@@ -2653,6 +3553,7 @@ function openAddBook() {
   ).join("");
   document.getElementById("newTitle").value = "";
   document.getElementById("newAuthor").value = "";
+  document.getElementById("newPages").value = "";
   document.getElementById("addModal").classList.add("open");
   document.body.style.overflow = "hidden";
   setTimeout(() => document.getElementById("newTitle").focus(), 300);
@@ -2667,6 +3568,7 @@ async function addBook() {
   const title = document.getElementById("newTitle").value.trim();
   const author = document.getElementById("newAuthor").value.trim();
   const genre = document.getElementById("newGenre").value;
+  const pagesInput = parseInt(document.getElementById("newPages").value);
   
   if (!title) { alert("Coloca o título ✦"); return; }
   if (!author) { alert("Coloca o autor ✦"); return; }
@@ -2677,7 +3579,12 @@ async function addBook() {
     id: state.nextId++,
     t: title, a: author, g: genre,
     status: "pendente", favorite: false,
+    pagesCurrent: 0,
   };
+  if (!isNaN(pagesInput) && pagesInput > 0) {
+    newBook.pagesTotal = pagesInput;
+  }
+  
   state.books.push(newBook);
   saveState();
   pushNewBook(newBook);
@@ -2685,6 +3592,18 @@ async function addBook() {
   closeAddBook();
   renderAll();
   if (currentGenre === genre) { renderWheel(genre); renderBookList(genre); updateModalSub(); }
+  
+  // Se o usuário não deu páginas, busca automático em background
+  if (!newBook.pagesTotal) {
+    fetchPages(title, author).then(pages => {
+      if (pages) {
+        newBook.pagesTotal = pages;
+        saveState();
+        pushBook(newBook);
+        renderAll();
+      }
+    });
+  }
 }
 
 document.getElementById("addModal").addEventListener("click", (e) => {
@@ -2771,6 +3690,26 @@ async function init() {
   } else {
     setSyncStatus("offline", "só local");
     renderAll();
+  }
+  
+  // Retoma sessão em andamento se existir
+  if (timerState && timerState.bookId) {
+    const book = getBookById(timerState.bookId);
+    if (book) {
+      // Se o timer ainda existe mas a página foi recarregada, retoma a visualização
+      // Mostra um botão pra retomar, em vez de abrir direto
+      setTimeout(() => {
+        if (confirm(`Você tinha uma sessão em andamento de "${book.t}". Retomar?`)) {
+          openTimer();
+        } else {
+          timerState = null;
+          saveTimerState();
+        }
+      }, 500);
+    } else {
+      timerState = null;
+      saveTimerState();
+    }
   }
 }
 
