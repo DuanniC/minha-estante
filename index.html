@@ -1971,7 +1971,7 @@
   <div class="login-box">
     <div class="login-deco">✦</div>
     <div class="login-title">Minha<br><em>estante</em></div>
-    <div class="login-sub" id="loginSub">bem-vinda(o) de volta ✦</div>
+    <div class="login-sub" id="loginSub">bem-vinda de volta ✦</div>
     <div class="login-sub" id="loginSubCadastro" style="display:none;">cria sua conta ✦</div>
 
     <div class="login-tabs">
@@ -3657,9 +3657,10 @@ function renderGenres() {
     }
     
     // Card de gênero padrão
+    const isPendente = state.filter === "pendente";
     const card = document.createElement("div");
     card.className = `genre-card ${g.color}`;
-    card.onclick = () => openModal(key);
+    if (isPendente) card.onclick = () => openModal(key);
     card.innerHTML = `
       <div class="genre-header">
         <div>
@@ -3670,11 +3671,11 @@ function renderGenres() {
       </div>
       <div class="genre-meta">
         <div class="genre-preview">${pending > 0 ? g.preview : 'todos já passaram por aqui ✦'}</div>
-        <button class="spin-btn" onclick="event.stopPropagation(); openModal('${key}')" aria-label="Girar roda">
+        ${isPendente ? `<button class="spin-btn" onclick="event.stopPropagation(); openModal('${key}')" aria-label="Girar roda">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
           </svg>
-        </button>
+        </button>` : ''}
       </div>
     `;
     container.appendChild(card);
