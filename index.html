@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        let requestId = 0;
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = requestId++;
+              callbacksMap.set(id, { resolve, reject });
+              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = requestId++;
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream
+                resolve(new Response(stream, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  headers: response.headers
+                }));
+              },
+              reject,
+              channelId
+            });
+            
+            window.parent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          if (event.data.type === 'takeScreenshot') {
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              window.parent.postMessage({
+                type: 'screenshotError',
+                error: new Error('Root element not found'),
+              }, '*');
+            }
+            const screenshot = await htmlToImage.toPng(rootElement, {
+              imagePlaceholder:
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+            });
+            window.parent.postMessage({
+              type: 'screenshotData',
+              data: screenshot,
+            }, '*');
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              window.parent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            window.parent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            window.parent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          window.parent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#f4ecd8">
+<title>Minha Estante ✦</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&amp;family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  :root {
+    --cream: #f4ecd8;
+    --cream-dark: #e8ddc4;
+    --ink: #2a2420;
+    --ink-soft: #5a4f47;
+    --rose: #e8a9a0;
+    --rose-deep: #c97b72;
+    --sage-deep: #7a8b6c;
+    --butter-deep: #c9a65a;
+    --sky-deep: #7a9aac;
+  }
+  
+  html, body {
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    overflow-x: hidden;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(circle at 20% 10%, rgba(232, 169, 160, 0.15) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(184, 168, 201, 0.15) 0%, transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(168, 184, 154, 0.12) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: multiply;
+  }
+  
+  .app {
+    position: relative;
+    z-index: 2;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 100px;
+  }
+  
+  .header {
+    padding: 24px 24px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+  }
+  
+  .logo-mark {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    font-style: italic;
+    color: var(--ink);
+    line-height: 1;
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .count-badge {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 8px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .count-badge .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--rose);
+    border-radius: 50%;
+  }
+  
+  .icon-btn {
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 16px;
+    transition: transform 0.2s;
+  }
+  
+  .icon-btn:active { transform: scale(0.9); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  
+  .hero {
+    padding: 16px 24px 28px;
+    position: relative;
+  }
+  
+  .hero h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 44px;
+    line-height: 0.95;
+    letter-spacing: -1.5px;
+    color: var(--ink);
+  }
+  
+  .hero h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--rose-deep);
+  }
+  
+  .hero p {
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 320px;
+  }
+  
+  .hero-deco {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-family: 'Instrument Serif', serif;
+    font-size: 40px;
+    color: var(--rose);
+    opacity: 0.5;
+    transform: rotate(15deg);
+  }
+  
+  .tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 24px 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  
+  .tab {
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    color: var(--ink);
+    padding: 9px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-family: inherit;
+  }
+  
+  .tab.active {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  
+  .genres {
+    padding: 0 16px;
+    display: grid;
+    gap: 16px;
+  }
+  
+  .genre-card {
+    border-radius: 28px;
+    padding: 24px 22px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  .genre-card:active { transform: scale(0.98); }
+  .genre-card.c-rose { background: #f5d5cf; }
+  .genre-card.c-lavender { background: #dfd0e8; }
+  .genre-card.c-butter { background: #f0dda5; }
+  .genre-card.c-sky { background: #cde0ea; }
+  
+  .genre-card::after {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+  }
+  
+  .genre-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .genre-emoji { font-size: 28px; line-height: 1; }
+  
+  .genre-count {
+    background: rgba(42, 36, 32, 0.85);
+    color: var(--cream);
+    padding: 5px 11px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  
+  .genre-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 24px;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    margin-top: 12px;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .genre-meta {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 2;
+  }
+  
+  .genre-preview {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-style: italic;
+    line-height: 1.4;
+    flex: 1;
+    padding-right: 12px;
+  }
+  
+  .spin-btn {
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: inherit;
+  }
+  
+  .spin-btn svg { width: 20px; height: 20px; }
+  
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 28px;
+    font-weight: 300;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(42, 36, 32, 0.3);
+    z-index: 50;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  }
+  .fab:active { transform: scale(0.92); }
+  
+  @media (min-width: 480px) {
+    .fab { right: calc(50% - 216px); }
+  }
+  
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(42, 36, 32, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .modal-backdrop.open { display: flex; }
+  
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  
+  .modal {
+    background: var(--cream);
+    border-radius: 32px 32px 0 0;
+    width: 100%;
+    max-width: 480px;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 20px 24px 40px;
+    position: relative;
+    animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.3, 1);
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  
+  .modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--ink-soft);
+    opacity: 0.3;
+    border-radius: 100px;
+    margin: 0 auto 20px;
+  }
+  
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+  
+  .modal-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 26px;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    flex: 1;
+  }
+  
+  .modal-title em {
+    font-style: italic;
+    color: var(--rose-deep);
+  }
+  
+  .modal-close {
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--ink);
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+  
+  .modal-sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+  }
+  
+  .wheel-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    margin: 10px auto 24px;
+    aspect-ratio: 1;
+  }
+  
+  .wheel-pointer {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    filter: drop-shadow(0 4px 8px rgba(42, 36, 32, 0.2));
+  }
+  
+  .wheel-pointer svg { width: 36px; height: 36px; }
+  
+  .wheel-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    transition: transform 5s cubic-bezier(0.17, 0.67, 0.15, 1);
+    box-shadow: 
+      0 0 0 8px var(--cream),
+      0 0 0 10px var(--ink),
+      0 20px 40px rgba(42, 36, 32, 0.15);
+    overflow: hidden;
+  }
+  
+  .wheel svg { width: 100%; height: 100%; display: block; }
+  
+  .wheel-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background: var(--cream);
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    z-index: 5;
+  }
+  
+  .spin-action {
+    width: 100%;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    padding: 18px;
+    border-radius: 100px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.2s;
+  }
+  
+  .spin-action:active { transform: scale(0.97); }
+  .spin-action:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .result {
+    margin-top: 24px;
+    padding: 24px;
+    border-radius: 24px;
+    background: var(--ink);
+    color: var(--cream);
+    text-align: center;
+    display: none;
+  }
+  
+  .result.show {
+    display: block;
+    animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.3, 1);
+  }
+  
+  .result-label {
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--rose);
+    margin-bottom: 10px;
+  }
+  
+  .result-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 26px;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  
+  .result-author {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--cream-dark);
+    opacity: 0.85;
+  }
+  
+  .result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  
+  .result-actions-row {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .result-btn {
+    flex: 1;
+    padding: 13px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.3px;
+    border: 1.5px solid var(--cream);
+    background: transparent;
+    color: var(--cream);
+    transition: all 0.2s;
+  }
+  
+  .result-btn:active { transform: scale(0.96); }
+  
+  .result-btn.primary {
+    background: var(--cream);
+    color: var(--ink);
+    border-color: var(--cream);
+  }
+  
+  .book-list {
+    margin-top: 24px;
+    border-top: 1px solid var(--cream-dark);
+    padding-top: 20px;
+  }
+  
+  .book-list-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+  }
+  
+  .book-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--cream-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .book-item:last-child { border-bottom: none; }
+  .book-info { flex: 1; min-width: 0; }
+  
+  .book-title {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  
+  .book-author {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+  
+  .book-meta {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .book-meta .stars { color: var(--butter-deep); letter-spacing: 1px; }
+  
+  .book-status-group {
+    display: flex;
+    gap: 6px;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+  
+  .book-status {
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    color: var(--ink);
+    padding: 5px 10px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  
+  .book-status.reading { background: var(--rose-deep); border-color: var(--rose-deep); color: var(--cream); }
+  .book-status.read { background: var(--sage-deep); border-color: var(--sage-deep); color: var(--cream); }
+  .book-status.abandoned { background: var(--ink-soft); border-color: var(--ink-soft); color: var(--cream); }
+  
+  .book-delete {
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    opacity: 0.4;
+    font-family: inherit;
+  }
+  .book-delete:active { opacity: 1; }
+  
+  @keyframes confetti {
+    0% { transform: translate(0,0) rotate(0); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) rotate(var(--r)); opacity: 0; }
+  }
+  
+  .confetti {
+    position: fixed;
+    width: 8px;
+    height: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    animation: confetti 1.2s ease-out forwards;
+  }
+  
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-soft);
+  }
+  
+  .empty-icon {
+    font-family: 'Instrument Serif', serif;
+    font-size: 60px;
+    font-style: italic;
+    color: var(--rose);
+    opacity: 0.5;
+  }
+  
+  .empty-text {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 18px;
+    margin-top: 8px;
+  }
+  
+  .form-group { margin-bottom: 16px; }
+  
+  .form-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  
+  .form-input, .form-select {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--ink);
+    border-radius: 14px;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--ink);
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  .form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--rose-deep);
+  }
+  
+  .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%232a2420' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 18px center;
+    padding-right: 44px;
+  }
+  
+  .form-btn {
+    width: 100%;
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    padding: 16px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 8px;
+    transition: transform 0.2s;
+  }
+  
+  .form-btn:active { transform: scale(0.97); }
+  
+  .form-btn.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+  }
+  
+  .stars-input {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin: 10px 0;
+  }
+  
+  .star {
+    font-size: 34px;
+    cursor: pointer;
+    color: var(--cream-dark);
+    transition: transform 0.15s, color 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  
+  .star.filled { color: var(--butter-deep); }
+  .star:active { transform: scale(1.3); }
+  
+  .reading-info {
+    background: var(--cream-dark);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+  
+  .reading-info strong {
+    color: var(--ink);
+    font-style: normal;
+    font-weight: 600;
+  }
+  
+  .menu {
+    position: absolute;
+    top: 58px;
+    right: 20px;
+    background: var(--cream);
+    border: 1.5px solid var(--ink);
+    border-radius: 18px;
+    padding: 6px;
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    min-width: 210px;
+    box-shadow: 0 10px 30px rgba(42, 36, 32, 0.15);
+  }
+  
+  .menu.open { display: flex; }
+  
+  .menu button {
+    background: transparent;
+    border: none;
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink);
+    cursor: pointer;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  
+  .menu button:active { background: var(--cream-dark); }
+  
+  .footer-note {
+    text-align: center;
+    padding: 30px 24px 10px;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  
+  .footer-note::before, .footer-note::after {
+    content: '✦';
+    margin: 0 10px;
+    color: var(--rose);
+  }
+</style>
+</head>
+<body id="artifacts-component-root-html"><script id="__embedded_state__" type="application/json">{"books":[{"t":"A Vida é Muito Curta","a":"Abby Jimenez","g":"romance","id":0,"status":"pendente"},{"t":"Apenas amigos","a":"Abby Jimenez","g":"romance","id":1,"status":"pendente"},{"t":"Parte do seu Mundo","a":"Abby Jimenez","g":"romance","id":2,"status":"pendente"},{"t":"Playlist para um Final Feliz","a":"Abby Jimenez","g":"romance","id":3,"status":"pendente"},{"t":"Prometa que Vai se Lembrar de Mim","a":"Abby Jimenez","g":"romance","id":4,"status":"pendente"},{"t":"Como Arruinar um Casamento","a":"Alison Espach","g":"romance","id":5,"status":"pendente"},{"t":"Ontem à Noite","a":"Mhairi McFarlane","g":"romance","id":6,"status":"pendente"},{"t":"Prazer ou Negócios","a":"Rachel Lynn","g":"romance","id":7,"status":"pendente"},{"t":"A Última Carta","a":"Rebecca Yarros","g":"romance","id":8,"status":"pendente"},{"t":"Cúmplices de um Escândalo","a":"Lucy Vargas","g":"romance","id":9,"status":"pendente"},{"t":"A Casa no Mar Cerúleo","a":"TJ Klune","g":"fantasia","id":10,"status":"pendente"},{"t":"A Dança da Floresta","a":"Juliet Marillier","g":"fantasia","id":11,"status":"pendente"},{"t":"A Filha do Rei de Elfland","a":"Lord Dunsany","g":"fantasia","id":12,"status":"pendente"},{"t":"A Montanha das Feras","a":"Juliet Marillier","g":"fantasia","id":13,"status":"pendente"},{"t":"A Ruína de um Reino","a":"Alexandra Christo","g":"fantasia","id":14,"status":"pendente"},{"t":"Cafés & Lendas","a":"Travis Baldree","g":"fantasia","id":15,"status":"pendente"},{"t":"Enciclopédia das Fadas de Emily Wilde","a":"Heather Fawcett","g":"fantasia","id":16,"status":"pendente"},{"t":"Entre Feras & Flores","a":"Ashley Poston","g":"fantasia","id":17,"status":"pendente"},{"t":"No Coração da Floresta","a":"Emily Winfield Martin","g":"fantasia","id":18,"status":"pendente"},{"t":"O Encanto dos Corvos","a":"Margaret Rogerson","g":"fantasia","id":19,"status":"pendente"},{"t":"O Feitiço dos Espinhos","a":"Margaret Rogerson","g":"fantasia","id":20,"status":"pendente"},{"t":"Os Noivos do Inverno","a":"Christelle Dabos","g":"fantasia","id":21,"status":"pendente"},{"t":"Alchemised","a":"SenLinYu","g":"fantasia","id":22,"status":"pendente"},{"t":"A Contadora","a":"Freida McFadden","g":"suspense","id":23,"status":"pendente"},{"t":"A outra","a":"Mary Kubica","g":"suspense","id":24,"status":"pendente"},{"t":"O paciente","a":"Jasper DeWitt","g":"suspense","id":25,"status":"pendente"},{"t":"Enigma","a":"RuNyx","g":"suspense","id":26,"status":"pendente"},{"t":"A Maldição do Ex","a":"Rachel Hawkins","g":"bruxaria","id":27,"status":"pendente"},{"t":"Lois, A Bruxa","a":"Elizabeth Gaskell","g":"bruxaria","id":28,"status":"pendente"}],"filter":"todos","nextId":29}</script>
+
+<div class="app">
+  <div class="header">
+    <div class="logo-mark">Minha estante</div>
+    <div class="header-actions">
+      <div class="count-badge">
+        <span class="dot"></span>
+        <span id="totalCount">29</span>
+      </div>
+      <button class="icon-btn" onclick="toggleMenu(event)" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle>
+        </svg>
+      </button>
+    </div>
+    <div class="menu" id="menu">
+      <button onclick="openAddBook()">✦ Adicionar livro</button>
+      <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
+    </div>
+  </div>
+  
+  <div class="hero">
+    <span class="hero-deco">✦</span>
+    <h1>qual vai ser<br>sua <em>próxima</em><br>leitura?</h1>
+    <p>Gira a roda do gênero que tá te chamando e deixa a sorte escolher por você.</p>
+  </div>
+  
+  <div class="tabs">
+    <button class="tab active" data-filter="todos">Todos</button>
+    <button class="tab" data-filter="pendente">Pendentes</button>
+    <button class="tab" data-filter="reading">Lendo</button>
+    <button class="tab" data-filter="lido">Já lidos</button>
+    <button class="tab" data-filter="abandoned">Abandonados</button>
+  </div>
+  
+  <div class="genres" id="genres"><div class="genre-card c-rose">
+      <div class="genre-header">
+        <div>
+          <div class="genre-emoji">🌸</div>
+          <div class="genre-name">Romance</div>
+        </div>
+        <div class="genre-count">10 livros</div>
+      </div>
+      <div class="genre-meta">
+        <div class="genre-preview">histórias pra sorrir ou chorar junto</div>
+        <button class="spin-btn" onclick="event.stopPropagation(); openModal('romance')" aria-label="Girar roda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+    </div><div class="genre-card c-lavender">
+      <div class="genre-header">
+        <div>
+          <div class="genre-emoji">🧝🏻‍♀️</div>
+          <div class="genre-name">Fantasia</div>
+        </div>
+        <div class="genre-count">13 livros</div>
+      </div>
+      <div class="genre-meta">
+        <div class="genre-preview">mundos mágicos e criaturas encantadas</div>
+        <button class="spin-btn" onclick="event.stopPropagation(); openModal('fantasia')" aria-label="Girar roda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+    </div><div class="genre-card c-sky">
+      <div class="genre-header">
+        <div>
+          <div class="genre-emoji">🔪</div>
+          <div class="genre-name">Suspense</div>
+        </div>
+        <div class="genre-count">4 livros</div>
+      </div>
+      <div class="genre-meta">
+        <div class="genre-preview">pra ler de madrugada com as luzes acesas</div>
+        <button class="spin-btn" onclick="event.stopPropagation(); openModal('suspense')" aria-label="Girar roda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+    </div><div class="genre-card c-butter">
+      <div class="genre-header">
+        <div>
+          <div class="genre-emoji">🌙</div>
+          <div class="genre-name">Bruxaria &amp; Gótico</div>
+        </div>
+        <div class="genre-count">2 livros</div>
+      </div>
+      <div class="genre-meta">
+        <div class="genre-preview">feitiços, maldições e atmosfera sombria</div>
+        <button class="spin-btn" onclick="event.stopPropagation(); openModal('bruxaria')" aria-label="Girar roda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+    </div></div>
+  
+  <div class="footer-note">feito com calma e café</div>
+</div>
+
+<button class="fab" onclick="openAddBook()" aria-label="Adicionar livro">+</button>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title" id="modalTitle">Gênero</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <p class="modal-sub" id="modalSub">Toque para girar a roda</p>
+    
+    <div class="wheel-wrapper">
+      <div class="wheel-pointer">
+        <svg viewBox="0 0 24 30" fill="none">
+          <path d="M12 28 L2 8 Q12 0 22 8 Z" fill="#2a2420"></path>
+          <circle cx="12" cy="8" r="3" fill="#f4ecd8"></circle>
+        </svg>
+      </div>
+      <div class="wheel-container">
+        <div class="wheel" id="wheel"></div>
+        <div class="wheel-center">✦</div>
+      </div>
+    </div>
+    
+    <button class="spin-action" id="spinBtn" onclick="spin()">Girar a roda</button>
+    
+    <div class="result" id="result">
+      <div class="result-label">✦ seu próximo livro ✦</div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-author" id="resultAuthor"></div>
+      <div class="result-actions">
+        <button class="result-btn primary" onclick="startReading()">Vou ler esse ✦</button>
+        <div class="result-actions-row">
+          <button class="result-btn" onclick="spin()">Girar de novo</button>
+          <button class="result-btn" onclick="skipBook()">Fechar</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="book-list" id="bookList"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Adicionar</em> livro</h2>
+      <button class="modal-close" onclick="closeAddBook()">×</button>
+    </div>
+    <p class="modal-sub">Pra engordar sua estante ✦</p>
+    
+    <div class="form-group">
+      <label class="form-label">Título</label>
+      <input type="text" class="form-input" id="newTitle" placeholder="Ex: O Nome do Vento">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Autor(a)</label>
+      <input type="text" class="form-input" id="newAuthor" placeholder="Ex: Patrick Rothfuss">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Gênero</label>
+      <select class="form-select" id="newGenre"></select>
+    </div>
+    
+    <button class="form-btn" onclick="addBook()">Adicionar à estante</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="readingModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Começando</em> leitura</h2>
+      <button class="modal-close" onclick="closeReadingModal()">×</button>
+    </div>
+    <p class="modal-sub" id="readingModalBook"></p>
+    
+    <div class="form-group">
+      <label class="form-label">Quando você começou?</label>
+      <input type="date" class="form-input" id="startDate">
+    </div>
+    
+    <button class="form-btn" onclick="confirmStartReading()">Começar a ler ✦</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="finishModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Como foi</em> a leitura?</h2>
+      <button class="modal-close" onclick="closeFinishModal()">×</button>
+    </div>
+    <p class="modal-sub" id="finishModalBook"></p>
+    
+    <div class="reading-info" id="readingDates"></div>
+    
+    <div class="form-group" style="margin-top: 16px;">
+      <label class="form-label">Data de término</label>
+      <input type="date" class="form-input" id="endDate">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Sua avaliação</label>
+      <div class="stars-input" id="starsInput">
+        <span class="star" data-value="1">★</span>
+        <span class="star" data-value="2">★</span>
+        <span class="star" data-value="3">★</span>
+        <span class="star" data-value="4">★</span>
+        <span class="star" data-value="5">★</span>
+      </div>
+    </div>
+    
+    <button class="form-btn" onclick="confirmFinishReading()">Marcar como lido ✦</button>
+    <button class="form-btn secondary" onclick="confirmAbandon()" style="margin-top: 10px;">Abandonar livro</button>
+  </div>
+</div>
+
+<script>
+// ============ DADOS INICIAIS ============
+const BOOKS_INITIAL = [
+  { t: "A Vida é Muito Curta", a: "Abby Jimenez", g: "romance" },
+  { t: "Apenas amigos", a: "Abby Jimenez", g: "romance" },
+  { t: "Parte do seu Mundo", a: "Abby Jimenez", g: "romance" },
+  { t: "Playlist para um Final Feliz", a: "Abby Jimenez", g: "romance" },
+  { t: "Prometa que Vai se Lembrar de Mim", a: "Abby Jimenez", g: "romance" },
+  { t: "Como Arruinar um Casamento", a: "Alison Espach", g: "romance" },
+  { t: "Ontem à Noite", a: "Mhairi McFarlane", g: "romance" },
+  { t: "Prazer ou Negócios", a: "Rachel Lynn", g: "romance" },
+  { t: "A Última Carta", a: "Rebecca Yarros", g: "romance" },
+  { t: "Cúmplices de um Escândalo", a: "Lucy Vargas", g: "romance" },
+  { t: "A Casa no Mar Cerúleo", a: "TJ Klune", g: "fantasia" },
+  { t: "A Dança da Floresta", a: "Juliet Marillier", g: "fantasia" },
+  { t: "A Filha do Rei de Elfland", a: "Lord Dunsany", g: "fantasia" },
+  { t: "A Montanha das Feras", a: "Juliet Marillier", g: "fantasia" },
+  { t: "A Ruína de um Reino", a: "Alexandra Christo", g: "fantasia" },
+  { t: "Cafés & Lendas", a: "Travis Baldree", g: "fantasia" },
+  { t: "Enciclopédia das Fadas de Emily Wilde", a: "Heather Fawcett", g: "fantasia" },
+  { t: "Entre Feras & Flores", a: "Ashley Poston", g: "fantasia" },
+  { t: "No Coração da Floresta", a: "Emily Winfield Martin", g: "fantasia" },
+  { t: "O Encanto dos Corvos", a: "Margaret Rogerson", g: "fantasia" },
+  { t: "O Feitiço dos Espinhos", a: "Margaret Rogerson", g: "fantasia" },
+  { t: "Os Noivos do Inverno", a: "Christelle Dabos", g: "fantasia" },
+  { t: "Alchemised", a: "SenLinYu", g: "fantasia" },
+  { t: "A Contadora", a: "Freida McFadden", g: "suspense" },
+  { t: "A outra", a: "Mary Kubica", g: "suspense" },
+  { t: "O paciente", a: "Jasper DeWitt", g: "suspense" },
+  { t: "Enigma", a: "RuNyx", g: "suspense" },
+  { t: "A Maldição do Ex", a: "Rachel Hawkins", g: "bruxaria" },
+  { t: "Lois, A Bruxa", a: "Elizabeth Gaskell", g: "bruxaria" },
+];
+
+const GENRES = {
+  romance: { name: "Romance", emoji: "🌸", color: "c-rose", preview: "histórias pra sorrir ou chorar junto" },
+  fantasia: { name: "Fantasia", emoji: "🧝🏻‍♀️", color: "c-lavender", preview: "mundos mágicos e criaturas encantadas" },
+  suspense: { name: "Suspense", emoji: "🔪", color: "c-sky", preview: "pra ler de madrugada com as luzes acesas" },
+  bruxaria: { name: "Bruxaria & Gótico", emoji: "🌙", color: "c-butter", preview: "feitiços, maldições e atmosfera sombria" },
+};
+
+const PALETTE = {
+  romance: ["#e8a9a0", "#c97b72", "#f0c5bf", "#d89890", "#e8b8b0"],
+  fantasia: ["#b8a8c9", "#8a7a9c", "#d0c0dc", "#a898b8", "#c4b4d4"],
+  suspense: ["#a8c4d8", "#7a9aac", "#bcd0e0", "#98b4c8", "#b0c8dc"],
+  bruxaria: ["#e8c88a", "#c9a65a", "#f0d89c", "#d8b872", "#e0c078"],
+};
+
+// ============ STATE ============
+const STORAGE_KEY = "minha_estante_v2";
+let state = loadState();
+
+function loadState() {
+  // Tenta carregar dados embutidos no HTML (backup)
+  const embedded = document.getElementById("__embedded_state__");
+  if (embedded) {
+    try {
+      const parsed = JSON.parse(embedded.textContent);
+      if (parsed && parsed.books) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        return parsed;
+      }
+    } catch(e) { console.error(e); }
+  }
+  
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Garante status
+      parsed.books = parsed.books.map(b => ({
+        ...b,
+        status: b.status || (b.read ? "lido" : "pendente"),
+      }));
+      if (!parsed.nextId) parsed.nextId = Math.max(0, ...parsed.books.map(b => b.id || 0)) + 1;
+      return parsed;
+    }
+  } catch(e) {}
+  
+  return {
+    books: BOOKS_INITIAL.map((b, i) => ({ ...b, id: i, status: "pendente" })),
+    filter: "todos",
+    nextId: BOOKS_INITIAL.length,
+  };
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function getBookById(id) {
+  return state.books.find(b => b.id === id);
+}
+
+function availableBooks(genreKey) {
+  return state.books.filter(b => b.g === genreKey && b.status === "pendente");
+}
+
+// ============ RENDER ============
+function getFilteredCount(genreKey) {
+  const books = state.books.filter(b => b.g === genreKey);
+  if (state.filter === "todos") return books.length;
+  return books.filter(b => b.status === state.filter).length;
+}
+
+function renderGenres() {
+  const container = document.getElementById("genres");
+  document.getElementById("totalCount").textContent = state.books.length;
+  
+  container.innerHTML = "";
+  
+  Object.entries(GENRES).forEach(([key, g]) => {
+    const count = getFilteredCount(key);
+    const totalInGenre = state.books.filter(b => b.g === key).length;
+    const pending = availableBooks(key).length;
+    
+    if (count === 0 && state.filter !== "todos") return;
+    
+    const card = document.createElement("div");
+    card.className = `genre-card ${g.color}`;
+    card.onclick = () => openModal(key);
+    card.innerHTML = `
+      <div class="genre-header">
+        <div>
+          <div class="genre-emoji">${g.emoji}</div>
+          <div class="genre-name">${g.name}</div>
+        </div>
+        <div class="genre-count">${count}${state.filter !== "todos" ? `/${totalInGenre}` : ""} livros</div>
+      </div>
+      <div class="genre-meta">
+        <div class="genre-preview">${pending > 0 ? g.preview : 'todos já passaram por aqui ✦'}</div>
+        <button class="spin-btn" onclick="event.stopPropagation(); openModal('${key}')" aria-label="Girar roda">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+  
+  if (container.children.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">∅</div>
+        <div class="empty-text">nenhum livro por aqui ainda</div>
+      </div>
+    `;
+  }
+}
+
+// ============ MODAL RODA ============
+let currentGenre = null;
+let currentRotation = 0;
+let currentBook = null;
+let spinning = false;
+
+function openModal(genreKey) {
+  currentGenre = genreKey;
+  const g = GENRES[genreKey];
+  document.getElementById("modalTitle").innerHTML = `<em>${g.name}</em> ${g.emoji}`;
+  
+  updateModalSub();
+  renderWheel(genreKey);
+  renderBookList(genreKey);
+  document.getElementById("result").classList.remove("show");
+  currentBook = null;
+  
+  const wheel = document.getElementById("wheel");
+  wheel.style.transition = "none";
+  wheel.style.transform = "rotate(0deg)";
+  currentRotation = 0;
+  document.getElementById("spinBtn").textContent = "Girar a roda";
+  
+  document.getElementById("modal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function updateModalSub() {
+  const pending = availableBooks(currentGenre).length;
+  document.getElementById("modalSub").textContent = 
+    pending === 0 
+      ? "Nenhum livro disponível na roda ✦" 
+      : `${pending} livro${pending > 1 ? 's' : ''} esperando por você`;
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("modal").addEventListener("click", (e) => {
+  if (e.target.id === "modal") closeModal();
+});
+
+// ============ WHEEL ============
+function renderWheel(genreKey) {
+  const wheel = document.getElementById("wheel");
+  const books = availableBooks(genreKey);
+  const colors = PALETTE[genreKey];
+  
+  if (books.length === 0) {
+    wheel.innerHTML = `
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="100" fill="#e8ddc4"/>
+        <text x="100" y="95" text-anchor="middle" font-family="Instrument Serif" font-style="italic" font-size="12" fill="#5a4f47">a roda</text>
+        <text x="100" y="115" text-anchor="middle" font-family="Instrument Serif" font-style="italic" font-size="12" fill="#5a4f47">tá vazia ✦</text>
+      </svg>
+    `;
+    document.getElementById("spinBtn").disabled = true;
+    return;
+  }
+  
+  document.getElementById("spinBtn").disabled = false;
+  
+  const n = books.length;
+  const anglePerSlice = 360 / n;
+  let svg = `<svg viewBox="0 0 200 200">`;
+  
+  let maxChars, fontSize;
+  if (n === 1) { maxChars = 30; fontSize = 11; }
+  else if (n === 2) { maxChars = 26; fontSize = 10; }
+  else if (n <= 4) { maxChars = 22; fontSize = 9; }
+  else if (n <= 6) { maxChars = 20; fontSize = 8.5; }
+  else if (n <= 8) { maxChars = 18; fontSize = 8; }
+  else if (n <= 10) { maxChars = 16; fontSize = 7.5; }
+  else if (n <= 14) { maxChars = 14; fontSize = 6.8; }
+  else if (n <= 18) { maxChars = 12; fontSize = 6.2; }
+  else { maxChars = 10; fontSize = 5.5; }
+  
+  books.forEach((book, i) => {
+    const startAngle = i * anglePerSlice - 90;
+    const endAngle = (i + 1) * anglePerSlice - 90;
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    
+    const x1 = 100 + 100 * Math.cos(startRad);
+    const y1 = 100 + 100 * Math.sin(startRad);
+    const x2 = 100 + 100 * Math.cos(endRad);
+    const y2 = 100 + 100 * Math.sin(endRad);
+    
+    const largeArc = anglePerSlice > 180 ? 1 : 0;
+    
+    const pathData = n === 1
+      ? `M 100 100 m -100 0 a 100 100 0 1 0 200 0 a 100 100 0 1 0 -200 0`
+      : `M 100 100 L ${x1} ${y1} A 100 100 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    
+    const color = colors[i % colors.length];
+    svg += `<path d="${pathData}" fill="${color}" stroke="#f4ecd8" stroke-width="1.5"/>`;
+    
+    // Texto RADIAL - da borda externa pro centro
+    const midAngle = (startAngle + endAngle) / 2;
+    const midRad = (midAngle * Math.PI) / 180;
+    const textStartRadius = 88;
+    const textX = 100 + textStartRadius * Math.cos(midRad);
+    const textY = 100 + textStartRadius * Math.sin(midRad);
+    const textRotation = midAngle + 180;
+    
+    const title = book.t.length > maxChars ? book.t.substring(0, maxChars - 1) + "…" : book.t;
+    
+    svg += `<text 
+      x="${textX}" 
+      y="${textY}" 
+      text-anchor="start" 
+      dominant-baseline="middle"
+      font-family="Fraunces, serif" 
+      font-weight="500"
+      font-size="${fontSize}" 
+      fill="#2a2420"
+      transform="rotate(${textRotation} ${textX} ${textY})">${escapeXml(title)}</text>`;
+  });
+  
+  svg += `</svg>`;
+  wheel.innerHTML = svg;
+}
+
+function escapeXml(str) {
+  return str.replace(/[<>&'"]/g, c => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;'
+  }[c]));
+}
+
+// ============ SPIN ============
+function spin() {
+  if (spinning) return;
+  const books = availableBooks(currentGenre);
+  if (books.length === 0) return;
+  
+  spinning = true;
+  document.getElementById("spinBtn").disabled = true;
+  document.getElementById("result").classList.remove("show");
+  
+  const n = books.length;
+  const anglePerSlice = 360 / n;
+  const winnerIndex = Math.floor(Math.random() * n);
+  
+  const winnerCenter = winnerIndex * anglePerSlice + anglePerSlice / 2;
+  const baseRotation = 360 * 6;
+  const targetRotation = baseRotation - winnerCenter;
+  const jitter = (Math.random() - 0.5) * anglePerSlice * 0.7;
+  currentRotation = targetRotation + jitter;
+  
+  const wheel = document.getElementById("wheel");
+  wheel.style.transition = "transform 5s cubic-bezier(0.17, 0.67, 0.15, 1)";
+  wheel.style.transform = `rotate(${currentRotation}deg)`;
+  
+  setTimeout(() => {
+    currentBook = books[winnerIndex];
+    showResult(currentBook);
+    launchConfetti();
+    spinning = false;
+    document.getElementById("spinBtn").disabled = false;
+    document.getElementById("spinBtn").textContent = "Girar de novo";
+    
+    setTimeout(() => {
+      wheel.style.transition = "none";
+      const normalized = currentRotation % 360;
+      wheel.style.transform = `rotate(${normalized}deg)`;
+      currentRotation = normalized;
+    }, 100);
+  }, 5000);
+}
+
+function showResult(book) {
+  document.getElementById("resultTitle").textContent = book.t;
+  document.getElementById("resultAuthor").textContent = `por ${book.a}`;
+  document.getElementById("result").classList.add("show");
+}
+
+function skipBook() {
+  document.getElementById("result").classList.remove("show");
+  currentBook = null;
+}
+
+function launchConfetti() {
+  const colors = PALETTE[currentGenre];
+  const modal = document.querySelector("#modal .modal");
+  const rect = modal.getBoundingClientRect();
+  
+  for (let i = 0; i < 30; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = (rect.left + rect.width / 2) + "px";
+    c.style.top = (rect.top + 200) + "px";
+    c.style.background = colors[i % colors.length];
+    c.style.setProperty("--tx", (Math.random() - 0.5) * 400 + "px");
+    c.style.setProperty("--ty", (Math.random() * -300 - 50) + "px");
+    c.style.setProperty("--r", Math.random() * 720 + "deg");
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 1500);
+  }
+}
+
+// ============ INICIAR LEITURA ============
+let readingBookId = null;
+
+function startReading() {
+  if (!currentBook) return;
+  readingBookId = currentBook.id;
+  document.getElementById("readingModalBook").textContent = `"${currentBook.t}" — ${currentBook.a}`;
+  document.getElementById("startDate").value = todayISO();
+  document.getElementById("readingModal").classList.add("open");
+}
+
+function quickStart(id) {
+  const book = getBookById(id);
+  if (!book) return;
+  readingBookId = id;
+  document.getElementById("readingModalBook").textContent = `"${book.t}" — ${book.a}`;
+  document.getElementById("startDate").value = todayISO();
+  document.getElementById("readingModal").classList.add("open");
+}
+
+function closeReadingModal() {
+  document.getElementById("readingModal").classList.remove("open");
+  readingBookId = null;
+}
+
+function confirmStartReading() {
+  if (!readingBookId) return;
+  const date = document.getElementById("startDate").value;
+  if (!date) { alert("Escolhe uma data ✦"); return; }
+  
+  const book = getBookById(readingBookId);
+  book.status = "reading";
+  book.startDate = date;
+  saveState();
+  
+  closeReadingModal();
+  document.getElementById("result").classList.remove("show");
+  currentBook = null;
+  
+  if (currentGenre) {
+    renderWheel(currentGenre);
+    renderBookList(currentGenre);
+    updateModalSub();
+  }
+  renderGenres();
+}
+
+// ============ FINALIZAR LEITURA ============
+let finishingBookId = null;
+let selectedStars = 0;
+
+function openFinishModal(bookId) {
+  const book = getBookById(bookId);
+  if (!book) return;
+  finishingBookId = bookId;
+  selectedStars = book.rating || 0;
+  
+  document.getElementById("finishModalBook").textContent = `"${book.t}" — ${book.a}`;
+  
+  const info = book.startDate 
+    ? `<strong>Começou em:</strong> ${formatDate(book.startDate)}` 
+    : `<em>sem data de início registrada</em>`;
+  document.getElementById("readingDates").innerHTML = info;
+  
+  document.getElementById("endDate").value = book.endDate || todayISO();
+  
+  renderStars();
+  document.getElementById("finishModal").classList.add("open");
+}
+
+function closeFinishModal() {
+  document.getElementById("finishModal").classList.remove("open");
+  finishingBookId = null;
+  selectedStars = 0;
+}
+
+function renderStars() {
+  document.querySelectorAll("#starsInput .star").forEach(star => {
+    const v = parseInt(star.dataset.value);
+    star.classList.toggle("filled", v <= selectedStars);
+  });
+}
+
+document.querySelectorAll("#starsInput .star").forEach(star => {
+  star.addEventListener("click", () => {
+    const v = parseInt(star.dataset.value);
+    selectedStars = (selectedStars === v) ? 0 : v;
+    renderStars();
+  });
+});
+
+function confirmFinishReading() {
+  if (!finishingBookId) return;
+  const book = getBookById(finishingBookId);
+  const endDate = document.getElementById("endDate").value;
+  if (!endDate) { alert("Escolhe a data de término ✦"); return; }
+  
+  book.status = "lido";
+  book.endDate = endDate;
+  book.rating = selectedStars || null;
+  saveState();
+  
+  closeFinishModal();
+  if (currentGenre) {
+    renderWheel(currentGenre);
+    renderBookList(currentGenre);
+    updateModalSub();
+  }
+  renderGenres();
+}
+
+function confirmAbandon() {
+  if (!finishingBookId) return;
+  if (!confirm("Marcar como abandonado? Sem julgamentos ✦")) return;
+  
+  const book = getBookById(finishingBookId);
+  const endDate = document.getElementById("endDate").value;
+  
+  book.status = "abandoned";
+  if (endDate) book.endDate = endDate;
+  if (selectedStars) book.rating = selectedStars;
+  saveState();
+  
+  closeFinishModal();
+  if (currentGenre) {
+    renderWheel(currentGenre);
+    renderBookList(currentGenre);
+    updateModalSub();
+  }
+  renderGenres();
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function todayISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function resetBookStatus(id) {
+  if (!confirm("Voltar esse livro pra roda?")) return;
+  const book = getBookById(id);
+  book.status = "pendente";
+  delete book.startDate;
+  delete book.endDate;
+  delete book.rating;
+  saveState();
+  if (currentGenre) {
+    renderWheel(currentGenre);
+    renderBookList(currentGenre);
+    updateModalSub();
+  }
+  renderGenres();
+}
+
+// ============ BOOK LIST ============
+function renderBookList(genreKey) {
+  const container = document.getElementById("bookList");
+  const books = state.books.filter(b => b.g === genreKey);
+  
+  if (books.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+  
+  let html = `<div class="book-list-title">todos do gênero · ${books.length}</div>`;
+  
+  const order = { pendente: 0, reading: 1, lido: 2, abandoned: 3 };
+  const sorted = [...books].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+  
+  sorted.forEach(book => {
+    let statusBtn = "";
+    let meta = "";
+    
+    if (book.status === "pendente") {
+      statusBtn = `<button class="book-status" onclick="quickStart(${book.id})">pendente</button>`;
+    } else if (book.status === "reading") {
+      statusBtn = `<button class="book-status reading" onclick="openFinishModal(${book.id})">lendo ✦</button>`;
+      if (book.startDate) meta = `<div class="book-meta">📖 desde ${formatDate(book.startDate)}</div>`;
+    } else if (book.status === "lido") {
+      statusBtn = `<button class="book-status read" onclick="resetBookStatus(${book.id})">✓ lido</button>`;
+      const stars = book.rating ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : '';
+      meta = `<div class="book-meta">${book.startDate ? `${formatDate(book.startDate)} →` : ''} ${book.endDate ? formatDate(book.endDate) : ''}${stars ? ` <span class="stars">${stars}</span>` : ''}</div>`;
+    } else if (book.status === "abandoned") {
+      statusBtn = `<button class="book-status abandoned" onclick="resetBookStatus(${book.id})">abandonado</button>`;
+      if (book.endDate) meta = `<div class="book-meta">parou em ${formatDate(book.endDate)}</div>`;
+    }
+    
+    html += `
+      <div class="book-item">
+        <div class="book-info">
+          <div class="book-title">${escapeHtml(book.t)}</div>
+          <div class="book-author">${escapeHtml(book.a)}</div>
+          ${meta}
+        </div>
+        <div class="book-status-group">
+          ${statusBtn}
+          <button class="book-delete" onclick="deleteBook(${book.id})" aria-label="Deletar">✕</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function deleteBook(id) {
+  const book = getBookById(id);
+  if (!book) return;
+  if (!confirm(`Remover "${book.t}" da estante? Essa ação não tem volta.`)) return;
+  state.books = state.books.filter(b => b.id !== id);
+  saveState();
+  if (currentGenre) {
+    renderWheel(currentGenre);
+    renderBookList(currentGenre);
+    updateModalSub();
+  }
+  renderGenres();
+}
+
+// ============ FILTERS ============
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    state.filter = tab.dataset.filter;
+    saveState();
+    renderGenres();
+  });
+});
+
+window.addEventListener("load", () => {
+  const savedFilter = state.filter || "todos";
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.filter === savedFilter);
+  });
+});
+
+// ============ ADD BOOK ============
+function openAddBook() {
+  closeMenu();
+  const select = document.getElementById("newGenre");
+  select.innerHTML = Object.entries(GENRES).map(([k, g]) => 
+    `<option value="${k}"${currentGenre === k ? ' selected' : ''}>${g.emoji} ${g.name}</option>`
+  ).join("");
+  
+  document.getElementById("newTitle").value = "";
+  document.getElementById("newAuthor").value = "";
+  document.getElementById("addModal").classList.add("open");
+  document.body.style.overflow = "hidden";
+  setTimeout(() => document.getElementById("newTitle").focus(), 300);
+}
+
+function closeAddBook() {
+  document.getElementById("addModal").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function addBook() {
+  const title = document.getElementById("newTitle").value.trim();
+  const author = document.getElementById("newAuthor").value.trim();
+  const genre = document.getElementById("newGenre").value;
+  
+  if (!title) { alert("Coloca o título ✦"); return; }
+  if (!author) { alert("Coloca o autor ✦"); return; }
+  
+  if (!state.nextId) state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
+  
+  state.books.push({
+    id: state.nextId++,
+    t: title,
+    a: author,
+    g: genre,
+    status: "pendente",
+  });
+  saveState();
+  
+  closeAddBook();
+  renderGenres();
+  if (currentGenre === genre) {
+    renderWheel(genre);
+    renderBookList(genre);
+    updateModalSub();
+  }
+}
+
+document.getElementById("addModal").addEventListener("click", (e) => {
+  if (e.target.id === "addModal") closeAddBook();
+});
+document.getElementById("readingModal").addEventListener("click", (e) => {
+  if (e.target.id === "readingModal") closeReadingModal();
+});
+document.getElementById("finishModal").addEventListener("click", (e) => {
+  if (e.target.id === "finishModal") closeFinishModal();
+});
+
+// ============ MENU ============
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById("menu").classList.toggle("open");
+}
+function closeMenu() {
+  document.getElementById("menu").classList.remove("open");
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".menu") && !e.target.closest(".icon-btn")) {
+    closeMenu();
+  }
+});
+
+// ============ EXPORT HTML ============
+function exportHtml() {
+  closeMenu();
+  
+  // Remove qualquer script embutido anterior pra não duplicar
+  const existing = document.getElementById("__embedded_state__");
+  if (existing) existing.remove();
+  
+  // Clona o documento atual
+  const clone = document.documentElement.cloneNode(true);
+  
+  // Injeta o state como script JSON embutido no início do body clonado
+  const bodyClone = clone.querySelector("body");
+  const stateScript = document.createElement("script");
+  stateScript.id = "__embedded_state__";
+  stateScript.type = "application/json";
+  // Escapa fechamento de script por segurança (evita quebrar o HTML exportado)
+  stateScript.textContent = JSON.stringify(state).replace(/<\/scr/gi, "<\\/scr");
+  bodyClone.insertBefore(stateScript, bodyClone.firstChild);
+  
+  const html = "<!DOCTYPE html>\n" + clone.outerHTML;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `minha-estante-${todayISO()}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ============ INIT ============
+renderGenres();
+</script>
+
+
+
+</body></html>
