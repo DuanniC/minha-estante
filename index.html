@@ -1196,9 +1196,15 @@ inset: 0;
 background: var(–cream);
 z-index: 9999;
 display: flex;
-align-items: center;
+align-items: flex-start;
 justify-content: center;
-padding: 24px;
+padding: 24px 24px 60px;
+overflow-y: auto;
+-webkit-overflow-scrolling: touch;
+}
+
+@media (min-height: 800px) {
+.setup-overlay { align-items: center; }
 }
 
 .setup-box {
@@ -1544,11 +1550,10 @@ for all using (true) with check (true);</div>
 
 <script>
 // ============ CONFIGURAÇÃO EMBUTIDA ============
-// Essas credenciais ficam gravadas no HTML pra não precisar configurar em cada
-// dispositivo. A anon key do Supabase é desenhada pra ser pública, protegida
-// pelas Row Level Security policies do banco.
+// ⚠️ COLE SUA ANON KEY DO SUPABASE NA LINHA ABAIXO, ENTRE AS ASPAS
+// Troque apenas "SUA_CHAVE_AQUI" — mantenha as aspas e o ponto e vírgula!
 const EMBEDDED_SUPABASE_URL = "https://whnecgygzbvzjyeruqbe.supabase.co";
-const EMBEDDED_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobmVjZ3lnemJ2emp5ZXJ1cWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0ODAxMzcsImV4cCI6MjA5MjA1NjEzN30.Z46vW8pceMuSXDL4Sv04j05ML_pW_I2eRAy1jhZFpaU";
+const EMBEDDED_SUPABASE_KEY = "SUA_CHAVE_AQUI";
 
 // ============ DADOS INICIAIS ============
 const BOOKS_INITIAL = [
@@ -1613,7 +1618,7 @@ function loadConfig() {
     if (saved) {
       const parsed = JSON.parse(saved);
       // Se o usuário não escolheu explicitamente "só local", usa as embutidas
-      if (!parsed.skipSync && EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && !EMBEDDED_SUPABASE_KEY.startsWith("COLOQUE")) {
+      if (!parsed.skipSync && EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
         parsed.supabaseUrl = EMBEDDED_SUPABASE_URL;
         parsed.supabaseKey = EMBEDDED_SUPABASE_KEY;
         parsed.setupDone = true;
@@ -1623,7 +1628,7 @@ function loadConfig() {
   } catch(e) {}
   
   // Primeira vez: se temos credenciais embutidas válidas, já conecta direto
-  if (EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && !EMBEDDED_SUPABASE_KEY.startsWith("COLOQUE")) {
+  if (EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
     return {
       supabaseUrl: EMBEDDED_SUPABASE_URL,
       supabaseKey: EMBEDDED_SUPABASE_KEY,
