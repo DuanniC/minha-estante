@@ -1,299 +1,23 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>
-      (function() {
-        const originalConsole = window.console;
-        window.console = {
-          log: (...args) => {
-            originalConsole.log(...args);
-            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
-          },
-          error: (...args) => {
-            originalConsole.error(...args);
-            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
-          },
-          warn: (...args) => {
-            originalConsole.warn(...args);
-            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
-          }
-        };
-
-        let requestId = 0;
-        let callbacksMap = new Map();
-        let streamControllers = new Map();
-        
-        window.claude = {
-          complete: (prompt) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
-            });
-          }
-        };
-
-        window.storage = {
-          get: (key, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
-            });
-          },
-          set: (key, value, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
-            });
-          },
-          delete: (key, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
-            });
-          },
-          list: (prefix, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
-            });
-          }
-        };
-
-        let pendingBlobs = new Map();
-        URL.createObjectURL = (blob) => {
-          // Store the blob and create an ID and URL for it
-          const blobId = `blob-${Date.now()}-${Math.random()}`;
-          pendingBlobs.set(blobId, blob);
-          return `blob-request://${blobId}`;
-        };
-
-        URL.revokeObjectURL = (url) => {
-          // Remove the blob from our store
-          const blobId = url.replace("blob-request://", "");
-          pendingBlobs.delete(blobId);
-        };
-
-        const getBlobFromURL = (url) => {
-          const blobId = url.replace("blob-request://", "");
-          return pendingBlobs.get(blobId);
-        };
-
-        // Override global fetch with streaming support
-        window.fetch = (url, init = {}) => {
-          return new Promise((resolve, reject) => {
-            const id = requestId++;
-            const channelId = `fetch-${id}-${Date.now()}`;
-            
-            callbacksMap.set(id, { 
-              resolve: (response) => {
-                // Create a ReadableStream for the response body
-                const stream = new ReadableStream({
-                  start(controller) {
-                    streamControllers.set(channelId, controller);
-                  },
-                  cancel() {
-                    streamControllers.delete(channelId);
-                  }
-                });
-                
-                // Create and return the Response with the stream
-                resolve(new Response(stream, {
-                  status: response.status,
-                  statusText: response.statusText,
-                  headers: response.headers
-                }));
-              },
-              reject,
-              channelId
-            });
-            
-            window.parent.postMessage({
-              type: 'proxyFetch',
-              id,
-              url,
-              init,
-              channelId
-            }, '*');
-          });
-        };
-
-        window.addEventListener('message', async (event) => {
-          if (event.data.type === 'takeScreenshot') {
-            const rootElement = document.getElementById('artifacts-component-root-html');
-            if (!rootElement) {
-              window.parent.postMessage({
-                type: 'screenshotError',
-                error: new Error('Root element not found'),
-              }, '*');
-            }
-            const screenshot = await htmlToImage.toPng(rootElement, {
-              imagePlaceholder:
-                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
-            });
-            window.parent.postMessage({
-              type: 'screenshotData',
-              data: screenshot,
-            }, '*');
-          } else if (event.data.type === 'claudeComplete') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.completion);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'proxyFetchResponse') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-              callbacksMap.delete(event.data.id);
-            } else {
-              // Initial response with headers, status, etc.
-              callback.resolve({
-                status: event.data.status,
-                statusText: event.data.statusText,
-                headers: event.data.headers
-              });
-              // Don't delete the callback yet if streaming
-              if (!event.data.body) {
-                callbacksMap.delete(event.data.id);
-              }
-            }
-          } else if (event.data.type === 'proxyFetchStream') {
-            // Handle streaming data chunks
-            const controller = streamControllers.get(event.data.channelId);
-            if (controller) {
-              if (event.data.error) {
-                controller.error(new Error(event.data.error));
-                streamControllers.delete(event.data.channelId);
-              } else if (event.data.done) {
-                controller.close();
-                streamControllers.delete(event.data.channelId);
-                // Clean up the callback
-                const callback = Array.from(callbacksMap.entries()).find(
-                  ([_, value]) => value.channelId === event.data.channelId
-                );
-                if (callback) {
-                  callbacksMap.delete(callback[0]);
-                }
-              } else if (event.data.chunk) {
-                controller.enqueue(new Uint8Array(event.data.chunk));
-              }
-            }
-          } else if (event.data.type === 'storageGet') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'storageSet') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'storageDelete') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'storageList') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          }
-        });
-
-        window.addEventListener('click', (event) => {
-          const isEl = event.target instanceof HTMLElement;
-          if (!isEl) return;
-    
-          // find ancestor links
-          const linkEl = event.target.closest("a");
-          if (!linkEl || !linkEl.href) return;
-    
-          event.preventDefault();
-          event.stopImmediatePropagation();
-    
-          if (linkEl.href.startsWith("blob-request:")) {
-            const blob = getBlobFromURL(linkEl.href);
-            if (!blob) return;
-            void blob.arrayBuffer().then((data) => {
-              window.parent.postMessage({
-                type: "downloadFile",
-                filename: linkEl.download,
-                data,
-                mimeType: blob.type || "application/octet-stream",
-              });
-            });
-          } else if (linkEl.href.startsWith("data:")) {
-            const [header, base64Data] = linkEl.href.split(",");
-            const mimeMatch = header.match(/data:([^;]+)/);
-            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
-            const binaryString = atob(base64Data);
-            const data = Uint8Array.from(binaryString, (c) =>
-              c.charCodeAt(0),
-            ).buffer;
-            window.parent.postMessage({
-              type: "downloadFile",
-              filename: linkEl.download,
-              data,
-              mimeType,
-            });
-          } else {
-            let linkUrl;
-            try {
-              linkUrl = new URL(linkEl.href);
-            } catch (error) {
-              return;
-            }
-    
-            if (linkUrl.hostname === window.location.hostname) return;
-      
-            window.parent.postMessage({
-              type: 'openExternal',
-              href: linkEl.href,
-            }, '*');
-          }
-      });
-
-        const originalOpen = window.open;
-        window.open = function (url) {
-          window.parent.postMessage({
-            type: "openExternal",
-            href: url,
-          }, "*");
-        };
-
-        window.addEventListener('error', (event) => {
-          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
-        });
-      })();
-    </script>
-  
+<html lang="pt-BR">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#f4ecd8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Estante">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Minha Estante ✦</title>
+
+<!-- ÍCONE: roda dividida com estrela central, em SVG inline -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Ccircle cx='50' cy='50' r='46'/%3E%3C/clipPath%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='%23f4ecd8'/%3E%3Cg clip-path='url(%23c)'%3E%3Cpath d='M50 50 L50 4 A46 46 0 0 1 82.5 17.5 Z' fill='%23e8a9a0'/%3E%3Cpath d='M50 50 L82.5 17.5 A46 46 0 0 1 96 50 Z' fill='%23b8a8c9'/%3E%3Cpath d='M50 50 L96 50 A46 46 0 0 1 82.5 82.5 Z' fill='%23e8c88a'/%3E%3Cpath d='M50 50 L82.5 82.5 A46 46 0 0 1 50 96 Z' fill='%23a8c4d8'/%3E%3Cpath d='M50 50 L50 96 A46 46 0 0 1 17.5 82.5 Z' fill='%23c97b72'/%3E%3Cpath d='M50 50 L17.5 82.5 A46 46 0 0 1 4 50 Z' fill='%238a7a9c'/%3E%3Cpath d='M50 50 L4 50 A46 46 0 0 1 17.5 17.5 Z' fill='%23c9a65a'/%3E%3Cpath d='M50 50 L17.5 17.5 A46 46 0 0 1 50 4 Z' fill='%237a9aac'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='48' fill='none' stroke='%232a2420' stroke-width='3'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23f4ecd8' stroke='%232a2420' stroke-width='2.5'/%3E%3Cpath d='M50 38 L52 47 L61 50 L52 53 L50 62 L48 53 L39 50 L48 47 Z' fill='%232a2420'/%3E%3C/svg%3E">
+
+<!-- Apple touch icon (usado quando salva na tela de início no iOS) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23f4ecd8'/%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Ccircle cx='90' cy='90' r='66'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg clip-path='url(%23c)'%3E%3Cpath d='M90 90 L90 24 A66 66 0 0 1 136.7 43.3 Z' fill='%23e8a9a0'/%3E%3Cpath d='M90 90 L136.7 43.3 A66 66 0 0 1 156 90 Z' fill='%23b8a8c9'/%3E%3Cpath d='M90 90 L156 90 A66 66 0 0 1 136.7 136.7 Z' fill='%23e8c88a'/%3E%3Cpath d='M90 90 L136.7 136.7 A66 66 0 0 1 90 156 Z' fill='%23a8c4d8'/%3E%3Cpath d='M90 90 L90 156 A66 66 0 0 1 43.3 136.7 Z' fill='%23c97b72'/%3E%3Cpath d='M90 90 L43.3 136.7 A66 66 0 0 1 24 90 Z' fill='%238a7a9c'/%3E%3Cpath d='M90 90 L24 90 A66 66 0 0 1 43.3 43.3 Z' fill='%23c9a65a'/%3E%3Cpath d='M90 90 L43.3 43.3 A66 66 0 0 1 90 24 Z' fill='%237a9aac'/%3E%3C/g%3E%3Ccircle cx='90' cy='90' r='66' fill='none' stroke='%232a2420' stroke-width='4'/%3E%3Ccircle cx='90' cy='90' r='22' fill='%23f4ecd8' stroke='%232a2420' stroke-width='3'/%3E%3Cpath d='M90 72 L93 85 L106 90 L93 95 L90 108 L87 95 L74 90 L87 85 Z' fill='%232a2420'/%3E%3Ctext x='90' y='172' text-anchor='middle' font-family='Georgia, serif' font-style='italic' font-size='14' fill='%232a2420'%3EEstante%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&amp;family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   
@@ -1116,7 +840,7 @@
   }
 </style>
 </head>
-<body id="artifacts-component-root-html"><script id="__embedded_state__" type="application/json">{"books":[{"t":"A Vida é Muito Curta","a":"Abby Jimenez","g":"romance","id":0,"status":"pendente"},{"t":"Apenas amigos","a":"Abby Jimenez","g":"romance","id":1,"status":"pendente"},{"t":"Parte do seu Mundo","a":"Abby Jimenez","g":"romance","id":2,"status":"pendente"},{"t":"Playlist para um Final Feliz","a":"Abby Jimenez","g":"romance","id":3,"status":"pendente"},{"t":"Prometa que Vai se Lembrar de Mim","a":"Abby Jimenez","g":"romance","id":4,"status":"pendente"},{"t":"Como Arruinar um Casamento","a":"Alison Espach","g":"romance","id":5,"status":"pendente"},{"t":"Ontem à Noite","a":"Mhairi McFarlane","g":"romance","id":6,"status":"pendente"},{"t":"Prazer ou Negócios","a":"Rachel Lynn","g":"romance","id":7,"status":"pendente"},{"t":"A Última Carta","a":"Rebecca Yarros","g":"romance","id":8,"status":"pendente"},{"t":"Cúmplices de um Escândalo","a":"Lucy Vargas","g":"romance","id":9,"status":"pendente"},{"t":"A Casa no Mar Cerúleo","a":"TJ Klune","g":"fantasia","id":10,"status":"pendente"},{"t":"A Dança da Floresta","a":"Juliet Marillier","g":"fantasia","id":11,"status":"pendente"},{"t":"A Filha do Rei de Elfland","a":"Lord Dunsany","g":"fantasia","id":12,"status":"pendente"},{"t":"A Montanha das Feras","a":"Juliet Marillier","g":"fantasia","id":13,"status":"pendente"},{"t":"A Ruína de um Reino","a":"Alexandra Christo","g":"fantasia","id":14,"status":"pendente"},{"t":"Cafés & Lendas","a":"Travis Baldree","g":"fantasia","id":15,"status":"pendente"},{"t":"Enciclopédia das Fadas de Emily Wilde","a":"Heather Fawcett","g":"fantasia","id":16,"status":"pendente"},{"t":"Entre Feras & Flores","a":"Ashley Poston","g":"fantasia","id":17,"status":"pendente"},{"t":"No Coração da Floresta","a":"Emily Winfield Martin","g":"fantasia","id":18,"status":"pendente"},{"t":"O Encanto dos Corvos","a":"Margaret Rogerson","g":"fantasia","id":19,"status":"pendente"},{"t":"O Feitiço dos Espinhos","a":"Margaret Rogerson","g":"fantasia","id":20,"status":"pendente"},{"t":"Os Noivos do Inverno","a":"Christelle Dabos","g":"fantasia","id":21,"status":"pendente"},{"t":"Alchemised","a":"SenLinYu","g":"fantasia","id":22,"status":"pendente"},{"t":"A Contadora","a":"Freida McFadden","g":"suspense","id":23,"status":"pendente"},{"t":"A outra","a":"Mary Kubica","g":"suspense","id":24,"status":"pendente"},{"t":"O paciente","a":"Jasper DeWitt","g":"suspense","id":25,"status":"pendente"},{"t":"Enigma","a":"RuNyx","g":"suspense","id":26,"status":"pendente"},{"t":"A Maldição do Ex","a":"Rachel Hawkins","g":"bruxaria","id":27,"status":"pendente"},{"t":"Lois, A Bruxa","a":"Elizabeth Gaskell","g":"bruxaria","id":28,"status":"pendente"}],"filter":"todos","nextId":29}</script>
+<body>
 
 <div class="app">
   <div class="header">
@@ -1124,11 +848,11 @@
     <div class="header-actions">
       <div class="count-badge">
         <span class="dot"></span>
-        <span id="totalCount">29</span>
+        <span id="totalCount">0</span>
       </div>
       <button class="icon-btn" onclick="toggleMenu(event)" aria-label="Menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle>
+          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
         </svg>
       </button>
     </div>
@@ -1152,71 +876,7 @@
     <button class="tab" data-filter="abandoned">Abandonados</button>
   </div>
   
-  <div class="genres" id="genres"><div class="genre-card c-rose">
-      <div class="genre-header">
-        <div>
-          <div class="genre-emoji">🌸</div>
-          <div class="genre-name">Romance</div>
-        </div>
-        <div class="genre-count">10 livros</div>
-      </div>
-      <div class="genre-meta">
-        <div class="genre-preview">histórias pra sorrir ou chorar junto</div>
-        <button class="spin-btn" onclick="event.stopPropagation(); openModal('romance')" aria-label="Girar roda">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
-          </svg>
-        </button>
-      </div>
-    </div><div class="genre-card c-lavender">
-      <div class="genre-header">
-        <div>
-          <div class="genre-emoji">🧝🏻‍♀️</div>
-          <div class="genre-name">Fantasia</div>
-        </div>
-        <div class="genre-count">13 livros</div>
-      </div>
-      <div class="genre-meta">
-        <div class="genre-preview">mundos mágicos e criaturas encantadas</div>
-        <button class="spin-btn" onclick="event.stopPropagation(); openModal('fantasia')" aria-label="Girar roda">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
-          </svg>
-        </button>
-      </div>
-    </div><div class="genre-card c-sky">
-      <div class="genre-header">
-        <div>
-          <div class="genre-emoji">🔪</div>
-          <div class="genre-name">Suspense</div>
-        </div>
-        <div class="genre-count">4 livros</div>
-      </div>
-      <div class="genre-meta">
-        <div class="genre-preview">pra ler de madrugada com as luzes acesas</div>
-        <button class="spin-btn" onclick="event.stopPropagation(); openModal('suspense')" aria-label="Girar roda">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
-          </svg>
-        </button>
-      </div>
-    </div><div class="genre-card c-butter">
-      <div class="genre-header">
-        <div>
-          <div class="genre-emoji">🌙</div>
-          <div class="genre-name">Bruxaria &amp; Gótico</div>
-        </div>
-        <div class="genre-count">2 livros</div>
-      </div>
-      <div class="genre-meta">
-        <div class="genre-preview">feitiços, maldições e atmosfera sombria</div>
-        <button class="spin-btn" onclick="event.stopPropagation(); openModal('bruxaria')" aria-label="Girar roda">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path>
-          </svg>
-        </button>
-      </div>
-    </div></div>
+  <div class="genres" id="genres"></div>
   
   <div class="footer-note">feito com calma e café</div>
 </div>
@@ -1235,8 +895,8 @@
     <div class="wheel-wrapper">
       <div class="wheel-pointer">
         <svg viewBox="0 0 24 30" fill="none">
-          <path d="M12 28 L2 8 Q12 0 22 8 Z" fill="#2a2420"></path>
-          <circle cx="12" cy="8" r="3" fill="#f4ecd8"></circle>
+          <path d="M12 28 L2 8 Q12 0 22 8 Z" fill="#2a2420"/>
+          <circle cx="12" cy="8" r="3" fill="#f4ecd8"/>
         </svg>
       </div>
       <div class="wheel-container">
@@ -2055,6 +1715,5 @@ function exportHtml() {
 renderGenres();
 </script>
 
-
-
-</body></html>
+</body>
+</html>
