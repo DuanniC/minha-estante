@@ -4564,9 +4564,11 @@ document.querySelectorAll(".tab").forEach(tab => {
 });
 
 window.addEventListener("load", () => {
-  const savedFilter = state.filter || "todos";
+  // Sempre abre na aba Lendo, independente do que estava salvo
+  state.filter = "reading";
+  saveState();
   document.querySelectorAll(".tab").forEach(t => {
-    t.classList.toggle("active", t.dataset.filter === savedFilter);
+    t.classList.toggle("active", t.dataset.filter === "reading");
   });
 });
 
