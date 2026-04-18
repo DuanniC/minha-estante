@@ -379,12 +379,28 @@
     width: 100px;
     min-width: 100px;
     aspect-ratio: 2/3;
-    border-radius: 6px 14px 14px 6px;
+    border-radius: 3px 6px 6px 3px;
     position: relative;
     overflow: hidden;
-    box-shadow: -2px 0 0 rgba(0,0,0,0.1), -4px 4px 12px rgba(42, 36, 32, 0.25), 2px 4px 20px rgba(42, 36, 32, 0.15);
+    box-shadow: 
+      inset 3px 0 6px -2px rgba(0,0,0,0.35),
+      inset 1px 0 0 rgba(255,255,255,0.1),
+      2px 4px 12px rgba(42, 36, 32, 0.25),
+      4px 8px 24px rgba(42, 36, 32, 0.15);
     z-index: 2;
     background: var(--cream);
+  }
+  
+  .cover::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 6px;
+    bottom: 0;
+    width: 1px;
+    background: rgba(0,0,0,0.08);
+    z-index: 3;
+    pointer-events: none;
   }
   
   .cover img {
@@ -1534,6 +1550,51 @@
   .session-item:last-child { border-bottom: none; }
   .session-item .sess-time { color: var(--ink); font-weight: 600; }
   
+  /* Month groups (aba Já lidos) */
+  .month-group {
+    margin-bottom: 28px;
+  }
+  
+  .month-group-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--cream-dark);
+    border-radius: 18px;
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+  
+  .month-group-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 20px;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+  
+  .month-group-title em {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-weight: 400;
+  }
+  
+  .month-group-count {
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    background: var(--cream);
+    padding: 4px 10px;
+    border-radius: 100px;
+  }
+  
+  .month-group .book-item {
+    padding: 12px 18px;
+  }
+  
   /* Progress bar no card do livro lendo */
   .reading-progress-bar {
     margin-top: 6px;
@@ -1541,6 +1602,7 @@
     background: rgba(42, 36, 32, 0.15);
     border-radius: 100px;
     overflow: hidden;
+    margin-bottom: 14px;
   }
   
   .reading-progress-fill {
@@ -1555,6 +1617,7 @@
     color: var(--ink);
     opacity: 0.7;
     margin-top: 3px;
+    margin-bottom: 4px;
     letter-spacing: 0.3px;
   }
 </style>
@@ -1847,13 +1910,7 @@ create policy "acesso total sessions" on reading_sessions
     <div class="timer-book-pages" id="timerPages"></div>
   </div>
   
-  <div class="timer-target-setup" id="timerTargetSetup">
-    <span class="timer-target-label">Meta de tempo (minutos, opcional)</span>
-    <input type="number" class="timer-target-input" id="timerTargetInput" min="1" placeholder="—">
-  </div>
-  
   <div class="timer-display" id="timerDisplay">00:00:00</div>
-  <div class="timer-target" id="timerTargetDisplay"></div>
   
   <div class="timer-actions">
     <button class="timer-btn done" id="timerDoneBtn" onclick="stopTimer()">Feito ✦</button>
@@ -2552,6 +2609,79 @@ function renderGenres() {
     return;
   }
   
+  // Aba "lido": agrupa por ano/mês
+  if (state.filter === "lido") {
+    const lidos = state.books.filter(b => b.status === "lido");
+    if (lidos.length === 0) {
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">∅</div>
+          <div class="empty-text">nenhum livro concluído ainda</div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Separa em com data de término e sem data
+    const comData = lidos.filter(b => b.endDate);
+    const semData = lidos.filter(b => !b.endDate);
+    
+    // Agrupa por ano → mês
+    const grouped = {}; // { "2026": { 3: [books], 2: [books] } }
+    comData.forEach(b => {
+      const [y, m] = b.endDate.split("-");
+      const year = y;
+      const monthIdx = parseInt(m) - 1;
+      if (!grouped[year]) grouped[year] = {};
+      if (!grouped[year][monthIdx]) grouped[year][monthIdx] = [];
+      grouped[year][monthIdx].push(b);
+    });
+    
+    container.style.gridTemplateColumns = "1fr";
+    let html = `<div class="book-list" style="border:none; padding:0;">`;
+    html += `<div class="book-list-title">${lidos.length} livro${lidos.length > 1 ? 's' : ''} concluído${lidos.length > 1 ? 's' : ''} ✓</div></div>`;
+    
+    // Ordena anos do mais recente pro mais antigo
+    const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
+    
+    years.forEach(year => {
+      const months = Object.keys(grouped[year]).map(Number).sort((a, b) => b - a);
+      months.forEach(monthIdx => {
+        const monthBooks = grouped[year][monthIdx];
+        // Ordena livros dentro do mês pela data
+        monthBooks.sort((a, b) => b.endDate.localeCompare(a.endDate));
+        
+        html += `<div class="month-group">
+          <div class="month-group-header">
+            <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+            <span class="month-group-count">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''}</span>
+          </div>
+          <div class="book-list" style="border:none; padding:0; margin:0;">`;
+        monthBooks.forEach(b => {
+          html += renderBookItemHTML(b, true);
+        });
+        html += `</div></div>`;
+      });
+    });
+    
+    // Sem data de término
+    if (semData.length > 0) {
+      html += `<div class="month-group">
+        <div class="month-group-header">
+          <span class="month-group-title"><em>sem data registrada</em></span>
+          <span class="month-group-count">${semData.length}</span>
+        </div>
+        <div class="book-list" style="border:none; padding:0; margin:0;">`;
+      semData.forEach(b => {
+        html += renderBookItemHTML(b, true);
+      });
+      html += `</div></div>`;
+    }
+    
+    container.innerHTML = html;
+    return;
+  }
+  
   container.style.gridTemplateColumns = "";
   
   Object.entries(GENRES).forEach(([key, g]) => {
@@ -2909,10 +3039,9 @@ function startSession(bookId) {
   timerState = {
     bookId: bookId,
     startedAt: Date.now(),
-    elapsedBefore: 0, // segundos acumulados antes da última retomada
+    elapsedBefore: 0,
     pausedAt: null,
     pageStart: book.pagesCurrent || 0,
-    targetMinutes: null,
   };
   saveTimerState();
   openTimer();
@@ -2946,10 +3075,6 @@ function openTimer() {
     }
   });
   
-  // Target
-  document.getElementById("timerTargetInput").value = timerState.targetMinutes || '';
-  updateTargetDisplay();
-  
   // Pausar/Retomar
   updatePauseButton();
   
@@ -2968,26 +3093,6 @@ function minimizeTimer() {
   document.getElementById("timerOverlay").classList.remove("open");
   document.body.style.overflow = "";
 }
-
-function updateTargetDisplay() {
-  const input = document.getElementById("timerTargetInput");
-  const val = parseInt(input.value);
-  if (val && val > 0) {
-    timerState.targetMinutes = val;
-    document.getElementById("timerTargetDisplay").textContent = `meta: ${val} min`;
-  } else {
-    timerState.targetMinutes = null;
-    document.getElementById("timerTargetDisplay").textContent = '';
-  }
-  saveTimerState();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const tInput = document.getElementById("timerTargetInput");
-  if (tInput) {
-    tInput.addEventListener('input', updateTargetDisplay);
-  }
-});
 
 function getElapsedSeconds() {
   if (!timerState) return 0;
@@ -3008,15 +3113,6 @@ function updateTimerDisplay() {
   
   const el = document.getElementById("timerDisplay");
   if (el) el.textContent = display;
-  
-  // Se atingiu a meta, vibra (se suportar) e muda cor do display
-  if (timerState.targetMinutes && secs >= timerState.targetMinutes * 60) {
-    if (el && !el.dataset.reached) {
-      el.dataset.reached = "1";
-      el.style.color = "var(--rose)";
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-    }
-  }
   
   // Alerta de leitura longa (>4h)
   if (secs > 14400 && el && !el.dataset.longWarned) {
