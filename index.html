@@ -3574,6 +3574,30 @@ function renderGenres() {
     return;
   }
   
+  // Aba "todos": lista plana agrupada por gênero
+  if (state.filter === "todos") {
+    if (state.books.length === 0) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">∅</div><div class="empty-text">nenhum livro ainda</div></div>`;
+      return;
+    }
+    container.style.gridTemplateColumns = "1fr";
+    let html = "";
+    Object.entries(GENRES).forEach(([key, g]) => {
+      const booksInGenre = state.books.filter(b => b.g === key);
+      if (booksInGenre.length === 0) return;
+      html += `<div class="month-group">
+        <div class="month-group-header">
+          <span class="month-group-title">${g.emoji} <em>${escapeHtml(g.name)}</em></span>
+          <span class="month-group-count">${booksInGenre.length} livro${booksInGenre.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="book-list" style="border:none; padding:0; margin:0;">`;
+      booksInGenre.forEach(b => { html += renderBookItemHTML(b, false); });
+      html += `</div></div>`;
+    });
+    container.innerHTML = html;
+    return;
+  }
+
   container.style.gridTemplateColumns = "";
   
   Object.entries(GENRES).forEach(([key, g]) => {
@@ -4991,19 +5015,77 @@ function renderGenresList() {
   Object.entries(GENRES).forEach(([id, g]) => {
     const isDefault = !!DEFAULT_GENRES[id];
     const bookCount = state.books.filter(b => b.g === id).length;
-    html += `<div class="genre-list-item">
+    html += `<div class="genre-list-item" id="gli-${id}">
       <div class="genre-list-emoji">${g.emoji}</div>
       <div class="genre-list-info">
         <div class="genre-list-name">${escapeHtml(g.name)}</div>
         <div class="genre-list-meta">${bookCount} livro${bookCount !== 1 ? 's' : ''}${isDefault ? ' · padrão' : ''}</div>
       </div>
       <div class="genre-list-actions">
-        ${bookCount === 0 ? `<button class="sess-btn del" onclick="deleteGenre('${id}')" aria-label="Excluir">✕</button>` : `<span style="font-size:11px;color:var(--ink-soft);">${bookCount} livro${bookCount!==1?'s':''}</span>`}
+        <button class="sess-btn" onclick="openEditGenre('${id}')" aria-label="Editar" title="Editar">✏</button>
+        <button class="sess-btn del" onclick="deleteGenre('${id}')" aria-label="Excluir" title="Excluir" ${bookCount > 0 ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : ''}>✕</button>
       </div>
     </div>`;
   });
   
   container.innerHTML = html;
+}
+
+function openEditGenre(id) {
+  const g = GENRES[id];
+  if (!g) return;
+  const item = document.getElementById(`gli-${id}`);
+  if (!item) return;
+  
+  // Monta inline editor
+  item.innerHTML = `
+    <div style="display:flex; gap:8px; flex:1; flex-wrap:wrap; align-items:flex-end;">
+      <input type="text" value="${escapeHtml(g.emoji)}" id="egi-emoji-${id}" maxlength="4"
+        style="width:52px; text-align:center; font-size:18px; padding:6px; border:1.5px solid var(--cream-dark); border-radius:8px; background:var(--cream); font-family:inherit;">
+      <div style="flex:1; min-width:120px;">
+        <div style="font-size:11px; color:var(--ink-soft); margin-bottom:3px;">Nome</div>
+        <input type="text" value="${escapeHtml(g.name)}" id="egi-name-${id}"
+          style="width:100%; padding:6px 10px; border:1.5px solid var(--cream-dark); border-radius:8px; background:var(--cream); font-family:inherit; font-size:14px;">
+      </div>
+      <div style="flex:1; min-width:140px;">
+        <div style="font-size:11px; color:var(--ink-soft); margin-bottom:3px;">Descrição curta</div>
+        <input type="text" value="${escapeHtml(g.preview || '')}" id="egi-preview-${id}" placeholder="uma frase sobre esse gênero"
+          style="width:100%; padding:6px 10px; border:1.5px solid var(--cream-dark); border-radius:8px; background:var(--cream); font-family:inherit; font-size:14px;">
+      </div>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <button class="sess-btn" onclick="saveEditGenre('${id}')" style="background:var(--ink);color:var(--cream);">✓</button>
+        <button class="sess-btn" onclick="renderGenresList()">✕</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveEditGenre(id) {
+  const nameEl = document.getElementById(`egi-name-${id}`);
+  const emojiEl = document.getElementById(`egi-emoji-${id}`);
+  const previewEl = document.getElementById(`egi-preview-${id}`);
+  if (!nameEl) return;
+  
+  const name = nameEl.value.trim();
+  const emoji = emojiEl.value.trim() || GENRES[id].emoji;
+  const preview = previewEl.value.trim();
+  
+  if (!name) { alert("O nome não pode ficar vazio ✦"); return; }
+  
+  GENRES[id].name = name;
+  GENRES[id].emoji = emoji;
+  GENRES[id].preview = preview;
+  
+  // Persiste no banco se for custom
+  try {
+    await supabaseFetch(`genres?id=eq.${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, emoji, preview: preview || null }),
+    });
+  } catch(e) { console.error(e); }
+  
+  renderGenresList();
+  renderAll();
 }
 
 let selectedColor = null;
@@ -5051,7 +5133,7 @@ async function addGenre() {
     name: name,
     emoji: emoji,
     color: selectedColor,
-    preview: preview || 'seu novo gênero',
+    preview: preview || '',
     custom: true,
   };
   PALETTE[id] = colorOpt.palette;
@@ -5107,22 +5189,7 @@ async function deleteGenre(id) {
   renderAll();
 }
 
-document.getElementById("genresModal").addEventListener("click", (e) => {
-  if (e.target.id === "genresModal") closeGenresModal();
-});
-document.getElementById("editSessionModal").addEventListener("click", (e) => {
-  if (e.target.id === "editSessionModal") closeEditSession();
-});
-
-document.getElementById("addModal").addEventListener("click", (e) => {
-  if (e.target.id === "addModal") closeAddBook();
-});
-document.getElementById("readingModal").addEventListener("click", (e) => {
-  if (e.target.id === "readingModal") closeReadingModal();
-});
-document.getElementById("editModal").addEventListener("click", (e) => {
-  if (e.target.id === "editModal") closeEditModal();
-});
+// Modais de edição não fecham ao clicar fora — somente via botão cancelar/fechar
 
 // ============ MENU ============
 function toggleMenu(e) {
