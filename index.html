@@ -1971,7 +1971,7 @@
   <div class="login-box">
     <div class="login-deco">✦</div>
     <div class="login-title">Minha<br><em>estante</em></div>
-    <div class="login-sub" id="loginSub">bem-vinda de volta ✦</div>
+    <div class="login-sub" id="loginSub">bem-vinda(o) de volta ✦</div>
     <div class="login-sub" id="loginSubCadastro" style="display:none;">cria sua conta ✦</div>
 
     <div class="login-tabs">
@@ -2585,6 +2585,38 @@ let state  = { books: [], filter: "reading", covers: {} };
 let config = loadConfig();
 let supabase = null;
 let syncing  = false;
+
+// Fila para busca de capas — evita rate limit (429/503) da Google Books API
+let _coverQueue = [];
+let _coverRunning = false;
+
+async function _processCoverQueue() {
+  if (_coverRunning) return;
+  _coverRunning = true;
+  while (_coverQueue.length > 0) {
+    const { title, author, resolve } = _coverQueue.shift();
+    const url = await fetchCover(title, author);
+    resolve(url);
+    if (_coverQueue.length > 0) await new Promise(r => setTimeout(r, 300));
+  }
+  _coverRunning = false;
+}
+
+function queueCover(title, author) {
+  return new Promise(resolve => {
+    // Se já está em cache, resolve imediatamente sem enfileirar
+    const key = coverKey(title, author);
+    if (state.covers && state.covers[key]) {
+      resolve(state.covers[key] === "NONE" ? null : state.covers[key]);
+      return;
+    }
+    // Evita duplicatas na fila
+    const already = _coverQueue.find(x => x.title === title && x.author === author);
+    if (already) { already.resolve = resolve; return; }
+    _coverQueue.push({ title, author, resolve });
+    _processCoverQueue();
+  });
+}
 
 // ============ LOGIN — Supabase Auth ============
 let _loginTab = "entrar"; // "entrar" | "cadastro"
@@ -3600,7 +3632,7 @@ function renderGenres() {
         `;
         container.appendChild(card);
         
-        fetchCover(book.t, book.a).then(url => {
+        queueCover(book.t, book.a).then(url => {
           if (!url) return;
           const coverEl = document.getElementById(coverId);
           if (!coverEl) return;
