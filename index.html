@@ -339,6 +339,10 @@
   .genre-card.c-lavender { background: #dfd0e8; }
   .genre-card.c-butter { background: #f0dda5; }
   .genre-card.c-sky { background: #cde0ea; }
+  .genre-card.c-sage { background: #d4dfc4; }
+  .genre-card.c-peach { background: #f0d5bc; }
+  .genre-card.c-mint { background: #d4e5da; }
+  .genre-card.c-blush { background: #f0dde0; }
   
   /* CARD LENDO */
   .reading-card {
@@ -359,6 +363,10 @@
   .reading-card.c-lavender { background: linear-gradient(135deg, #dfd0e8 0%, #c4b4d4 100%); }
   .reading-card.c-butter { background: linear-gradient(135deg, #f0dda5 0%, #e0c078 100%); }
   .reading-card.c-sky { background: linear-gradient(135deg, #cde0ea 0%, #b0c8dc 100%); }
+  .reading-card.c-sage { background: linear-gradient(135deg, #d4dfc4 0%, #b4c4a4 100%); }
+  .reading-card.c-peach { background: linear-gradient(135deg, #f0d5bc 0%, #d8a880 100%); }
+  .reading-card.c-mint { background: linear-gradient(135deg, #d4e5da 0%, #a0bcae 100%); }
+  .reading-card.c-blush { background: linear-gradient(135deg, #f0dde0 0%, #d8a8ae 100%); }
   
   .reading-card::before {
     content: 'LENDO AGORA';
@@ -379,28 +387,21 @@
     width: 100px;
     min-width: 100px;
     aspect-ratio: 2/3;
-    border-radius: 3px 6px 6px 3px;
+    border-radius: 4px;
     position: relative;
     overflow: hidden;
     box-shadow: 
-      inset 3px 0 6px -2px rgba(0,0,0,0.35),
-      inset 1px 0 0 rgba(255,255,255,0.1),
-      2px 4px 12px rgba(42, 36, 32, 0.25),
-      4px 8px 24px rgba(42, 36, 32, 0.15);
+      0 1px 3px rgba(42, 36, 32, 0.12),
+      0 6px 18px rgba(42, 36, 32, 0.18),
+      0 12px 28px rgba(42, 36, 32, 0.08);
     z-index: 2;
     background: var(--cream);
+    transform: rotate(-1.5deg);
+    transition: transform 0.3s;
   }
   
-  .cover::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 6px;
-    bottom: 0;
-    width: 1px;
-    background: rgba(0,0,0,0.08);
-    z-index: 3;
-    pointer-events: none;
+  .reading-card:hover .cover {
+    transform: rotate(-1.5deg) translateY(-2px);
   }
   
   .cover img {
@@ -1538,17 +1539,162 @@
   }
   
   .session-item {
-    padding: 6px 0;
+    padding: 8px 0;
     font-size: 12px;
     color: var(--ink-soft);
     display: flex;
     justify-content: space-between;
     gap: 10px;
+    align-items: center;
     border-bottom: 1px solid rgba(42, 36, 32, 0.1);
   }
   
   .session-item:last-child { border-bottom: none; }
-  .session-item .sess-time { color: var(--ink); font-weight: 600; }
+  .session-item .sess-time { color: var(--ink); font-weight: 600; flex: 0 0 auto; }
+  .session-item .sess-date { flex: 1; }
+  .session-item .sess-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+  
+  .sess-btn {
+    background: transparent;
+    border: 1px solid rgba(42, 36, 32, 0.2);
+    color: var(--ink-soft);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .sess-btn:active { transform: scale(0.9); }
+  .sess-btn:hover { background: var(--cream); }
+  .sess-btn.del:hover { color: var(--rose-deep); border-color: var(--rose-deep); }
+  
+  /* GERENCIAR GÊNEROS */
+  .genre-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    margin-bottom: 8px;
+    background: var(--cream-dark);
+  }
+  
+  .genre-list-emoji { font-size: 22px; }
+  .genre-list-info { flex: 1; min-width: 0; }
+  .genre-list-name { font-family: 'Fraunces', serif; font-weight: 500; font-size: 15px; color: var(--ink); }
+  .genre-list-meta { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+  
+  .genre-list-actions { display: flex; gap: 4px; }
+  
+  .color-picker {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  
+  .color-option {
+    aspect-ratio: 1;
+    border-radius: 14px;
+    cursor: pointer;
+    position: relative;
+    border: 2px solid transparent;
+    transition: transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  
+  .color-option:active { transform: scale(0.95); }
+  .color-option.selected { border-color: var(--ink); }
+  .color-option.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  
+  /* Autocomplete dropdown */
+  .autocomplete-wrap { position: relative; }
+  
+  .autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--cream);
+    border: 1.5px solid var(--ink);
+    border-radius: 14px;
+    margin-top: 4px;
+    max-height: 280px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(42, 36, 32, 0.2);
+    display: none;
+  }
+  
+  .autocomplete-results.open { display: block; }
+  
+  .autocomplete-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    align-items: center;
+    border-bottom: 1px solid var(--cream-dark);
+  }
+  
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover, .autocomplete-item.active { background: var(--cream-dark); }
+  
+  .autocomplete-cover {
+    width: 36px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 3px;
+    background: var(--cream-dark);
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  
+  .autocomplete-info { flex: 1; min-width: 0; }
+  .autocomplete-title {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .autocomplete-author {
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .autocomplete-pages {
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-top: 1px;
+  }
+  
+  /* GERENCIAR GÊNEROS - fim */
   
   /* Month groups (aba Já lidos) */
   .month-group {
@@ -1674,12 +1820,26 @@ create table reading_sessions (
 
 create index idx_sessions_book on reading_sessions(book_id);
 
+create table genres (
+  id text primary key,
+  name text not null,
+  emoji text,
+  color text,
+  preview text,
+  palette text[],
+  sort_order int default 0,
+  created_at timestamptz default now()
+);
+
 alter table books enable row level security;
 alter table reading_sessions enable row level security;
+alter table genres enable row level security;
 
 create policy "acesso total books" on books
   for all using (true) with check (true);
 create policy "acesso total sessions" on reading_sessions
+  for all using (true) with check (true);
+create policy "acesso total genres" on genres
   for all using (true) with check (true);</div>
       <button class="form-btn secondary" onclick="copySql()" style="margin-top:0">Copiar SQL</button>
     </div>
@@ -1720,6 +1880,7 @@ create policy "acesso total sessions" on reading_sessions
     </div>
     <div class="menu" id="menu">
       <button onclick="openAddBook()">✦ Adicionar livro</button>
+      <button onclick="openGenresModal()">✿ Gerenciar gêneros</button>
       <button onclick="forceSync()">↻ Sincronizar agora</button>
       <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
       <button onclick="reconfigureSupabase()">⚙ Reconfigurar Supabase</button>
@@ -1802,7 +1963,10 @@ create policy "acesso total sessions" on reading_sessions
     
     <div class="form-group">
       <label class="form-label">Título</label>
-      <input type="text" class="form-input" id="newTitle" placeholder="Ex: O Nome do Vento">
+      <div class="autocomplete-wrap">
+        <input type="text" class="form-input" id="newTitle" placeholder="Ex: O Nome do Vento" autocomplete="off">
+        <div class="autocomplete-results" id="titleAutocomplete"></div>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Autor(a)</label>
@@ -1919,6 +2083,84 @@ create policy "acesso total sessions" on reading_sessions
   </div>
 </div>
 
+<!-- MODAL EDITAR SESSÃO -->
+<div class="modal-backdrop" id="editSessionModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Editar</em> sessão</h2>
+      <button class="modal-close" onclick="closeEditSession()">×</button>
+    </div>
+    <p class="modal-sub">Ajuste o tempo ou as páginas ✦</p>
+    
+    <div class="form-group">
+      <label class="form-label">Tempo lido</label>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="number" class="form-input" id="editSessionMinutes" min="0" placeholder="minutos" style="flex:1">
+        <span style="color: var(--ink-soft); font-size: 12px;">min</span>
+        <input type="number" class="form-input" id="editSessionSeconds" min="0" max="59" placeholder="seg" style="flex:1">
+        <span style="color: var(--ink-soft); font-size: 12px;">seg</span>
+      </div>
+    </div>
+    
+    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div class="form-group">
+        <label class="form-label">Começou na página</label>
+        <input type="number" class="form-input" id="editSessionPageStart" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Terminou na página</label>
+        <input type="number" class="form-input" id="editSessionPageEnd" min="0">
+      </div>
+    </div>
+    
+    <button class="form-btn" onclick="confirmEditSession()">Salvar ✦</button>
+  </div>
+</div>
+
+<!-- MODAL GERENCIAR GÊNEROS -->
+<div class="modal-backdrop" id="genresModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Gerenciar</em> gêneros</h2>
+      <button class="modal-close" onclick="closeGenresModal()">×</button>
+    </div>
+    <p class="modal-sub">Adicione, edite ou remova categorias ✦</p>
+    
+    <div id="genresList"></div>
+    
+    <div style="border-top: 1px solid var(--cream-dark); padding-top: 20px; margin-top: 20px;">
+      <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">
+        adicionar novo
+      </div>
+      
+      <div class="form-row" style="display: grid; grid-template-columns: 70px 1fr; gap: 10px;">
+        <div class="form-group">
+          <label class="form-label">Emoji</label>
+          <input type="text" class="form-input" id="newGenreEmoji" maxlength="4" placeholder="📚" style="text-align:center; font-size:20px;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nome</label>
+          <input type="text" class="form-input" id="newGenreName" placeholder="Ex: Ficção científica">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Descrição curta</label>
+        <input type="text" class="form-input" id="newGenrePreview" placeholder="uma frase sobre esse gênero">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Cor</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+      
+      <button class="form-btn" onclick="addGenre()">Adicionar gênero ✦</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL SALVAR SESSÃO -->
 <div class="modal-backdrop" id="saveSessionModal">
   <div class="modal">
@@ -2017,19 +2259,35 @@ const BOOKS_INITIAL = [
   { t: "Lois, A Bruxa", a: "Elizabeth Gaskell", g: "bruxaria" },
 ];
 
-const GENRES = {
+const DEFAULT_GENRES = {
   romance: { name: "Romance", emoji: "🌸", color: "c-rose", preview: "histórias pra sorrir ou chorar junto" },
   fantasia: { name: "Fantasia", emoji: "🧝🏻‍♀️", color: "c-lavender", preview: "mundos mágicos e criaturas encantadas" },
   suspense: { name: "Suspense", emoji: "🔪", color: "c-sky", preview: "pra ler de madrugada com as luzes acesas" },
   bruxaria: { name: "Bruxaria & Gótico", emoji: "🌙", color: "c-butter", preview: "feitiços, maldições e atmosfera sombria" },
 };
 
-const PALETTE = {
+const DEFAULT_PALETTE = {
   romance: ["#e8a9a0", "#c97b72", "#f0c5bf", "#d89890", "#e8b8b0"],
   fantasia: ["#b8a8c9", "#8a7a9c", "#d0c0dc", "#a898b8", "#c4b4d4"],
   suspense: ["#a8c4d8", "#7a9aac", "#bcd0e0", "#98b4c8", "#b0c8dc"],
   bruxaria: ["#e8c88a", "#c9a65a", "#f0d89c", "#d8b872", "#e0c078"],
 };
+
+// Paletas disponíveis para escolher ao criar novo gênero
+const COLOR_OPTIONS = [
+  { id: "c-rose", name: "rosé", bg: "#f5d5cf", palette: ["#e8a9a0", "#c97b72", "#f0c5bf", "#d89890", "#e8b8b0"] },
+  { id: "c-lavender", name: "lavanda", bg: "#dfd0e8", palette: ["#b8a8c9", "#8a7a9c", "#d0c0dc", "#a898b8", "#c4b4d4"] },
+  { id: "c-butter", name: "mostarda", bg: "#f0dda5", palette: ["#e8c88a", "#c9a65a", "#f0d89c", "#d8b872", "#e0c078"] },
+  { id: "c-sky", name: "céu", bg: "#cde0ea", palette: ["#a8c4d8", "#7a9aac", "#bcd0e0", "#98b4c8", "#b0c8dc"] },
+  { id: "c-sage", name: "sálvia", bg: "#d4dfc4", palette: ["#a8b89a", "#7a8b6c", "#c4d0b4", "#98a888", "#b4c4a4"] },
+  { id: "c-peach", name: "pêssego", bg: "#f0d5bc", palette: ["#e8b89a", "#c9956c", "#f0c8a8", "#d8a880", "#e0b890"] },
+  { id: "c-mint", name: "menta", bg: "#d4e5da", palette: ["#b8d4c9", "#8aaca0", "#c8dcd0", "#a0bcae", "#bed0c4"] },
+  { id: "c-blush", name: "blush", bg: "#f0dde0", palette: ["#e8c4c9", "#c99aa0", "#f0d0d5", "#d8a8ae", "#e0b8be"] },
+];
+
+// State atual dos gêneros (pode ser modificado em runtime)
+let GENRES = { ...DEFAULT_GENRES };
+let PALETTE = { ...DEFAULT_PALETTE };
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -2484,6 +2742,12 @@ function renderAll() {
 
 function renderStats() {
   const section = document.getElementById("statsSection");
+  // Só mostra estatísticas na aba "Já lidos"
+  if (state.filter !== "lido") {
+    section.style.display = "none";
+    return;
+  }
+  
   const readBooks = state.books.filter(b => b.status === "lido" && b.endDate);
   
   if (readBooks.length === 0) {
@@ -3470,7 +3734,7 @@ async function renderSessionsList(bookId) {
   if (!config.setupDone || config.skipSync) return;
   
   try {
-    const sessions = await supabaseFetch(`reading_sessions?book_id=eq.${bookId}&order=started_at.desc&limit=10`);
+    const sessions = await supabaseFetch(`reading_sessions?book_id=eq.${bookId}&order=started_at.desc&limit=20`);
     if (!sessions || sessions.length === 0) return;
     
     let html = `<div class="sessions-list">
@@ -3480,16 +3744,83 @@ async function renderSessionsList(bookId) {
       const d = new Date(s.started_at);
       const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
       const timeStr = formatDuration(s.duration_seconds);
-      const pagesStr = (s.page_end && s.page_start !== null) 
-        ? ` · ${s.page_start}→${s.page_end}` : '';
-      html += `<div class="session-item">
-        <span>${dateStr}${pagesStr}</span>
+      const pagesStr = (s.page_end != null && s.page_start != null) 
+        ? `${s.page_start}→${s.page_end}` : '';
+      html += `<div class="session-item" data-session-id="${s.id}">
+        <span class="sess-date">${dateStr}${pagesStr ? ` · ${pagesStr}` : ''}</span>
         <span class="sess-time">${timeStr}</span>
+        <div class="sess-actions">
+          <button class="sess-btn" onclick="editSession(${s.id}, ${s.duration_seconds}, ${s.page_start || 'null'}, ${s.page_end || 'null'})" aria-label="Editar">✎</button>
+          <button class="sess-btn del" onclick="deleteSession(${s.id}, ${bookId})" aria-label="Excluir">✕</button>
+        </div>
       </div>`;
     });
     html += `</div>`;
     container.innerHTML = html;
   } catch(e) { console.error(e); }
+}
+
+async function deleteSession(sessionId, bookId) {
+  if (!confirm("Excluir essa sessão? O tempo dela não vai contar no histórico.")) return;
+  
+  try {
+    setSyncStatus("syncing", "↻ excluindo");
+    await supabaseFetch(`reading_sessions?id=eq.${sessionId}`, { method: 'DELETE' });
+    setSyncStatus("synced", "✦ sincronizado");
+    renderSessionsList(bookId);
+  } catch(e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ erro ao excluir");
+  }
+}
+
+let editingSessionId = null;
+
+function editSession(sessionId, durationSecs, pageStart, pageEnd) {
+  editingSessionId = sessionId;
+  // Preenche o modal de edição de sessão
+  const totalMins = Math.floor(durationSecs / 60);
+  const totalSecs = durationSecs % 60;
+  document.getElementById("editSessionMinutes").value = totalMins;
+  document.getElementById("editSessionSeconds").value = totalSecs;
+  document.getElementById("editSessionPageStart").value = pageStart || '';
+  document.getElementById("editSessionPageEnd").value = pageEnd || '';
+  document.getElementById("editSessionModal").classList.add("open");
+}
+
+function closeEditSession() {
+  document.getElementById("editSessionModal").classList.remove("open");
+  editingSessionId = null;
+}
+
+async function confirmEditSession() {
+  if (!editingSessionId) return;
+  const mins = parseInt(document.getElementById("editSessionMinutes").value) || 0;
+  const secs = parseInt(document.getElementById("editSessionSeconds").value) || 0;
+  const totalSecs = mins * 60 + secs;
+  const pageStart = parseInt(document.getElementById("editSessionPageStart").value);
+  const pageEnd = parseInt(document.getElementById("editSessionPageEnd").value);
+  
+  if (totalSecs <= 0) { alert("Tempo tem que ser maior que zero ✦"); return; }
+  
+  try {
+    setSyncStatus("syncing", "↻ salvando");
+    const body = {
+      duration_seconds: totalSecs,
+      page_start: isNaN(pageStart) ? null : pageStart,
+      page_end: isNaN(pageEnd) ? null : pageEnd,
+    };
+    await supabaseFetch(`reading_sessions?id=eq.${editingSessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+    setSyncStatus("synced", "✦ sincronizado");
+    closeEditSession();
+    if (editingBookId) renderSessionsList(editingBookId);
+  } catch(e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ erro ao salvar");
+  }
 }
 
 function closeEditModal() {
@@ -3650,6 +3981,11 @@ function openAddBook() {
   document.getElementById("newTitle").value = "";
   document.getElementById("newAuthor").value = "";
   document.getElementById("newPages").value = "";
+  const autoEl = document.getElementById("titleAutocomplete");
+  if (autoEl) { autoEl.innerHTML = ""; autoEl.classList.remove("open"); }
+  
+  setupAutocomplete();
+  
   document.getElementById("addModal").classList.add("open");
   document.body.style.overflow = "hidden";
   setTimeout(() => document.getElementById("newTitle").focus(), 300);
@@ -3701,6 +4037,324 @@ async function addBook() {
     });
   }
 }
+
+// ============ AUTOCOMPLETE DE TÍTULO ============
+let autocompleteDebounce = null;
+let autocompleteAbort = null;
+let autocompleteCache = {};
+
+function setupAutocomplete() {
+  const input = document.getElementById("newTitle");
+  const results = document.getElementById("titleAutocomplete");
+  if (!input || input.dataset.autocomplete) return;
+  input.dataset.autocomplete = "1";
+  
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    clearTimeout(autocompleteDebounce);
+    if (q.length < 3) {
+      results.classList.remove("open");
+      results.innerHTML = "";
+      return;
+    }
+    autocompleteDebounce = setTimeout(() => searchTitles(q), 350);
+  });
+  
+  input.addEventListener("blur", () => {
+    // Delay pra click funcionar
+    setTimeout(() => results.classList.remove("open"), 200);
+  });
+  
+  input.addEventListener("focus", () => {
+    if (results.innerHTML) results.classList.add("open");
+  });
+}
+
+async function searchTitles(q) {
+  const results = document.getElementById("titleAutocomplete");
+  if (!results) return;
+  
+  if (autocompleteCache[q]) {
+    renderAutocomplete(autocompleteCache[q]);
+    return;
+  }
+  
+  if (autocompleteAbort) autocompleteAbort.abort();
+  autocompleteAbort = new AbortController();
+  
+  try {
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=6&fields=title,author_name,cover_i,number_of_pages_median,subject`;
+    const resp = await fetch(url, { signal: autocompleteAbort.signal });
+    const data = await resp.json();
+    const items = (data.docs || []).filter(d => d.title && d.author_name);
+    autocompleteCache[q] = items;
+    renderAutocomplete(items);
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    console.error(e);
+  }
+}
+
+function renderAutocomplete(items) {
+  const results = document.getElementById("titleAutocomplete");
+  if (!results) return;
+  if (items.length === 0) {
+    results.innerHTML = "";
+    results.classList.remove("open");
+    return;
+  }
+  
+  let html = "";
+  items.forEach((item, i) => {
+    const cover = item.cover_i 
+      ? `<img class="autocomplete-cover" src="https://covers.openlibrary.org/b/id/${item.cover_i}-S.jpg" alt="" loading="lazy">`
+      : `<div class="autocomplete-cover"></div>`;
+    const author = (item.author_name || []).slice(0, 2).join(", ");
+    const pages = item.number_of_pages_median ? `${item.number_of_pages_median} pgs` : '';
+    
+    html += `<div class="autocomplete-item" data-index="${i}" onmousedown="selectAutocomplete(${i})">
+      ${cover}
+      <div class="autocomplete-info">
+        <div class="autocomplete-title">${escapeHtml(item.title)}</div>
+        <div class="autocomplete-author">${escapeHtml(author)}</div>
+        ${pages ? `<div class="autocomplete-pages">${pages}</div>` : ''}
+      </div>
+    </div>`;
+  });
+  
+  results.innerHTML = html;
+  results.classList.add("open");
+  results._items = items;
+}
+
+function selectAutocomplete(index) {
+  const results = document.getElementById("titleAutocomplete");
+  const item = results._items && results._items[index];
+  if (!item) return;
+  
+  document.getElementById("newTitle").value = item.title;
+  document.getElementById("newAuthor").value = (item.author_name || [])[0] || '';
+  if (item.number_of_pages_median) {
+    document.getElementById("newPages").value = item.number_of_pages_median;
+  }
+  
+  // Chuta um gênero baseado em subjects (opcional)
+  guessGenreFromSubjects(item.subject || []);
+  
+  // Guarda cover_i pra usar na adição
+  if (item.cover_i) {
+    const key = coverKey(item.title, (item.author_name || [])[0] || '');
+    if (!state.covers) state.covers = {};
+    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`;
+    if (item.number_of_pages_median) {
+      state.bookPages = state.bookPages || {};
+      state.bookPages[key] = item.number_of_pages_median;
+    }
+    saveState();
+  }
+  
+  results.classList.remove("open");
+}
+
+function guessGenreFromSubjects(subjects) {
+  const select = document.getElementById("newGenre");
+  if (!select) return;
+  const joined = (subjects || []).join(" ").toLowerCase();
+  
+  const mapping = [
+    { keys: ['romance', 'love stor', 'chick lit'], genre: 'romance' },
+    { keys: ['fantasy', 'magic', 'fairy', 'dragon', 'elf'], genre: 'fantasia' },
+    { keys: ['thriller', 'suspense', 'mystery', 'crime', 'detective'], genre: 'suspense' },
+    { keys: ['witch', 'gothic', 'horror', 'occult'], genre: 'bruxaria' },
+  ];
+  
+  for (const m of mapping) {
+    if (m.keys.some(k => joined.includes(k))) {
+      if (select.querySelector(`option[value="${m.genre}"]`)) {
+        select.value = m.genre;
+      }
+      return;
+    }
+  }
+}
+
+// ============ GERENCIAR GÊNEROS ============
+async function loadGenresFromDb() {
+  if (!config.setupDone || config.skipSync) return;
+  try {
+    const rows = await supabaseFetch("genres?select=*&order=sort_order");
+    if (rows && Array.isArray(rows) && rows.length > 0) {
+      // Mescla: defaults + customs
+      GENRES = { ...DEFAULT_GENRES };
+      PALETTE = { ...DEFAULT_PALETTE };
+      rows.forEach(row => {
+        GENRES[row.id] = {
+          name: row.name,
+          emoji: row.emoji || '📚',
+          color: row.color || 'c-rose',
+          preview: row.preview || '',
+          custom: true,
+        };
+        if (row.palette && Array.isArray(row.palette)) {
+          PALETTE[row.id] = row.palette;
+        } else {
+          // Usa a paleta da cor escolhida
+          const colorOpt = COLOR_OPTIONS.find(c => c.id === row.color);
+          PALETTE[row.id] = colorOpt ? colorOpt.palette : DEFAULT_PALETTE.romance;
+        }
+      });
+    }
+  } catch(e) {
+    // Se a tabela genres não existir ainda, não quebra — só usa defaults
+    console.log("genres não disponível:", e.message);
+  }
+}
+
+function openGenresModal() {
+  closeMenu();
+  renderGenresList();
+  renderColorPicker();
+  document.getElementById("newGenreEmoji").value = "";
+  document.getElementById("newGenreName").value = "";
+  document.getElementById("newGenrePreview").value = "";
+  selectedColor = null;
+  document.getElementById("genresModal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeGenresModal() {
+  document.getElementById("genresModal").classList.remove("open");
+  document.body.style.overflow = "";
+  renderAll();
+}
+
+function renderGenresList() {
+  const container = document.getElementById("genresList");
+  let html = `<div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">seus gêneros</div>`;
+  
+  Object.entries(GENRES).forEach(([id, g]) => {
+    const isDefault = !!DEFAULT_GENRES[id];
+    const bookCount = state.books.filter(b => b.g === id).length;
+    html += `<div class="genre-list-item">
+      <div class="genre-list-emoji">${g.emoji}</div>
+      <div class="genre-list-info">
+        <div class="genre-list-name">${escapeHtml(g.name)}</div>
+        <div class="genre-list-meta">${bookCount} livro${bookCount !== 1 ? 's' : ''}${isDefault ? ' · padrão' : ''}</div>
+      </div>
+      <div class="genre-list-actions">
+        ${!isDefault ? `<button class="sess-btn del" onclick="deleteGenre('${id}')" aria-label="Excluir">✕</button>` : ''}
+      </div>
+    </div>`;
+  });
+  
+  container.innerHTML = html;
+}
+
+let selectedColor = null;
+
+function renderColorPicker() {
+  const picker = document.getElementById("colorPicker");
+  let html = "";
+  COLOR_OPTIONS.forEach(opt => {
+    html += `<div class="color-option ${selectedColor === opt.id ? 'selected' : ''}" 
+      style="background: ${opt.bg};" 
+      onclick="selectColor('${opt.id}')"
+      data-color="${opt.id}">${opt.name}</div>`;
+  });
+  picker.innerHTML = html;
+}
+
+function selectColor(id) {
+  selectedColor = id;
+  renderColorPicker();
+}
+
+async function addGenre() {
+  const name = document.getElementById("newGenreName").value.trim();
+  const emoji = document.getElementById("newGenreEmoji").value.trim() || '📚';
+  const preview = document.getElementById("newGenrePreview").value.trim();
+  
+  if (!name) { alert("Coloca um nome ✦"); return; }
+  if (!selectedColor) { alert("Escolhe uma cor ✦"); return; }
+  
+  // Gera ID a partir do nome
+  const id = name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .substring(0, 40);
+  
+  if (!id) { alert("Nome inválido ✦"); return; }
+  if (GENRES[id]) { alert("Já existe um gênero com esse nome ✦"); return; }
+  
+  const colorOpt = COLOR_OPTIONS.find(c => c.id === selectedColor);
+  if (!colorOpt) return;
+  
+  // Adiciona localmente
+  GENRES[id] = {
+    name: name,
+    emoji: emoji,
+    color: selectedColor,
+    preview: preview || 'seu novo gênero',
+    custom: true,
+  };
+  PALETTE[id] = colorOpt.palette;
+  
+  // Salva no banco
+  try {
+    setSyncStatus("syncing", "↻ salvando gênero");
+    await supabaseFetch("genres", {
+      method: 'POST',
+      body: JSON.stringify({
+        id: id,
+        name: name,
+        emoji: emoji,
+        color: selectedColor,
+        preview: preview || null,
+        palette: colorOpt.palette,
+        sort_order: Object.keys(GENRES).length,
+      }),
+    });
+    setSyncStatus("synced", "✦ sincronizado");
+  } catch(e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ gênero não sincronizou");
+  }
+  
+  // Limpa form
+  document.getElementById("newGenreEmoji").value = "";
+  document.getElementById("newGenreName").value = "";
+  document.getElementById("newGenrePreview").value = "";
+  selectedColor = null;
+  
+  renderGenresList();
+  renderColorPicker();
+}
+
+async function deleteGenre(id) {
+  const bookCount = state.books.filter(b => b.g === id).length;
+  const msg = bookCount > 0 
+    ? `Excluir "${GENRES[id].name}"? ${bookCount} livro(s) desse gênero serão mantidos mas ficarão "sem gênero".`
+    : `Excluir "${GENRES[id].name}"?`;
+  if (!confirm(msg)) return;
+  
+  delete GENRES[id];
+  delete PALETTE[id];
+  
+  try {
+    await supabaseFetch(`genres?id=eq.${id}`, { method: 'DELETE' });
+  } catch(e) { console.error(e); }
+  
+  renderGenresList();
+  renderAll();
+}
+
+document.getElementById("genresModal").addEventListener("click", (e) => {
+  if (e.target.id === "genresModal") closeGenresModal();
+});
+document.getElementById("editSessionModal").addEventListener("click", (e) => {
+  if (e.target.id === "editSessionModal") closeEditSession();
+});
 
 document.getElementById("addModal").addEventListener("click", (e) => {
   if (e.target.id === "addModal") closeAddBook();
@@ -3768,6 +4422,9 @@ async function init() {
   if (config.supabaseUrl && config.supabaseKey) {
     setSyncStatus("syncing", "↻ carregando");
     renderAll();
+    
+    // Carrega gêneros customizados
+    await loadGenresFromDb();
     
     // Verifica se é a primeira vez com banco vazio (só pra credenciais embutidas)
     try {
