@@ -2972,8 +2972,10 @@ async function supabaseFetch(path, options = {}) {
     const err = await resp.text();
     throw new Error(`Supabase ${resp.status}: ${err}`);
   }
-  if (resp.status === 204) return null;
-  return await resp.json();
+  // 204 No Content ou body vazio (return=minimal retorna 200 com body vazio)
+  const text = await resp.text();
+  if (!text || !text.trim()) return null;
+  return JSON.parse(text);
 }
 
 // Mapear entre formato do banco e formato do app
@@ -3017,7 +3019,10 @@ async function syncFromSupabase() {
   setSyncStatus("syncing", "↻ sincronizando");
   try {
     const userId = currentUser ? currentUser.id : null;
-    const filter = userId ? `user_id=eq.${encodeURIComponent(userId)}&` : '';
+    // Busca livros do usuário + livros órfãos (user_id null, adicionados antes do login)
+    const filter = userId
+      ? `or=(user_id.eq.${encodeURIComponent(userId)},user_id.is.null)&`
+      : '';
     const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
       const oldCovers = state.covers || {};
@@ -3199,7 +3204,7 @@ function reconfigureSupabase() {
 
 // ============ HELPERS ============
 function getBookById(id) { return state.books.find(b => b.id === id); }
-function availableBooks(genreKey) { return state.books.filter(b => b.g === genreKey && b.status === "pendente"); }
+function availableBooks(genreKey) { return genreKey === null ? state.books.filter(b => b.status === "pendente") : state.books.filter(b => b.g === genreKey && b.status === "pendente"); }
 function readingBooksInGenre(genreKey) { return state.books.filter(b => b.g === genreKey && b.status === "reading"); }
 
 function coverKey(title, author) {
@@ -3564,7 +3569,36 @@ function renderGenres() {
   }
 
   container.style.gridTemplateColumns = "";
-  
+
+  // Card "Todos" fixo no topo da aba Pendentes
+  if (state.filter === "pendente") {
+    const allPending = availableBooks(null).length;
+    if (allPending > 0) {
+      const allCard = document.createElement("div");
+      allCard.className = "genre-card c-butter";
+      allCard.style.cssText = "grid-column: 1 / -1;";
+      allCard.onclick = () => openModal(null);
+      allCard.innerHTML = `
+        <div class="genre-header">
+          <div>
+            <div class="genre-emoji">✦</div>
+            <div class="genre-name">Todos os gêneros</div>
+          </div>
+          <div class="genre-count">${allPending} livro${allPending !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="genre-meta">
+          <div class="genre-preview">girar sem distinção de gênero</div>
+          <button class="spin-btn" onclick="event.stopPropagation(); openModal(null)" aria-label="Girar roda">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      `;
+      container.appendChild(allCard);
+    }
+  }
+
   Object.entries(GENRES).forEach(([key, g]) => {
     const count = getFilteredCount(key);
     const totalInGenre = state.books.filter(b => b.g === key).length;
@@ -3725,8 +3759,10 @@ let spinning = false;
 
 function openModal(genreKey) {
   currentGenre = genreKey;
-  const g = GENRES[genreKey];
-  document.getElementById("modalTitle").innerHTML = `<em>${g.name}</em> ${g.emoji}`;
+  const g = genreKey ? GENRES[genreKey] : null;
+  document.getElementById("modalTitle").innerHTML = g
+    ? `<em>${g.name}</em> ${g.emoji}`
+    : `<em>todos</em> os pendentes ✦`;
   document.querySelector(".wheel-wrapper").style.display = "";
   document.getElementById("spinBtn").style.display = "";
   
@@ -3747,7 +3783,6 @@ function openModal(genreKey) {
 }
 
 function updateModalSub() {
-  if (!currentGenre) return;
   const pending = availableBooks(currentGenre).length;
   document.getElementById("modalSub").textContent = 
     pending === 0 ? "Nenhum livro disponível na roda ✦" : `${pending} livro${pending > 1 ? 's' : ''} esperando por você`;
@@ -3766,7 +3801,8 @@ document.getElementById("modal").addEventListener("click", (e) => {
 function renderWheel(genreKey) {
   const wheel = document.getElementById("wheel");
   const books = availableBooks(genreKey);
-  const colors = PALETTE[genreKey];
+  // Para "todos": cada fatia usa a cor primária do seu gênero
+  const colors = genreKey ? PALETTE[genreKey] : null;
   
   if (books.length === 0) {
     wheel.innerHTML = `
@@ -3810,7 +3846,7 @@ function renderWheel(genreKey) {
     const pathData = n === 1
       ? `M 100 100 m -100 0 a 100 100 0 1 0 200 0 a 100 100 0 1 0 -200 0`
       : `M 100 100 L ${x1} ${y1} A 100 100 0 ${largeArc} 1 ${x2} ${y2} Z`;
-    const color = colors[i % colors.length];
+    const color = colors ? colors[i % colors.length] : (PALETTE[book.g] || ["#e8a9a0","#b8a8c8"])[i % 2];
     svg += `<path d="${pathData}" fill="${color}" stroke="#f4ecd8" stroke-width="1.5"/>`;
     
     const midAngle = (startAngle + endAngle) / 2;
@@ -4548,7 +4584,7 @@ function confirmAbandon() {
 // ============ BOOK LIST NO MODAL DE GÊNERO ============
 function renderBookList(genreKey) {
   const container = document.getElementById("bookList");
-  const books = state.books.filter(b => b.g === genreKey);
+  const books = genreKey === null ? state.books : state.books.filter(b => b.g === genreKey);
   
   if (books.length === 0) { container.innerHTML = ""; return; }
   
@@ -5301,18 +5337,40 @@ async function init() {
   }
 
   setSyncStatus("syncing", "↻ carregando");
-  renderAll();
+  // Só renderiza antes do sync se já tem livros em cache local
+  // Caso contrário, espera o sync terminar para não mostrar estante vazia por 1 segundo
+  if (state.books && state.books.length > 0) renderAll();
 
   await loadGenresFromDb();
 
   try {
     const userId = currentUser.id;
+
+    // 1. Verifica livros com user_id correto
     const rows = await supabaseFetch(`books?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`);
+
     if (Array.isArray(rows) && rows.length === 0) {
-      await seedInitialBooks();
-    } else {
-      await syncFromSupabase();
+      // 2. Nenhum livro com esse user_id — pode ser que existam livros órfãos (user_id null)
+      //    Isso acontece quando livros foram adicionados antes do login estar ativo
+      const orphans = await supabaseFetch(`books?user_id=is.null&select=id&limit=1`);
+
+      if (Array.isArray(orphans) && orphans.length > 0) {
+        // Adota os livros órfãos: atualiza user_id para o usuário atual
+        setSyncStatus("syncing", "↻ vinculando livros");
+        await supabaseFetch(`books?user_id=is.null`, {
+          method: 'PATCH',
+          body: JSON.stringify({ user_id: userId }),
+          headers: { 'Prefer': 'return=minimal' },
+        });
+      } else {
+        // Realmente não tem nenhum livro — estante nova
+        await seedInitialBooks();
+        return;
+      }
     }
+
+    // 3. Puxa todos os livros do usuário
+    await syncFromSupabase();
   } catch (e) {
     console.error(e);
     setSyncStatus("error", "⚠ erro de sync");
