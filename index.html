@@ -2594,28 +2594,49 @@ async function _processCoverQueue() {
   if (_coverRunning) return;
   _coverRunning = true;
   while (_coverQueue.length > 0) {
-    const { title, author, resolve } = _coverQueue.shift();
-    const url = await fetchCover(title, author);
-    resolve(url);
-    if (_coverQueue.length > 0) await new Promise(r => setTimeout(r, 300));
+    const { title, author, resolveCover, resolvePages } = _coverQueue.shift();
+    const meta = await fetchBookMeta(title, author);
+    resolveCover(meta.cover);
+    if (resolvePages) resolvePages(meta.pages);
+    // 500ms entre requisições — Open Library é generosa mas não ilimitada
+    if (_coverQueue.length > 0) await new Promise(r => setTimeout(r, 500));
   }
   _coverRunning = false;
 }
 
-function queueCover(title, author) {
+function queueMeta(title, author) {
+  // Retorna { cover, pages } via fila throttled
   return new Promise(resolve => {
-    // Se já está em cache, resolve imediatamente sem enfileirar
     const key = coverKey(title, author);
-    if (state.covers && state.covers[key]) {
-      resolve(state.covers[key] === "NONE" ? null : state.covers[key]);
+    const hasCover = state.covers && state.covers[key];
+    const hasPages = state.bookPages && state.bookPages[key];
+    if (hasCover && hasPages) {
+      resolve({
+        cover: state.covers[key] === "NONE" ? null : state.covers[key],
+        pages: state.bookPages[key] || null,
+      });
       return;
     }
-    // Evita duplicatas na fila
     const already = _coverQueue.find(x => x.title === title && x.author === author);
-    if (already) { already.resolve = resolve; return; }
-    _coverQueue.push({ title, author, resolve });
+    if (already) {
+      const prevCover = already.resolveCover;
+      const prevPages = already.resolvePages;
+      already.resolveCover = (url)   => { prevCover(url); resolve({ cover: url, pages: null }); };
+      already.resolvePages = (pages) => { if (prevPages) prevPages(pages); };
+      return;
+    }
+    _coverQueue.push({
+      title, author,
+      resolveCover: (cover) => resolve({ cover, pages: state.bookPages && state.bookPages[coverKey(title, author)] || null }),
+      resolvePages: null,
+    });
     _processCoverQueue();
   });
+}
+
+// Compat: queueCover ainda funciona para chamadas isoladas
+function queueCover(title, author) {
+  return queueMeta(title, author).then(m => m.cover);
 }
 
 // ============ LOGIN — Supabase Auth ============
@@ -3188,126 +3209,70 @@ function coverKey(title, author) {
 // ============ CAPAS ============
 // Busca de capas e páginas: Google Books (prioridade) + Open Library (fallback)
 
-async function fetchCover(title, author) {
+// ── fetchBookMeta: busca capa + páginas em UMA ÚNICA chamada por livro ───────
+// Usa Open Library como primária (sem rate limit) + Amazon ISBN como capa
+// Google Books removido daqui — causa 429 quando chamado em série para muitos livros
+async function fetchBookMeta(title, author) {
   const key = coverKey(title, author);
-  if (!state.covers) state.covers = {};
-  if (state.covers[key]) {
-    return state.covers[key] === "NONE" ? null : state.covers[key];
+  if (!state.covers)    state.covers   = {};
+  if (!state.bookPages) state.bookPages = {};
+
+  // Já tem tudo em cache
+  const hasCover = !!state.covers[key];
+  const hasPages = !!state.bookPages[key];
+  if (hasCover && hasPages) {
+    return {
+      cover: state.covers[key] === "NONE" ? null : state.covers[key],
+      pages: state.bookPages[key] || null,
+    };
   }
 
-  // 1. Google Books — melhor cobertura PT-BR
+  // Open Library — sem rate limit, retorna capa + páginas de uma vez
   try {
-    const q = encodeURIComponent(`intitle:${title} inauthor:${author}`);
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo(imageLinks,pageCount,industryIdentifiers))`;
-    const resp = await fetch(url);
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.items && data.items[0]) {
-        const v = data.items[0].volumeInfo;
-        // Páginas
-        if (v.pageCount) {
-          state.bookPages = state.bookPages || {};
-          state.bookPages[key] = state.bookPages[key] || v.pageCount;
-        }
-        // Capa em alta resolução
-        if (v.imageLinks) {
-          let coverUrl = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '')
-            .replace('http://', 'https://')
-            .replace('&edge=curl', '')
-            .replace('zoom=1', 'zoom=0');
-          if (coverUrl) {
-            state.covers[key] = coverUrl;
-            saveState();
-            return coverUrl;
-          }
-        }
-        // Se não tem capa no Google, tenta Amazon via ISBN
-        const ids = v.industryIdentifiers || [];
-        const isbn13 = (ids.find(x => x.type === 'ISBN_13') || {}).identifier;
-        const isbn10 = (ids.find(x => x.type === 'ISBN_10') || {}).identifier;
-        const isbn = isbn13 || isbn10;
-        if (isbn) {
-          const amzUrl = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
-          state.covers[key] = amzUrl;
-          saveState();
-          return amzUrl;
-        }
-      }
-    }
-  } catch(e) { /* cai para Open Library */ }
-
-  // 2. Open Library — fallback
-  try {
-    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`;
+    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1&fields=cover_i,number_of_pages_median,isbn`;
     const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
     if (resp.ok) {
       const data = await resp.json();
-      if (data.docs && data.docs.length > 0) {
-        const doc = data.docs[0];
-        if (doc.number_of_pages_median) {
-          state.bookPages = state.bookPages || {};
-          state.bookPages[key] = state.bookPages[key] || doc.number_of_pages_median;
+      const doc = data.docs && data.docs[0];
+      if (doc) {
+        // Páginas
+        if (!hasPages && doc.number_of_pages_median) {
+          state.bookPages[key] = doc.number_of_pages_median;
         }
-        if (doc.cover_i) {
-          const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
-          state.covers[key] = url;
-          saveState();
-          return url;
-        }
-        // Open Library ISBN → Amazon
-        const isbns = doc.isbn || [];
-        const isbn = isbns.find(i => i.length === 13) || isbns.find(i => i.length === 10);
-        if (isbn) {
-          const amzUrl = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
-          state.covers[key] = amzUrl;
-          saveState();
-          return amzUrl;
+        // Capa: Open Library direto
+        if (!hasCover) {
+          if (doc.cover_i) {
+            state.covers[key] = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+          } else {
+            // Fallback: Amazon via ISBN
+            const isbns = doc.isbn || [];
+            const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10);
+            if (isbn) {
+              state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+            }
+          }
         }
       }
     }
   } catch(e) { /* silencia */ }
 
-  state.covers[key] = "NONE";
+  if (!state.covers[key]) state.covers[key] = "NONE";
   saveState();
-  return null;
+  return {
+    cover: state.covers[key] === "NONE" ? null : state.covers[key],
+    pages: state.bookPages[key] || null,
+  };
+}
+
+// Wrappers de compatibilidade — usam fetchBookMeta internamente
+async function fetchCover(title, author) {
+  const meta = await fetchBookMeta(title, author);
+  return meta.cover;
 }
 
 async function fetchPages(title, author) {
-  const key = coverKey(title, author);
-  if (!state.bookPages) state.bookPages = {};
-  if (state.bookPages[key]) return state.bookPages[key];
-
-  // 1. Google Books
-  try {
-    const q = encodeURIComponent(`intitle:${title} inauthor:${author}`);
-    const resp = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo(pageCount))`);
-    if (resp.ok) {
-      const data = await resp.json();
-      const pages = data.items && data.items[0] && data.items[0].volumeInfo.pageCount;
-      if (pages) {
-        state.bookPages[key] = pages;
-        saveState();
-        return pages;
-      }
-    }
-  } catch(e) {}
-
-  // 2. Open Library
-  try {
-    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`;
-    const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
-    if (resp.ok) {
-      const data = await resp.json();
-      const pages = data.docs && data.docs[0] && data.docs[0].number_of_pages_median;
-      if (pages) {
-        state.bookPages[key] = pages;
-        saveState();
-        return pages;
-      }
-    }
-  } catch(e) {}
-
-  return null;
+  const meta = await fetchBookMeta(title, author);
+  return meta.pages;
 }
 
 const COVER_ORNAMENTS = ['✦', '✧', '❀', '❃', '✺', '☽', '✿', '❦'];
@@ -3656,26 +3621,25 @@ function renderGenres() {
         `;
         container.appendChild(card);
         
-        queueCover(book.t, book.a).then(url => {
-          if (!url) return;
-          const coverEl = document.getElementById(coverId);
-          if (!coverEl) return;
-          const img = new Image();
-          img.onload = () => { coverEl.innerHTML = `<img src="${url}" alt="${escapeHtml(book.t)}">`; };
-          img.src = url;
-        });
-        
-        // Também busca páginas se ainda não tiver
-        if (!book.pagesTotal) {
-          fetchPages(book.t, book.a).then(pages => {
-            if (pages && !book.pagesTotal) {
-              book.pagesTotal = pages;
-              saveState();
-              pushBook(book);
-              renderAll();
+        // Uma única chamada enfileirada busca capa + páginas juntos
+        queueMeta(book.t, book.a).then(meta => {
+          // Aplica capa
+          if (meta.cover) {
+            const coverEl = document.getElementById(coverId);
+            if (coverEl) {
+              const img = new Image();
+              img.onload = () => { coverEl.innerHTML = `<img src="${meta.cover}" alt="${escapeHtml(book.t)}">`; };
+              img.src = meta.cover;
             }
-          });
-        }
+          }
+          // Aplica páginas se não tinha
+          if (meta.pages && !book.pagesTotal) {
+            book.pagesTotal = meta.pages;
+            saveState();
+            pushBook(book);
+            renderAll();
+          }
+        });
       });
       return;
     }
@@ -4740,26 +4704,33 @@ async function searchTitles(q) {
   autocompleteAbort = new AbortController();
   const sig = autocompleteAbort.signal;
 
+  // Mostra loading
+  results.innerHTML = `<div style="padding:12px 16px; font-size:13px; color:var(--ink-soft);">buscando...</div>`;
+  results.classList.add("open");
+
   try {
-    // Busca paralela: Google Books + Open Library
-    const [googleItems, olItems] = await Promise.allSettled([
+    // Busca paralela: Mercado Livre (lançamentos BR) + Google Books + Open Library
+    const [mlItems, googleItems, olItems] = await Promise.allSettled([
+      searchMercadoLivre(q, sig),
       searchGoogleBooks(q, sig),
       searchOpenLibrary(q, sig),
     ]);
 
-    const gItems = googleItems.status === 'fulfilled' ? googleItems.value : [];
-    const oItems = olItems.status  === 'fulfilled' ? olItems.value  : [];
+    const mlResult = mlItems.status    === 'fulfilled' ? mlItems.value    : [];
+    const gResult  = googleItems.status === 'fulfilled' ? googleItems.value : [];
+    const oResult  = olItems.status     === 'fulfilled' ? olItems.value     : [];
 
-    // Mescla: Google tem prioridade; deduplica por título+autor normalizado
+    // Mescla: ML primeiro (mais atualizado BR), depois Google, depois OL
+    // Deduplica por título+autor normalizado
     const seen = new Set();
     const merged = [];
-    for (const item of [...gItems, ...oItems]) {
+    for (const item of [...mlResult, ...gResult, ...oResult]) {
       const norm = (item.title + '|' + (item.author_name || []).join('')).toLowerCase().replace(/\s+/g, '');
       if (!seen.has(norm)) {
         seen.add(norm);
         merged.push(item);
       }
-      if (merged.length >= 8) break;
+      if (merged.length >= 18) break;
     }
 
     autocompleteCache[q] = merged;
@@ -4770,16 +4741,67 @@ async function searchTitles(q) {
   }
 }
 
+async function searchMercadoLivre(q, signal) {
+  // MLB1574 = categoria Livros no Mercado Livre Brasil
+  const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(q)}&category=MLB1574&limit=12`;
+  try {
+    const resp = await fetch(url, { signal });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const out = [];
+    const seen = new Set();
+    for (const item of (data.results || [])) {
+      // Extrai título limpo e autor do título (padrão "Título - Autor" ou "Título / Autor")
+      const rawTitle = item.title || '';
+      // Tenta separar autor do título pelo padrão comum no ML: "Título - Autor" ou "Título: Autor"
+      let title = rawTitle;
+      let author = '';
+      const sepMatch = rawTitle.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+      if (sepMatch) {
+        title  = sepMatch[1].trim();
+        author = sepMatch[2].trim();
+      }
+      // Limpa sufixos comuns do ML
+      title = title.replace(/\s*\(.*?\)\s*$/g, '').trim();
+
+      const norm = (title + author).toLowerCase().replace(/\s+/g, '');
+      if (seen.has(norm) || !title) continue;
+      seen.add(norm);
+
+      // Capa: thumbnail do ML, trocando para alta res
+      const thumb = (item.thumbnail || '').replace(/\/(I|W)\d+\.webp/, '/W400.webp')
+                                          .replace('http://', 'https://');
+
+      out.push({
+        title,
+        author_name: author ? [author] : [],
+        number_of_pages_median: null,
+        subject: [],
+        isbn: [], isbn13: null, isbn10: null,
+        cover_url: thumb || null,
+        amz_cover: null,
+        cover_i: null,
+        _source: 'ml',
+        ml_url: item.permalink || null,
+      });
+      if (out.length >= 12) break;
+    }
+    return out;
+  } catch(e) {
+    if (e.name === 'AbortError') throw e;
+    return [];
+  }
+}
+
 async function searchGoogleBooks(q, signal) {
   const base = `https://www.googleapis.com/books/v1/volumes`;
   const fields = `fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers,language))`;
 
-  // Busca 1: langRestrict=pt  — edições em português
-  // Busca 2: country=BR       — catálogo Brasil
-  // Busca 3: "edição brasileira" appended — força resultado BR
+  // Três buscas paralelas: pt, geral e country=BR — maximize cobertura
   const queries = [
-    `${base}?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=pt&printType=books&${fields}`,
-    `${base}?q=${encodeURIComponent(q)}&maxResults=6&printType=books&country=BR&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=10&langRestrict=pt&printType=books&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=10&printType=books&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=10&printType=books&country=BR&${fields}`,
   ];
 
   const results = await Promise.allSettled(
@@ -4792,16 +4814,16 @@ async function searchGoogleBooks(q, signal) {
   const out = [];
   for (const raw of allItems) {
     const v = raw.volumeInfo;
-    if (!v || !v.title || !v.authors) continue;
+    if (!v || !v.title) continue; // aceita mesmo sem autores conhecidos
+    const authors = v.authors || [];
     const ids = v.industryIdentifiers || [];
     const isbn13 = (ids.find(x => x.type === 'ISBN_13') || {}).identifier || null;
     const isbn10 = (ids.find(x => x.type === 'ISBN_10') || {}).identifier || null;
     const isbns  = ids.map(x => x.identifier);
-    const dedupeKey = isbn13 || isbn10 || (v.title + (v.authors[0]||'')).toLowerCase().replace(/\s/g,'');
+    const dedupeKey = isbn13 || isbn10 || (v.title + (authors[0]||'')).toLowerCase().replace(/\s/g,'');
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    // Capa Google Books (pode falhar CORS no browser, mas tentamos)
     let googleCover = null;
     if (v.imageLinks) {
       googleCover = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '')
@@ -4809,7 +4831,6 @@ async function searchGoogleBooks(q, signal) {
         .replace(/[?&]edge=curl/g, '')
         .replace('zoom=1', 'zoom=0');
     }
-    // Capa Amazon BR — usa ISBN13 primeiro, ISBN10 como fallback
     const amzCover = isbn13
       ? `https://images-na.ssl-images-amazon.com/images/P/${isbn13}.01.LZZZZZZZ.jpg`
       : isbn10
@@ -4818,28 +4839,29 @@ async function searchGoogleBooks(q, signal) {
 
     out.push({
       title: v.title,
-      author_name: v.authors || [],
+      author_name: authors,
       number_of_pages_median: v.pageCount || null,
       subject: v.categories || [],
       isbn: isbns, isbn13, isbn10,
-      cover_url: googleCover,   // tentamos Google primeiro no render
-      amz_cover: amzCover,      // fallback Amazon BR
+      cover_url: googleCover,
+      amz_cover: amzCover,
       cover_i: null,
       _source: 'google',
     });
-    if (out.length >= 8) break;
+    if (out.length >= 15) break;
   }
   return out;
 }
 
 async function searchOpenLibrary(q, signal) {
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=4&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn&language=por`;
+  // Sem filtro de língua — inclui livros em pt, en e outros
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=10&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn`;
   const resp = await fetch(url, { signal });
   if (!resp.ok) return [];
   const data = await resp.json();
   return (data.docs || [])
-    .filter(d => d.title && d.author_name)
-    .map(d => ({ ...d, _source: 'ol' }));
+    .filter(d => d.title)
+    .map(d => ({ ...d, author_name: d.author_name || [], _source: 'ol' }));
 }
 
 function renderAutocomplete(items) {
@@ -4877,11 +4899,14 @@ function renderAutocomplete(items) {
     }
     const author = (item.author_name || []).slice(0, 2).join(", ");
     const pages = item.number_of_pages_median ? `${item.number_of_pages_median} pgs` : '';
+    const sourceBadge = item._source === 'ml'
+      ? `<span style="font-size:9px;background:#ffe600;color:#333;border-radius:3px;padding:1px 4px;margin-left:4px;font-weight:600;vertical-align:middle;">ML</span>`
+      : '';
     
     html += `<div class="autocomplete-item" data-index="${i}" onmousedown="selectAutocomplete(${i})">
       ${cover}
       <div class="autocomplete-info">
-        <div class="autocomplete-title">${escapeHtml(item.title)}</div>
+        <div class="autocomplete-title">${escapeHtml(item.title)}${sourceBadge}</div>
         <div class="autocomplete-author">${escapeHtml(author)}</div>
         ${pages ? `<div class="autocomplete-pages">${pages}</div>` : ''}
       </div>
