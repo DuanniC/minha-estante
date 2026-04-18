@@ -325,6 +325,47 @@
     font-weight: 400;
     color: var(--rose-deep);
   }
+  .hero h1 em.gender-masc {
+    color: var(--sky-deep);
+  }
+
+  .gender-toggle {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0 4px;
+  }
+  .gender-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border: 2px solid var(--cream-dark);
+    border-radius: 12px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .gender-btn.selected-fem {
+    border-color: var(--rose-deep);
+    background: #fdf0ee;
+    color: var(--rose-deep);
+  }
+  .gender-btn.selected-masc {
+    border-color: var(--sky-deep);
+    background: #eaf3f8;
+    color: var(--sky-deep);
+  }
+  .profile-section {
+    border-top: 1px solid var(--cream-dark);
+    padding-top: 20px;
+    margin-top: 8px;
+  }
   
   .hero p {
     margin-top: 14px;
@@ -1931,6 +1972,7 @@
     <div class="login-deco">✦</div>
     <div class="login-title">Minha<br><em>estante</em></div>
     <div class="login-sub" id="loginSub">bem-vinda de volta ✦</div>
+    <div class="login-sub" id="loginSubCadastro" style="display:none;">cria sua conta ✦</div>
 
     <div class="login-tabs">
       <button class="login-tab active" id="tabEntrar" onclick="switchLoginTab('entrar')">Entrar</button>
@@ -1961,6 +2003,13 @@
       <div class="login-field">
         <label>Senha</label>
         <input type="password" id="cadastroPassword" placeholder="mínimo 6 caracteres" autocomplete="new-password">
+      </div>
+      <div class="login-field">
+        <label>Você é</label>
+        <div class="gender-toggle">
+          <button type="button" class="gender-btn" id="genderFem" onclick="selectGender('feminino')">🌸 Feminino</button>
+          <button type="button" class="gender-btn" id="genderMasc" onclick="selectGender('masculino')">🌊 Masculino</button>
+        </div>
       </div>
       <button class="login-enter-btn" id="cadastroBtn" onclick="doSignUp()">Criar conta ✦</button>
     </div>
@@ -2107,13 +2156,13 @@ create policy "acesso total genres" on genres
   
   <div class="hero">
     <span class="hero-deco">✦</span>
-    <h1>qual vai ser<br>sua <em>próxima</em><br>leitura?</h1>
+    <h1>qual vai ser<br>sua <em id="heroWord">próxima</em><br>leitura?</h1>
     <p>Gira a roda do gênero que tá te chamando e deixa a sorte escolher por você.</p>
   </div>
   
   <div class="tabs">
-    <button class="tab active" data-filter="todos">Todos</button>
-    <button class="tab" data-filter="reading">Lendo</button>
+    <button class="tab" data-filter="todos">Todos</button>
+    <button class="tab active" data-filter="reading">Lendo</button>
     <button class="tab" data-filter="pendente">Pendentes</button>
     <button class="tab" data-filter="favoritos"><span class="fav-icon">♥</span>Favoritos</button>
     <button class="tab" data-filter="lido">Já lidos</button>
@@ -2344,10 +2393,22 @@ create policy "acesso total genres" on genres
       <h2 class="modal-title"><em>Gerenciar</em> gêneros</h2>
       <button class="modal-close" onclick="closeGenresModal()">×</button>
     </div>
-    <p class="modal-sub">Adicione, edite ou remova categorias ✦</p>
+    <p class="modal-sub">Perfil, gêneros literários e mais ✦</p>
     
     <div id="genresList"></div>
     
+    <div class="profile-section">
+      <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">meu perfil</div>
+      <div class="login-field" style="margin-bottom: 8px;">
+        <label class="form-label">Você é</label>
+        <div class="gender-toggle">
+          <button type="button" class="gender-btn" id="profileGenderFem" onclick="selectProfileGender('feminino')">🌸 Feminino</button>
+          <button type="button" class="gender-btn" id="profileGenderMasc" onclick="selectProfileGender('masculino')">🌊 Masculino</button>
+        </div>
+      </div>
+      <button class="form-btn" onclick="saveProfileGender()" style="margin-top:4px;">Salvar perfil ✦</button>
+    </div>
+
     <div style="border-top: 1px solid var(--cream-dark); padding-top: 20px; margin-top: 20px;">
       <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">
         adicionar novo
@@ -2520,7 +2581,7 @@ const CONFIG_KEY = "minha_estante_config";
 const LOGIN_KEY  = "minha_estante_login";
 let currentUser = null; // objeto de sessão Supabase Auth { id, email, user_metadata }
 let STORAGE_KEY  = "minha_estante_v3";
-let state  = { books: [], filter: "todos", covers: {} };
+let state  = { books: [], filter: "reading", covers: {} };
 let config = loadConfig();
 let supabase = null;
 let syncing  = false;
@@ -2528,7 +2589,46 @@ let syncing  = false;
 // ============ LOGIN — Supabase Auth ============
 let _loginTab = "entrar"; // "entrar" | "cadastro"
 
+let _selectedGender = null;
+let _selectedProfileGender = null;
+
+function selectGender(g) {
+  _selectedGender = g;
+  window._selectedGender = g;
+  document.getElementById("genderFem").className  = "gender-btn" + (g === "feminino"  ? " selected-fem"  : "");
+  document.getElementById("genderMasc").className = "gender-btn" + (g === "masculino" ? " selected-masc" : "");
+}
+
+function selectProfileGender(g) {
+  _selectedProfileGender = g;
+  document.getElementById("profileGenderFem").className  = "gender-btn" + (g === "feminino"  ? " selected-fem"  : "");
+  document.getElementById("profileGenderMasc").className = "gender-btn" + (g === "masculino" ? " selected-masc" : "");
+}
+
+async function saveProfileGender() {
+  if (!_selectedProfileGender) { alert("Seleciona uma opção ✦"); return; }
+  if (!currentUser) return;
+  const { url, key } = getSupabaseCreds();
+  try {
+    setSyncStatus("syncing", "↻ salvando perfil");
+    const resp = await fetch(`${url}/auth/v1/user`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${currentUser.token}` },
+      body: JSON.stringify({ data: { display_name: currentUser.name, gender: _selectedProfileGender } }),
+    });
+    if (!resp.ok) throw new Error("Erro ao salvar");
+    currentUser.gender = _selectedProfileGender;
+    applyGender(_selectedProfileGender);
+    setSyncStatus("synced", "✦ perfil salvo");
+    alert("Perfil atualizado ✦");
+  } catch(e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ erro ao salvar perfil");
+  }
+}
+
 function switchLoginTab(tab) {
+  _selectedGender = null; window._selectedGender = null;
   _loginTab = tab;
   document.getElementById("loginForm").style.display    = tab === "entrar"   ? "block" : "none";
   document.getElementById("cadastroForm").style.display = tab === "cadastro" ? "block" : "none";
@@ -2628,7 +2728,7 @@ async function doSignUp() {
     const resp = await fetch(`${url}/auth/v1/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "apikey": key },
-      body: JSON.stringify({ email, password, data: { display_name: name } }),
+      body: JSON.stringify({ email, password, data: { display_name: name, gender: window._selectedGender || null } }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error_description || data.msg || "Erro ao criar conta");
@@ -2648,11 +2748,13 @@ async function doSignUp() {
 function afterLogin(authData) {
   // authData tem access_token, user { id, email, user_metadata }
   const user = authData.user;
+  const gender = (user.user_metadata && user.user_metadata.gender) || null;
   currentUser = {
     id:    user.id,
     email: user.email,
     name:  (user.user_metadata && user.user_metadata.display_name) || user.email.split("@")[0],
     token: authData.access_token,
+    gender: gender,
   };
   // Armazena token para reload automático
   try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: authData.access_token, refresh: authData.refresh_token, user })); } catch(e) {}
@@ -2660,9 +2762,25 @@ function afterLogin(authData) {
   // Atualiza chip
   document.getElementById("userChip").style.display = "flex";
   document.getElementById("userChipName").textContent = currentUser.name;
+  applyGender(gender);
   hideLogin();
   state = loadState();
   init();
+}
+
+function applyGender(gender) {
+  const el = document.getElementById("heroWord");
+  if (!el) return;
+  if (gender === "masculino") {
+    el.textContent = "próximo";
+    el.classList.add("gender-masc");
+  } else {
+    el.textContent = "próxima";
+    el.classList.remove("gender-masc");
+  }
+  // Atualiza texto do login sub
+  const sub = document.getElementById("loginSub");
+  if (sub) sub.textContent = gender === "masculino" ? "bem-vindo de volta ✦" : "bem-vinda de volta ✦";
 }
 
 async function tryAutoLogin() {
@@ -2692,7 +2810,7 @@ function doLogout() {
   try { localStorage.removeItem(LOGIN_KEY); } catch(e) {}
   document.getElementById("userChip").style.display = "none";
   document.getElementById("userChipName").textContent = "—";
-  state = { books: [], filter: "todos", covers: {} };
+  state = { books: [], filter: "reading", covers: {} };
   renderAll();
   showLogin();
 }
@@ -2769,7 +2887,7 @@ function loadState() {
   
   return {
     books: [],
-    filter: "todos",
+    filter: "reading",
     nextId: 1,
     covers: {},
   };
@@ -2868,20 +2986,18 @@ async function syncFromSupabase() {
 }
 
 async function pushBook(book) {
-  if (!config.setupDone) return;
+  if (!config.setupDone || config.skipSync) return;
+  if (location.protocol === 'file:') {
+    setSyncStatus("error", "⚠ abra via HTTPS");
+    return;
+  }
   setSyncStatus("syncing", "↻ salvando");
   try {
     const data = bookToDb(book);
-    // Upsert: tenta update, se não existir cria
-    await supabaseFetch(`books?id=eq.${book.id}`, {
-      method: 'PATCH',
+    await supabaseFetch("books", {
+      method: 'POST',
       body: JSON.stringify(data),
-    }).catch(async () => {
-      // Se não existir, cria
-      await supabaseFetch("books", {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     });
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
@@ -3039,8 +3155,7 @@ function coverKey(title, author) {
 }
 
 // ============ CAPAS ============
-// Tenta Amazon PAAPI primeiro; cai para Open Library se não configurado ou falhar.
-// A Amazon retorna URLs de imagem em alta qualidade (sem fundo, PNG quando disponível).
+// Busca de capas e páginas: Google Books (prioridade) + Open Library (fallback)
 
 async function fetchCover(title, author) {
   const key = coverKey(title, author);
@@ -3049,97 +3164,118 @@ async function fetchCover(title, author) {
     return state.covers[key] === "NONE" ? null : state.covers[key];
   }
 
-  // Tenta Amazon primeiro, se configurada
-  if (AMAZON_ACCESS_KEY && AMAZON_SECRET_KEY && AMAZON_PARTNER_TAG) {
-    try {
-      const url = await fetchCoverAmazon(title, author);
-      if (url) {
-        state.covers[key] = url;
-        saveState();
-        return url;
+  // 1. Google Books — melhor cobertura PT-BR
+  try {
+    const q = encodeURIComponent(`intitle:${title} inauthor:${author}`);
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo(imageLinks,pageCount,industryIdentifiers))`;
+    const resp = await fetch(url);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.items && data.items[0]) {
+        const v = data.items[0].volumeInfo;
+        // Páginas
+        if (v.pageCount) {
+          state.bookPages = state.bookPages || {};
+          state.bookPages[key] = state.bookPages[key] || v.pageCount;
+        }
+        // Capa em alta resolução
+        if (v.imageLinks) {
+          let coverUrl = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '')
+            .replace('http://', 'https://')
+            .replace('&edge=curl', '')
+            .replace('zoom=1', 'zoom=0');
+          if (coverUrl) {
+            state.covers[key] = coverUrl;
+            saveState();
+            return coverUrl;
+          }
+        }
+        // Se não tem capa no Google, tenta Amazon via ISBN
+        const ids = v.industryIdentifiers || [];
+        const isbn13 = (ids.find(x => x.type === 'ISBN_13') || {}).identifier;
+        const isbn10 = (ids.find(x => x.type === 'ISBN_10') || {}).identifier;
+        const isbn = isbn13 || isbn10;
+        if (isbn) {
+          const amzUrl = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+          state.covers[key] = amzUrl;
+          saveState();
+          return amzUrl;
+        }
       }
-    } catch(e) { /* cai para OpenLibrary */ }
-  }
+    }
+  } catch(e) { /* cai para Open Library */ }
 
-  // Fallback: Open Library
+  // 2. Open Library — fallback
   try {
     const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`;
     const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
-    if (!resp.ok) throw new Error("fetch failed");
-    const data = await resp.json();
-    if (data.docs && data.docs.length > 0) {
-      const doc = data.docs[0];
-      if (doc.number_of_pages_median) {
-        state.bookPages = state.bookPages || {};
-        state.bookPages[key] = doc.number_of_pages_median;
-      }
-      if (doc.cover_i) {
-        // Usa tamanho L (maior qualidade) em vez de M
-        const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
-        state.covers[key] = url;
-        saveState();
-        return url;
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.docs && data.docs.length > 0) {
+        const doc = data.docs[0];
+        if (doc.number_of_pages_median) {
+          state.bookPages = state.bookPages || {};
+          state.bookPages[key] = state.bookPages[key] || doc.number_of_pages_median;
+        }
+        if (doc.cover_i) {
+          const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+          state.covers[key] = url;
+          saveState();
+          return url;
+        }
+        // Open Library ISBN → Amazon
+        const isbns = doc.isbn || [];
+        const isbn = isbns.find(i => i.length === 13) || isbns.find(i => i.length === 10);
+        if (isbn) {
+          const amzUrl = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+          state.covers[key] = amzUrl;
+          saveState();
+          return amzUrl;
+        }
       }
     }
-  } catch (e) { /* silencia */ }
+  } catch(e) { /* silencia */ }
 
   state.covers[key] = "NONE";
   saveState();
   return null;
 }
 
-// Busca capa via Amazon PAAPI 5 (assina a requisição com AWS Signature v4)
-async function fetchCoverAmazon(title, author) {
-  // PAAPI5 requer assinatura AWS Signature V4. Como estamos num arquivo HTML puro
-  // (sem backend), precisamos de um proxy ou usar a busca por ISBN via endpoint público.
-  // Usamos o endpoint de busca da Amazon via PAAPI através de um proxy CORS-safe.
-  // Alternativa sem credenciais: busca ISBN pelo Open Library e monta URL da Amazon.
-  
-  // Estratégia: busca ISBN via Open Library, depois tenta montar URL de capa da Amazon
-  // com o padrão conhecido: images-na.ssl-images-amazon.com/images/P/{ISBN}.jpg
-  const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1&fields=isbn`;
-  const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  if (!data.docs || data.docs.length === 0) return null;
-  const doc = data.docs[0];
-  const isbns = doc.isbn || [];
-  // Prefere ISBN-13
-  const isbn = isbns.find(i => i.length === 13) || isbns.find(i => i.length === 10) || isbns[0];
-  if (!isbn) return null;
-  
-  // URL de capa da Amazon via ISBN — resolve para imagem de alta qualidade
-  // Formato: https://images-na.ssl-images-amazon.com/images/P/{ISBN10}.01.LZZZZZZZ.jpg
-  // Para ISBN-13, tenta o formato direto
-  const url = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
-  
-  // Verifica se a imagem existe (testa via fetch HEAD)
-  try {
-    const test = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
-    // no-cors retorna opaque, assumimos que funciona se não lançar
-    return url;
-  } catch(e) {
-    return null;
-  }
-}
-
 async function fetchPages(title, author) {
   const key = coverKey(title, author);
   if (!state.bookPages) state.bookPages = {};
   if (state.bookPages[key]) return state.bookPages[key];
-  
+
+  // 1. Google Books
+  try {
+    const q = encodeURIComponent(`intitle:${title} inauthor:${author}`);
+    const resp = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo(pageCount))`);
+    if (resp.ok) {
+      const data = await resp.json();
+      const pages = data.items && data.items[0] && data.items[0].volumeInfo.pageCount;
+      if (pages) {
+        state.bookPages[key] = pages;
+        saveState();
+        return pages;
+      }
+    }
+  } catch(e) {}
+
+  // 2. Open Library
   try {
     const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1`;
     const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    if (data.docs && data.docs.length > 0 && data.docs[0].number_of_pages_median) {
-      const pages = data.docs[0].number_of_pages_median;
-      state.bookPages[key] = pages;
-      saveState();
-      return pages;
+    if (resp.ok) {
+      const data = await resp.json();
+      const pages = data.docs && data.docs[0] && data.docs[0].number_of_pages_median;
+      if (pages) {
+        state.bookPages[key] = pages;
+        saveState();
+        return pages;
+      }
     }
-  } catch (e) { return null; }
+  } catch(e) {}
+
   return null;
 }
 
@@ -3415,6 +3551,8 @@ function renderGenres() {
     const pending = availableBooks(key).length;
     const reading = readingBooksInGenre(key);
     
+    // Esconde gênero que não tem nenhum livro
+    if (totalInGenre === 0) return;
     if (count === 0 && state.filter !== "todos") return;
     
     // Mostra card de livro lendo APENAS na aba "reading"
@@ -4534,26 +4672,91 @@ function setupAutocomplete() {
 async function searchTitles(q) {
   const results = document.getElementById("titleAutocomplete");
   if (!results) return;
-  
+
   if (autocompleteCache[q]) {
     renderAutocomplete(autocompleteCache[q]);
     return;
   }
-  
+
   if (autocompleteAbort) autocompleteAbort.abort();
   autocompleteAbort = new AbortController();
-  
+  const sig = autocompleteAbort.signal;
+
   try {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=6&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn`;
-    const resp = await fetch(url, { signal: autocompleteAbort.signal });
-    const data = await resp.json();
-    const items = (data.docs || []).filter(d => d.title && d.author_name);
-    autocompleteCache[q] = items;
-    renderAutocomplete(items);
+    // Busca paralela: Google Books + Open Library
+    const [googleItems, olItems] = await Promise.allSettled([
+      searchGoogleBooks(q, sig),
+      searchOpenLibrary(q, sig),
+    ]);
+
+    const gItems = googleItems.status === 'fulfilled' ? googleItems.value : [];
+    const oItems = olItems.status  === 'fulfilled' ? olItems.value  : [];
+
+    // Mescla: Google tem prioridade; deduplica por título+autor normalizado
+    const seen = new Set();
+    const merged = [];
+    for (const item of [...gItems, ...oItems]) {
+      const norm = (item.title + '|' + (item.author_name || []).join('')).toLowerCase().replace(/\s+/g, '');
+      if (!seen.has(norm)) {
+        seen.add(norm);
+        merged.push(item);
+      }
+      if (merged.length >= 8) break;
+    }
+
+    autocompleteCache[q] = merged;
+    renderAutocomplete(merged);
   } catch (e) {
     if (e.name === 'AbortError') return;
     console.error(e);
   }
+}
+
+async function searchGoogleBooks(q, signal) {
+  // Google Books API — excelente cobertura PT-BR, sem chave necessária para buscas básicas
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=pt&printType=books&fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers))`;
+  const resp = await fetch(url, { signal });
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  if (!data.items) return [];
+
+  return data.items
+    .filter(item => item.volumeInfo && item.volumeInfo.title && item.volumeInfo.authors)
+    .map(item => {
+      const v = item.volumeInfo;
+      const isbns = (v.industryIdentifiers || []).map(x => x.identifier);
+      const isbn13 = (v.industryIdentifiers || []).find(x => x.type === 'ISBN_13');
+      const isbn10 = (v.industryIdentifiers || []).find(x => x.type === 'ISBN_10');
+      // Capa Google em alta resolução: troca zoom=1 por zoom=0 ou usa thumbnail direto
+      let coverUrl = null;
+      if (v.imageLinks) {
+        coverUrl = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '').replace('http://', 'https://');
+        // Remove parâmetros de borda/edge
+        coverUrl = coverUrl.replace('&edge=curl', '').replace('?edge=curl', '');
+      }
+      return {
+        title: v.title,
+        author_name: v.authors || [],
+        number_of_pages_median: v.pageCount || null,
+        subject: v.categories || [],
+        isbn: isbns,
+        isbn13: isbn13 ? isbn13.identifier : null,
+        isbn10: isbn10 ? isbn10.identifier : null,
+        cover_url: coverUrl,   // URL direta da capa (Google)
+        cover_i: null,
+        _source: 'google',
+      };
+    });
+}
+
+async function searchOpenLibrary(q, signal) {
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn&lang=por`;
+  const resp = await fetch(url, { signal });
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  return (data.docs || [])
+    .filter(d => d.title && d.author_name)
+    .map(d => ({ ...d, _source: 'ol' }));
 }
 
 function renderAutocomplete(items) {
@@ -4567,14 +4770,16 @@ function renderAutocomplete(items) {
   
   let html = "";
   items.forEach((item, i) => {
-    // Tenta URL da Amazon via ISBN primeiro, depois Open Library
-    const isbns = item.isbn || [];
-    const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
-    let coverSrc = '';
-    if (isbn) {
-      coverSrc = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.MZZZZZZZ.jpg`;
-    } else if (item.cover_i) {
-      coverSrc = `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`;
+    // Prioridade de capa: Google direto > Amazon via ISBN > Open Library
+    let coverSrc = item.cover_url || '';
+    if (!coverSrc) {
+      const isbns = item.isbn || [];
+      const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
+      if (isbn) {
+        coverSrc = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.MZZZZZZZ.jpg`;
+      } else if (item.cover_i) {
+        coverSrc = `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg`;
+      }
     }
     const cover = coverSrc 
       ? `<img class="autocomplete-cover" src="${coverSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
@@ -4611,17 +4816,21 @@ function selectAutocomplete(index) {
   // Chuta um gênero baseado em subjects (opcional)
   guessGenreFromSubjects(item.subject || []);
   
-  // Salva a capa — prioriza Amazon via ISBN, depois Open Library
+  // Salva a capa — prioridade: Google > Amazon via ISBN > Open Library
   const key = coverKey(item.title, (item.author_name || [])[0] || '');
   if (!state.covers) state.covers = {};
   
-  const isbns = item.isbn || [];
-  const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
-  if (isbn) {
-    // Salva URL Amazon em alta qualidade (LZZZZZZZ = maior tamanho disponível)
-    state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
-  } else if (item.cover_i) {
-    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
+  if (item.cover_url) {
+    // Google Books: troca zoom=1 por zoom=0 pra versão maior
+    state.covers[key] = item.cover_url.replace('zoom=1', 'zoom=0');
+  } else {
+    const isbns = item.isbn || [];
+    const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10) || isbns[0];
+    if (isbn) {
+      state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+    } else if (item.cover_i) {
+      state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
+    }
   }
   
   if (item.number_of_pages_median) {
@@ -4695,6 +4904,10 @@ function openGenresModal() {
   document.getElementById("newGenreName").value = "";
   document.getElementById("newGenrePreview").value = "";
   selectedColor = null;
+  // Pre-select gender in profile section
+  if (currentUser && currentUser.gender) {
+    selectProfileGender(currentUser.gender);
+  }
   document.getElementById("genresModal").classList.add("open");
   document.body.style.overflow = "hidden";
 }
@@ -4719,7 +4932,7 @@ function renderGenresList() {
         <div class="genre-list-meta">${bookCount} livro${bookCount !== 1 ? 's' : ''}${isDefault ? ' · padrão' : ''}</div>
       </div>
       <div class="genre-list-actions">
-        ${!isDefault ? `<button class="sess-btn del" onclick="deleteGenre('${id}')" aria-label="Excluir">✕</button>` : ''}
+        ${bookCount === 0 ? `<button class="sess-btn del" onclick="deleteGenre('${id}')" aria-label="Excluir">✕</button>` : `<span style="font-size:11px;color:var(--ink-soft);">${bookCount} livro${bookCount!==1?'s':''}</span>`}
       </div>
     </div>`;
   });
@@ -4810,14 +5023,16 @@ async function addGenre() {
 
 async function deleteGenre(id) {
   const bookCount = state.books.filter(b => b.g === id).length;
-  const msg = bookCount > 0 
-    ? `Excluir "${GENRES[id].name}"? ${bookCount} livro(s) desse gênero serão mantidos mas ficarão "sem gênero".`
-    : `Excluir "${GENRES[id].name}"?`;
-  if (!confirm(msg)) return;
+  if (bookCount > 0) {
+    alert(`Não é possível excluir "${GENRES[id].name}" pois há ${bookCount} livro${bookCount!==1?'s':''} nesse gênero. Mova ou exclua os livros primeiro.`);
+    return;
+  }
+  if (!confirm(`Excluir o gênero "${GENRES[id].name}"?`)) return;
   
   delete GENRES[id];
   delete PALETTE[id];
   
+  // Remove do banco só se não for default (defaults não estão na tabela genres)
   try {
     await supabaseFetch(`genres?id=eq.${id}`, { method: 'DELETE' });
   } catch(e) { console.error(e); }
@@ -4884,6 +5099,11 @@ function exportHtml() {
 state = loadState();
 
 async function init() {
+  // Aviso se rodando via file:// (fetch bloqueado pelo browser)
+  if (location.protocol === 'file:') {
+    setSyncStatus("error", "⚠ abra via HTTPS");
+  }
+
   // 1. Garante credenciais: usa as embutidas se válidas, senão continua sem sync
   if (!config.setupDone) {
     if (EMBEDDED_SUPABASE_URL && EMBEDDED_SUPABASE_KEY && EMBEDDED_SUPABASE_KEY !== "SUA_CHAVE_AQUI") {
