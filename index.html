@@ -4715,44 +4715,59 @@ async function searchTitles(q) {
 }
 
 async function searchGoogleBooks(q, signal) {
-  // Google Books API — excelente cobertura PT-BR, sem chave necessária para buscas básicas
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=pt&printType=books&fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers))`;
-  const resp = await fetch(url, { signal });
-  if (!resp.ok) return [];
-  const data = await resp.json();
-  if (!data.items) return [];
+  const base = `https://www.googleapis.com/books/v1/volumes`;
+  const fields = `fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers,language))`;
 
-  return data.items
-    .filter(item => item.volumeInfo && item.volumeInfo.title && item.volumeInfo.authors)
-    .map(item => {
-      const v = item.volumeInfo;
-      const isbns = (v.industryIdentifiers || []).map(x => x.identifier);
-      const isbn13 = (v.industryIdentifiers || []).find(x => x.type === 'ISBN_13');
-      const isbn10 = (v.industryIdentifiers || []).find(x => x.type === 'ISBN_10');
-      // Capa Google em alta resolução: troca zoom=1 por zoom=0 ou usa thumbnail direto
-      let coverUrl = null;
-      if (v.imageLinks) {
-        coverUrl = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '').replace('http://', 'https://');
-        // Remove parâmetros de borda/edge
-        coverUrl = coverUrl.replace('&edge=curl', '').replace('?edge=curl', '');
-      }
-      return {
-        title: v.title,
-        author_name: v.authors || [],
-        number_of_pages_median: v.pageCount || null,
-        subject: v.categories || [],
-        isbn: isbns,
-        isbn13: isbn13 ? isbn13.identifier : null,
-        isbn10: isbn10 ? isbn10.identifier : null,
-        cover_url: coverUrl,   // URL direta da capa (Google)
-        cover_i: null,
-        _source: 'google',
-      };
+  // Busca 1: restrito a PT (edições em português)
+  const urlPt = `${base}?q=${encodeURIComponent(q)}&maxResults=8&langRestrict=pt&printType=books&${fields}`;
+  // Busca 2: catálogo do Brasil (Amazon BR / Google Play BR)
+  const urlBr = `${base}?q=${encodeURIComponent(q)}&maxResults=5&printType=books&country=BR&${fields}`;
+
+  const [r1, r2] = await Promise.allSettled([
+    fetch(urlPt, { signal }).then(r => r.json()),
+    fetch(urlBr,  { signal }).then(r => r.json()),
+  ]);
+
+  const ptItems = (r1.status === 'fulfilled' && r1.value.items) ? r1.value.items : [];
+  const brItems = (r2.status === 'fulfilled' && r2.value.items) ? r2.value.items : [];
+
+  const seen = new Set();
+  const result = [];
+  for (const raw of [...ptItems, ...brItems]) {
+    if (!raw.volumeInfo || !raw.volumeInfo.title || !raw.volumeInfo.authors) continue;
+    const v = raw.volumeInfo;
+    const ids = v.industryIdentifiers || [];
+    const isbns = ids.map(x => x.identifier);
+    const isbn13 = (ids.find(x => x.type === 'ISBN_13') || {}).identifier || null;
+    const isbn10 = (ids.find(x => x.type === 'ISBN_10') || {}).identifier || null;
+    let coverUrl = null;
+    if (v.imageLinks) {
+      coverUrl = (v.imageLinks.extraLarge || v.imageLinks.large || v.imageLinks.medium || v.imageLinks.thumbnail || '')
+        .replace('http://', 'https://')
+        .replace(/[?&]edge=curl/g, '')
+        .replace('zoom=1', 'zoom=0');
+    }
+    const amzCover = (isbn13 || isbn10) ? `https://images-na.ssl-images-amazon.com/images/P/${isbn13 || isbn10}.01.LZZZZZZZ.jpg` : null;
+    const dedupeKey = isbn13 || isbn10 || (v.title + (v.authors||[''])[0]).toLowerCase().replace(/\s/g,'');
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    result.push({
+      title: v.title,
+      author_name: v.authors || [],
+      number_of_pages_median: v.pageCount || null,
+      subject: v.categories || [],
+      isbn: isbns, isbn13, isbn10,
+      cover_url: coverUrl || amzCover,
+      cover_i: null,
+      _source: 'google',
     });
+    if (result.length >= 8) break;
+  }
+  return result;
 }
 
 async function searchOpenLibrary(q, signal) {
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=5&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn&lang=por`;
+  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=4&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn&language=por`;
   const resp = await fetch(url, { signal });
   if (!resp.ok) return [];
   const data = await resp.json();
