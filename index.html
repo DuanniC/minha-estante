@@ -2116,6 +2116,35 @@
     border-radius: 18px;
     margin-bottom: 4px;
     margin-top: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+  }
+  
+  .month-group-header:hover {
+    background: var(--cream);
+  }
+  
+  .month-group-header:active {
+    transform: scale(0.995);
+  }
+  
+  .month-group-toggle {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    color: var(--ink-soft);
+    margin-right: 8px;
+    display: inline-block;
+    transition: transform 0.25s ease;
+    transform: rotate(-90deg); /* fechado: chevron aponta pra direita */
+  }
+  
+  .month-group:not(.collapsed) .month-group-toggle {
+    transform: rotate(0deg); /* aberto: chevron aponta pra baixo */
+  }
+  
+  .month-group.collapsed .book-list {
+    display: none;
   }
   
   .month-group-title {
@@ -2146,6 +2175,144 @@
   .month-group .book-item {
     padding: 12px 18px;
   }
+  
+  /* ============ FAVORITOS — GALERIA DE CAPAS ============ */
+  .fav-gallery-header {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: -0.8px;
+    margin: 4px 4px 18px;
+    line-height: 1.1;
+  }
+  .fav-gallery-header em {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--rose-deep);
+    font-weight: 400;
+  }
+  .fav-gallery-sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: -10px 4px 22px;
+    letter-spacing: 0.2px;
+  }
+  .fav-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 18px;
+    padding: 4px;
+  }
+  @media (max-width: 600px) {
+    .fav-gallery-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+  }
+  .fav-gallery-item {
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+  }
+  .fav-gallery-item:hover { transform: translateY(-4px); }
+  .fav-gallery-item:active { transform: translateY(-1px); }
+  .fav-gallery-cover {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--cream-dark);
+    box-shadow: 0 6px 18px rgba(42, 36, 32, 0.18), 0 2px 4px rgba(42, 36, 32, 0.08);
+    position: relative;
+  }
+  .fav-gallery-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .fav-gallery-cover .cover-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 14px;
+    text-align: center;
+  }
+  .fav-gallery-heart {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--heart);
+    font-size: 15px;
+    box-shadow: 0 2px 8px rgba(42, 36, 32, 0.15);
+  }
+  .fav-gallery-info {
+    padding: 0 2px;
+  }
+  .fav-gallery-title {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.25;
+    letter-spacing: -0.2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 3px;
+  }
+  .fav-gallery-author {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .fav-gallery-stars {
+    font-size: 12px;
+    color: #d4a853;
+    letter-spacing: 1px;
+  }
+  .fav-gallery-stars .empty-star {
+    color: rgba(42, 36, 32, 0.2);
+  }
+  .fav-gallery-status {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+    margin-top: 6px;
+    background: var(--cream-dark);
+    color: var(--ink-soft);
+  }
+  .fav-gallery-status.lido { background: #d4dfc4; color: #3a4a2e; }
+  .fav-gallery-status.reading { background: var(--rose); color: var(--ink); }
   
   /* Progress bar no card do livro lendo */
   .reading-progress-bar {
@@ -3795,6 +3962,13 @@ function renderStats() {
   section.style.display = "block";
 }
 
+// Abre/fecha um grupo de mês (aba "Lidos" e "Todos")
+function toggleMonthGroup(headerEl) {
+  const group = headerEl && headerEl.closest('.month-group');
+  if (!group) return;
+  group.classList.toggle('collapsed');
+}
+
 function filterByMonth(year, month) {
   // Mostra modal com livros daquele mês
   const books = state.books.filter(b => {
@@ -3843,7 +4017,7 @@ function renderGenres() {
   
   container.innerHTML = "";
   
-  // Aba favoritos: lista plana de livros favoritos, sem gêneros
+  // Aba favoritos: galeria com capas, estilo shelf
   if (state.filter === "favoritos") {
     const favs = state.books.filter(b => b.favorite);
     if (favs.length === 0) {
@@ -3856,13 +4030,72 @@ function renderGenres() {
       return;
     }
     container.style.gridTemplateColumns = "1fr";
-    let html = `<div class="book-list" style="border:none; padding:0;">`;
-    html += `<div class="book-list-title">${favs.length} favorito${favs.length > 1 ? 's' : ''} ♥</div>`;
-    favs.forEach(book => {
-      html += renderBookItemHTML(book, true);
+    
+    // Ordena: lendo primeiro → lidos → pendentes → abandonados, e por título
+    const order = { reading: 0, lido: 1, pendente: 2, abandonado: 3 };
+    favs.sort((a, b) => {
+      const oa = order[a.status] ?? 4;
+      const ob = order[b.status] ?? 4;
+      if (oa !== ob) return oa - ob;
+      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
     });
+    
+    const statusLabel = { reading: 'lendo', lido: 'lido', pendente: 'pendente', abandonado: 'abandonado' };
+    
+    let html = `
+      <div class="fav-gallery-header">seus <em>favoritos</em> ♥</div>
+      <div class="fav-gallery-sub">${favs.length} ${favs.length > 1 ? 'livros que ficaram no coração' : 'livro que ficou no coração'}</div>
+      <div class="fav-gallery-grid">
+    `;
+    
+    favs.forEach(book => {
+      const coverId = `fav-cover-${book.id}`;
+      const stars = book.rating
+        ? '★'.repeat(book.rating) + '<span class="empty-star">' + '★'.repeat(5 - book.rating) + '</span>'
+        : '';
+      const statusClass = book.status === 'lido' || book.status === 'reading' ? book.status : '';
+      html += `
+        <div class="fav-gallery-item" onclick="openEditModal(${book.id})">
+          <div class="fav-gallery-cover" id="${coverId}">
+            ${coverFallbackHTML(book, book.g)}
+            <div class="fav-gallery-heart">♥</div>
+          </div>
+          <div class="fav-gallery-info">
+            <div class="fav-gallery-title">${escapeHtml(book.t)}</div>
+            <div class="fav-gallery-author">${escapeHtml(book.a)}</div>
+            ${stars ? `<div class="fav-gallery-stars">${stars}</div>` : ''}
+            <span class="fav-gallery-status ${statusClass}">${statusLabel[book.status] || book.status}</span>
+          </div>
+        </div>
+      `;
+    });
+    
     html += `</div>`;
     container.innerHTML = html;
+    
+    // Hidrata capas assincronamente
+    favs.forEach(book => {
+      const coverId = `fav-cover-${book.id}`;
+      const key = coverKey(book.t, book.a);
+      const cached = state.covers && state.covers[key];
+      if (cached && cached !== "NONE") {
+        const el = document.getElementById(coverId);
+        if (!el) return;
+        loadCoverWithValidation(cached, (validUrl) => {
+          el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
+        });
+      } else {
+        fetchCover(book.t, book.a).then(url => {
+          if (!url) return;
+          const el = document.getElementById(coverId);
+          if (!el) return;
+          loadCoverWithValidation(url, (validUrl) => {
+            el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
+          });
+        });
+      }
+    });
+    
     return;
   }
   
@@ -3907,9 +4140,9 @@ function renderGenres() {
         // Ordena livros dentro do mês pela data
         monthBooks.sort((a, b) => b.endDate.localeCompare(a.endDate));
         
-        html += `<div class="month-group">
-          <div class="month-group-header">
-            <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+        html += `<div class="month-group collapsed">
+          <div class="month-group-header" onclick="toggleMonthGroup(this)">
+            <span class="month-group-title"><span class="month-group-toggle">⌃</span>${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
             <span class="month-group-count">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''}</span>
           </div>
           <div class="book-list" style="border:none; padding:0; margin:0;">`;
@@ -3922,9 +4155,9 @@ function renderGenres() {
     
     // Sem data de término
     if (semData.length > 0) {
-      html += `<div class="month-group">
-        <div class="month-group-header">
-          <span class="month-group-title"><em>sem data registrada</em></span>
+      html += `<div class="month-group collapsed">
+        <div class="month-group-header" onclick="toggleMonthGroup(this)">
+          <span class="month-group-title"><span class="month-group-toggle">⌃</span><em>sem data registrada</em></span>
           <span class="month-group-count">${semData.length}</span>
         </div>
         <div class="book-list" style="border:none; padding:0; margin:0;">`;
@@ -3951,9 +4184,9 @@ function renderGenres() {
         .filter(b => b.g === key)
         .sort((a, b) => a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' }));
       if (booksInGenre.length === 0) return;
-      html += `<div class="month-group">
-        <div class="month-group-header">
-          <span class="month-group-title">${g.emoji} <em>${escapeHtml(g.name)}</em></span>
+      html += `<div class="month-group collapsed">
+        <div class="month-group-header" onclick="toggleMonthGroup(this)">
+          <span class="month-group-title"><span class="month-group-toggle">⌃</span>${g.emoji} <em>${escapeHtml(g.name)}</em></span>
           <span class="month-group-count">${booksInGenre.length} livro${booksInGenre.length !== 1 ? 's' : ''}</span>
         </div>
         <div class="book-list" style="border:none; padding:0; margin:0;">`;
