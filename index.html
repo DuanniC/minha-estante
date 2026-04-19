@@ -586,24 +586,24 @@
     position: relative;
     overflow: hidden;
     box-shadow: 
-      0 1px 3px rgba(42, 36, 32, 0.12),
-      0 6px 18px rgba(42, 36, 32, 0.18),
-      0 12px 28px rgba(42, 36, 32, 0.08);
+      0 1px 2px rgba(42, 36, 32, 0.15),
+      0 4px 12px rgba(42, 36, 32, 0.12);
     z-index: 2;
-    background: var(--cream);
-    transform: rotate(-1.5deg);
-    transition: transform 0.3s;
-  }
-  
-  .reading-card:hover .cover {
-    transform: rotate(-1.5deg) translateY(-2px);
+    background: var(--cream-dark);
   }
   
   .cover img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     display: block;
+  }
+  
+  /* Capas do ML vêm com lombada 3D — melhora ajuste visual */
+  .cover img[data-source="ml"] {
+    object-fit: contain;
+    background: #fff;
   }
   
   .cover-fallback {
@@ -611,55 +611,72 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 14px 12px;
+    justify-content: center;
+    padding: 18px 14px;
     position: relative;
+    gap: 8px;
   }
   
   .cover-fallback::before {
     content: '';
     position: absolute;
-    inset: 6px;
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 3px;
-    pointer-events: none;
+    left: 10px;
+    right: 10px;
+    top: 18px;
+    height: 1px;
+    background: rgba(255,255,255,0.4);
+  }
+  
+  .cover-fallback::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 18px;
+    height: 1px;
+    background: rgba(255,255,255,0.4);
   }
   
   .cover-fallback .cover-ornament {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    font-size: 22px;
-    color: rgba(255,255,255,0.85);
+    font-size: 18px;
+    color: rgba(255,255,255,0.7);
     text-align: center;
     line-height: 1;
+    margin-top: auto;
+    order: 3;
   }
   
   .cover-fallback .cover-title {
     font-family: 'Fraunces', serif;
     font-weight: 500;
     font-size: 11px;
-    line-height: 1.15;
+    line-height: 1.2;
     color: #fff;
     text-align: center;
-    letter-spacing: 0.3px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    letter-spacing: 0.2px;
     display: -webkit-box;
     -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    order: 1;
   }
   
   .cover-fallback .cover-author {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
     font-size: 9px;
-    color: rgba(255,255,255,0.9);
+    color: rgba(255,255,255,0.85);
     text-align: center;
     line-height: 1.2;
+    letter-spacing: 0.3px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    order: 2;
+    margin-top: auto;
   }
   
   .reading-info-side {
@@ -1498,6 +1515,112 @@
     white-space: pre;
   }
   
+  /* ============ COVER PICKER ============ */
+  .current-cover-section {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--cream-dark);
+    border-radius: 14px;
+  }
+  
+  .current-cover-preview {
+    width: 60px;
+    min-width: 60px;
+    aspect-ratio: 2/3;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--cream);
+    box-shadow: 0 2px 6px rgba(42, 36, 32, 0.15);
+  }
+  
+  .current-cover-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .current-cover-preview .cover-fallback {
+    padding: 6px 4px;
+  }
+  
+  .current-cover-preview .cover-fallback .cover-title {
+    font-size: 7px;
+    -webkit-line-clamp: 3;
+  }
+  
+  .current-cover-preview .cover-fallback .cover-author,
+  .current-cover-preview .cover-fallback .cover-ornament {
+    display: none;
+  }
+  
+  .current-cover-preview .cover-fallback::before,
+  .current-cover-preview .cover-fallback::after {
+    display: none;
+  }
+  
+  .current-cover-actions {
+    flex: 1;
+  }
+  
+  .cover-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .cover-picker-item {
+    cursor: pointer;
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    aspect-ratio: 2/3;
+    box-shadow: 0 2px 8px rgba(42, 36, 32, 0.15);
+    transition: transform 0.2s;
+    background: var(--cream-dark);
+    border: 2px solid transparent;
+  }
+  
+  .cover-picker-item:active { transform: scale(0.95); }
+  .cover-picker-item.selected {
+    border-color: var(--rose-deep);
+    box-shadow: 0 0 0 3px var(--rose), 0 4px 12px rgba(42, 36, 32, 0.2);
+  }
+  
+  .cover-picker-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  .cover-picker-item .source-badge {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(42, 36, 32, 0.85);
+    color: var(--cream);
+    font-size: 8px;
+    padding: 2px 5px;
+    border-radius: 100px;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  
+  .cover-picker-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 30px;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  
   /* ============ TIMER / SESSÕES ============ */
   .timer-overlay {
     position: fixed;
@@ -1971,7 +2094,7 @@
   <div class="login-box">
     <div class="login-deco">✦</div>
     <div class="login-title">Minha<br><em>estante</em></div>
-    <div class="login-sub" id="loginSub">bem-vinda de volta ✦</div>
+    <div class="login-sub" id="loginSub">bem-vinda(o) de volta ✦</div>
     <div class="login-sub" id="loginSubCadastro" style="display:none;">cria sua conta ✦</div>
 
     <div class="login-tabs">
@@ -2149,7 +2272,6 @@ create policy "acesso total genres" on genres
       <button onclick="openGenresModal()">✿ Gerenciar gêneros</button>
       <button onclick="forceSync()">↻ Sincronizar agora</button>
       <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
-      <button onclick="reconfigureSupabase()">⚙ Reconfigurar Supabase</button>
       <button onclick="doLogout()" style="color:#c97b72;">⏻ Sair da conta</button>
     </div>
   </div>
@@ -2285,6 +2407,33 @@ create policy "acesso total genres" on genres
       <span id="favLabel">Favoritar</span>
     </button>
     
+    <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin: 18px 0 10px;">
+      sobre o livro
+    </div>
+    
+    <div class="current-cover-section" id="currentCoverSection">
+      <div class="current-cover-preview" id="currentCoverPreview"></div>
+      <div class="current-cover-actions">
+        <button class="form-btn secondary" onclick="openCoverPicker()" style="margin: 0;">✦ Trocar capa</button>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Título</label>
+      <input type="text" class="form-input" id="editTitle">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Autor(a)</label>
+      <input type="text" class="form-input" id="editAuthor">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Gênero</label>
+      <select class="form-select" id="editGenre"></select>
+    </div>
+    
+    <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin: 18px 0 10px;">
+      progresso
+    </div>
     <div class="reading-info" id="editDates"></div>
     
     <div class="form-group" style="margin-top: 16px;">
@@ -2324,6 +2473,34 @@ create policy "acesso total genres" on genres
     <button class="form-btn" onclick="confirmFinishReading()">Marcar como lido ✦</button>
     <button class="form-btn secondary" onclick="saveEditOnly()" style="margin-top: 10px;">Salvar edição (continuar lendo)</button>
     <button class="form-btn danger" onclick="confirmAbandon()" style="margin-top: 10px;">Abandonar livro</button>
+  </div>
+</div>
+
+<!-- MODAL ESCOLHER CAPA -->
+<div class="modal-backdrop" id="coverPickerModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Escolher</em> capa</h2>
+      <button class="modal-close" onclick="closeCoverPicker()">×</button>
+    </div>
+    <p class="modal-sub" id="coverPickerBook">Toque na capa que preferir</p>
+    
+    <div class="cover-picker-grid" id="coverPickerGrid">
+      <div class="cover-picker-loading">
+        <div style="font-family: 'Instrument Serif', serif; font-style: italic; color: var(--ink-soft); text-align: center; padding: 30px;">
+          buscando capas ✦
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--cream-dark);">
+      <label class="form-label">Ou cole uma URL de imagem</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="url" class="form-input" id="customCoverUrl" placeholder="https://..." style="flex:1;">
+        <button class="form-btn" onclick="applyCustomCover()" style="margin:0; flex-shrink:0; width:auto; padding:0 18px;">Usar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2688,7 +2865,7 @@ function switchLoginTab(tab) {
   document.getElementById("tabEntrar").classList.toggle("active",   tab === "entrar");
   document.getElementById("tabCadastro").classList.toggle("active", tab === "cadastro");
   document.getElementById("loginSub").textContent =
-    tab === "entrar" ? "bem-vinda de volta ✦" : "cria sua conta ✦";
+    tab === "entrar" ? "bem-vinda(o) de volta ✦" : "cria sua conta ✦";
   document.getElementById("loginErr").classList.remove("show");
 }
 
@@ -2741,7 +2918,7 @@ async function doLogin() {
 
   const { url, key } = getSupabaseCreds();
   if (!url || !key || key === "SUA_CHAVE_AQUI") {
-    setLoginError("Chave do Supabase não configurada. Acessa o menu ⚙ → Reconfigurar Supabase."); return;
+    setLoginError("Chave do Supabase não configurada. Contate o administrador."); return;
   }
 
   setLoginLoading(true);
@@ -2773,7 +2950,7 @@ async function doSignUp() {
 
   const { url, key } = getSupabaseCreds();
   if (!url || !key || key === "SUA_CHAVE_AQUI") {
-    setLoginError("Chave do Supabase não configurada. Acessa o menu ⚙ → Reconfigurar Supabase."); return;
+    setLoginError("Chave do Supabase não configurada. Contate o administrador."); return;
   }
 
   setLoginLoading(true);
@@ -2818,6 +2995,7 @@ function afterLogin(authData) {
   applyGender(gender);
   hideLogin();
   state = loadState();
+  state.filter = "reading";
   init();
 }
 
@@ -2829,9 +3007,9 @@ function applyGender(gender) {
   } else {
     el.classList.remove("gender-masc");
   }
-  // Atualiza texto do login sub
+  // Saudação neutra (não varia mais por gênero)
   const sub = document.getElementById("loginSub");
-  if (sub) sub.textContent = gender === "masculino" ? "bem-vindo de volta ✦" : "bem-vinda de volta ✦";
+  if (sub) sub.textContent = "bem-vinda(o) de volta ✦";
 }
 
 async function tryAutoLogin() {
@@ -3187,6 +3365,7 @@ function skipSetup() {
   config.skipSync = true;
   saveConfig();
   state = loadState();
+  state.filter = "reading";
   hideSetup();
   renderAll();
   setSyncStatus("offline", "só local");
@@ -3232,34 +3411,107 @@ async function fetchBookMeta(title, author) {
     };
   }
 
-  // Open Library — sem rate limit, retorna capa + páginas de uma vez
-  try {
-    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=1&fields=cover_i,number_of_pages_median,isbn`;
-    const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
-    if (resp.ok) {
-      const data = await resp.json();
-      const doc = data.docs && data.docs[0];
-      if (doc) {
-        // Páginas
-        if (!hasPages && doc.number_of_pages_median) {
-          state.bookPages[key] = doc.number_of_pages_median;
+  // GOOGLE BOOKS PRIMEIRO (capas mais consistentes e em maior resolução)
+  if (!hasCover || !hasPages) {
+    try {
+      const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
+      const gUrl = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&langRestrict=pt`;
+      const resp = await fetch(gUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        let items = data.items || [];
+        
+        // Se não achou em português, tenta sem restrição de língua
+        if (items.length === 0) {
+          const resp2 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`);
+          if (resp2.ok) {
+            const data2 = await resp2.json();
+            items = data2.items || [];
+          }
         }
-        // Capa: Open Library direto
-        if (!hasCover) {
-          if (doc.cover_i) {
-            state.covers[key] = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
-          } else {
-            // Fallback: Amazon via ISBN
-            const isbns = doc.isbn || [];
-            const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10);
-            if (isbn) {
-              state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+        
+        // Rankeia por qualidade
+        const ranked = items.map(item => {
+          const info = item.volumeInfo || {};
+          let score = 0;
+          if (info.language === 'pt') score += 40;
+          if (info.imageLinks) score += 25;
+          if (info.pageCount) score += 10;
+          if (info.ratingsCount) score += Math.min(15, info.ratingsCount / 10);
+          // Título casa
+          if (info.title && info.title.toLowerCase() === title.toLowerCase()) score += 15;
+          return { info, _score: score };
+        }).sort((a, b) => b._score - a._score);
+        
+        const best = ranked[0];
+        if (best && best.info) {
+          // Páginas
+          if (!hasPages && best.info.pageCount) {
+            state.bookPages[key] = best.info.pageCount;
+          }
+          // Capa (Google Books tem várias resoluções)
+          if (!hasCover && best.info.imageLinks) {
+            // Prioridade: extraLarge > large > medium > thumbnail
+            const links = best.info.imageLinks;
+            let coverUrl = links.extraLarge || links.large || links.medium || links.thumbnail || links.smallThumbnail;
+            if (coverUrl) {
+              // Google Books serve HTTP — converte pra HTTPS
+              coverUrl = coverUrl.replace(/^http:/, 'https:');
+              // Remove curl/edge do livro (parâmetro &edge=curl) pra ter capa plana
+              coverUrl = coverUrl.replace(/&edge=curl/, '');
+              // Aumenta resolução: &zoom=1 tem qualidade boa, remove zoom pra pegar máximo
+              coverUrl = coverUrl.replace(/&zoom=\d+/, '');
+              state.covers[key] = coverUrl;
             }
           }
         }
       }
-    }
-  } catch(e) { /* silencia */ }
+    } catch(e) { /* fallback pra Open Library */ }
+  }
+
+  // OPEN LIBRARY — fallback se Google não achou
+  if (!hasCover || !hasPages) {
+    try {
+      const fields = "cover_i,number_of_pages_median,isbn,language,edition_count,title";
+      const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=5&fields=${fields}`;
+      const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const docs = data.docs || [];
+        
+        const ranked = docs.map(doc => {
+          let score = 0;
+          if ((doc.language || []).includes('por')) score += 40;
+          if (doc.cover_i) score += 25;
+          if (doc.number_of_pages_median) score += 10;
+          score += Math.min(20, doc.edition_count || 0);
+          if (doc.title && doc.title.toLowerCase() === title.toLowerCase()) score += 15;
+          return { ...doc, _score: score };
+        }).sort((a, b) => b._score - a._score);
+        
+        const best = ranked[0];
+        if (best) {
+          if (!state.bookPages[key]) {
+            const withPages = ranked.find(d => d.number_of_pages_median);
+            if (withPages) state.bookPages[key] = withPages.number_of_pages_median;
+          }
+          if (!state.covers[key]) {
+            const withCover = ranked.find(d => d.cover_i);
+            if (withCover) {
+              state.covers[key] = `https://covers.openlibrary.org/b/id/${withCover.cover_i}-L.jpg`;
+            } else {
+              // Último recurso: Amazon via ISBN
+              const isbns = best.isbn || [];
+              const isbn = isbns.find(s => s.length === 13) || isbns.find(s => s.length === 10);
+              if (isbn) {
+                state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
+              }
+            }
+          }
+        }
+      }
+    } catch(e) { /* silencia */ }
+  }
 
   if (!state.covers[key]) state.covers[key] = "NONE";
   saveState();
@@ -3267,6 +3519,31 @@ async function fetchBookMeta(title, author) {
     cover: state.covers[key] === "NONE" ? null : state.covers[key],
     pages: state.bookPages[key] || null,
   };
+}
+
+// Carrega imagem só se ela passar no teste de "capa de verdade"
+// - Rejeita imagens muito pequenas (placeholders 1x1 ou avisos)
+// - Rejeita imagens quase quadradas (capas de livro são ~2:3)
+function loadCoverWithValidation(url, onSuccess, onFailure) {
+  if (!url) { if (onFailure) onFailure(); return; }
+  const img = new Image();
+  img.onload = () => {
+    // Open Library retorna placeholder de 1x1 quando não tem capa
+    if (img.naturalWidth < 50 || img.naturalHeight < 80) {
+      if (onFailure) onFailure();
+      return;
+    }
+    // Capa de livro tem aspect ratio próximo de 2:3 (0.67)
+    // Se for quase quadrada ou muito horizontal, provavelmente é placeholder
+    const ratio = img.naturalWidth / img.naturalHeight;
+    if (ratio > 1.1 || ratio < 0.4) {
+      if (onFailure) onFailure();
+      return;
+    }
+    if (onSuccess) onSuccess(url);
+  };
+  img.onerror = () => { if (onFailure) onFailure(); };
+  img.src = url;
 }
 
 // Wrappers de compatibilidade — usam fetchBookMeta internamente
@@ -3334,6 +3611,10 @@ function getFilteredCount(genreKey) {
 
 // ============ RENDER ============
 function renderAll() {
+  // Sincroniza visual das tabs com o filtro atual
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.filter === state.filter);
+  });
   renderGenres();
   renderStats();
 }
@@ -3657,13 +3938,13 @@ function renderGenres() {
         
         // Uma única chamada enfileirada busca capa + páginas juntos
         queueMeta(book.t, book.a).then(meta => {
-          // Aplica capa
+          // Aplica capa (com validação de qualidade)
           if (meta.cover) {
             const coverEl = document.getElementById(coverId);
             if (coverEl) {
-              const img = new Image();
-              img.onload = () => { coverEl.innerHTML = `<img src="${meta.cover}" alt="${escapeHtml(book.t)}">`; };
-              img.src = meta.cover;
+              loadCoverWithValidation(meta.cover, (validUrl) => {
+                coverEl.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}">`;
+              });
             }
           }
           // Aplica páginas se não tinha
@@ -3989,9 +4270,12 @@ function openTimer() {
   const coverEl = document.getElementById("timerCover");
   coverEl.innerHTML = coverFallbackHTML(book, book.g);
   fetchCover(book.t, book.a).then(url => {
-    if (url && document.getElementById("timerOverlay").classList.contains("open")) {
-      coverEl.innerHTML = `<img src="${url}" alt="">`;
-    }
+    if (!url) return;
+    loadCoverWithValidation(url, (validUrl) => {
+      if (document.getElementById("timerOverlay").classList.contains("open")) {
+        coverEl.innerHTML = `<img src="${validUrl}" alt="">`;
+      }
+    });
   });
   
   // Pausar/Retomar
@@ -4233,7 +4517,10 @@ function showSessionResult(book, session) {
   const inner = document.getElementById("progressInner");
   inner.innerHTML = coverFallbackHTML(book, book.g);
   fetchCover(book.t, book.a).then(url => {
-    if (url) inner.innerHTML = `<img src="${url}" alt="">`;
+    if (!url) return;
+    loadCoverWithValidation(url, (validUrl) => {
+      inner.innerHTML = `<img src="${validUrl}" alt="">`;
+    });
   });
   
   // Progress ring
@@ -4355,6 +4642,15 @@ function openEditModal(bookId) {
   editingFavorite = !!book.favorite;
   
   document.getElementById("editModalBook").textContent = `"${book.t}" — ${book.a}`;
+  document.getElementById("editTitle").value = book.t || '';
+  document.getElementById("editAuthor").value = book.a || '';
+  
+  // Popula select de gêneros
+  const genreSelect = document.getElementById("editGenre");
+  genreSelect.innerHTML = Object.entries(GENRES).map(([k, g]) => 
+    `<option value="${k}"${book.g === k ? ' selected' : ''}>${g.emoji} ${g.name}</option>`
+  ).join("");
+  
   document.getElementById("editStartDate").value = book.startDate || todayISO();
   document.getElementById("editEndDate").value = book.endDate || todayISO();
   document.getElementById("editPagesCurrent").value = book.pagesCurrent || '';
@@ -4368,6 +4664,7 @@ function openEditModal(bookId) {
   renderStars();
   renderFavoriteToggle();
   renderSessionsList(book.id);
+  updateCurrentCoverPreview(book);
   document.getElementById("editModal").classList.add("open");
   document.body.style.overflow = "hidden";
   
@@ -4513,20 +4810,32 @@ document.querySelectorAll("#starsInput .star").forEach(star => {
   });
 });
 
+// Aplica campos comuns do formulário de edição
+function applyCommonEditFields(book) {
+  const newTitle = document.getElementById("editTitle").value.trim();
+  const newAuthor = document.getElementById("editAuthor").value.trim();
+  const newGenre = document.getElementById("editGenre").value;
+  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
+  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
+  
+  if (newTitle) book.t = newTitle;
+  if (newAuthor) book.a = newAuthor;
+  if (newGenre && GENRES[newGenre]) book.g = newGenre;
+  book.rating = selectedStars || null;
+  book.favorite = editingFavorite;
+  if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
+  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
+}
+
 function saveEditOnly() {
   if (!editingBookId) return;
   const book = getBookById(editingBookId);
   const startDate = document.getElementById("editStartDate").value;
   const endDate = document.getElementById("editEndDate").value;
-  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
-  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
   
+  applyCommonEditFields(book);
   if (startDate) book.startDate = startDate;
   if (endDate && book.status !== "reading") book.endDate = endDate;
-  book.rating = selectedStars || null;
-  book.favorite = editingFavorite;
-  if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
-  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
   saveState();
   pushBook(book);
   
@@ -4540,17 +4849,15 @@ function confirmFinishReading() {
   const book = getBookById(editingBookId);
   const startDate = document.getElementById("editStartDate").value;
   const endDate = document.getElementById("editEndDate").value;
-  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
-  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
   if (!endDate) { alert("Escolhe a data de término ✦"); return; }
   
+  applyCommonEditFields(book);
   book.status = "lido";
   if (startDate) book.startDate = startDate;
   book.endDate = endDate;
-  book.rating = selectedStars || null;
-  book.favorite = editingFavorite;
-  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
-  book.pagesCurrent = !isNaN(pagesCurrent) ? pagesCurrent : (book.pagesTotal || 0);
+  if (book.pagesTotal && (!book.pagesCurrent || book.pagesCurrent < book.pagesTotal)) {
+    book.pagesCurrent = book.pagesTotal;
+  }
   saveState();
   pushBook(book);
   
@@ -4564,15 +4871,10 @@ function confirmAbandon() {
   if (!confirm("Marcar como abandonado? Sem julgamentos ✦")) return;
   const book = getBookById(editingBookId);
   const endDate = document.getElementById("editEndDate").value;
-  const pagesCurrent = parseInt(document.getElementById("editPagesCurrent").value);
-  const pagesTotal = parseInt(document.getElementById("editPagesTotal").value);
   
+  applyCommonEditFields(book);
   book.status = "abandoned";
   if (endDate) book.endDate = endDate;
-  if (selectedStars) book.rating = selectedStars;
-  book.favorite = editingFavorite;
-  if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
-  if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
   saveState();
   pushBook(book);
   
@@ -4626,6 +4928,7 @@ window.addEventListener("load", () => {
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.toggle("active", t.dataset.filter === "reading");
   });
+  renderAll();
 });
 
 // ============ ADD BOOK ============
@@ -4890,14 +5193,63 @@ async function searchGoogleBooks(q, signal) {
 }
 
 async function searchOpenLibrary(q, signal) {
-  // Sem filtro de língua — inclui livros em pt, en e outros
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=10&fields=title,author_name,cover_i,number_of_pages_median,subject,isbn`;
-  const resp = await fetch(url, { signal });
-  if (!resp.ok) return [];
-  const data = await resp.json();
-  return (data.docs || [])
-    .filter(d => d.title)
-    .map(d => ({ ...d, author_name: d.author_name || [], _source: 'ol' }));
+  const fields = "title,author_name,cover_i,number_of_pages_median,subject,isbn,language,edition_count";
+  
+  // Busca dupla: primeiro só em português, depois geral (em paralelo)
+  const urlPt = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&language=por&limit=8&fields=${fields}`;
+  const urlAll = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=10&fields=${fields}`;
+  
+  try {
+    const [ptResp, allResp] = await Promise.allSettled([
+      fetch(urlPt, { signal }),
+      fetch(urlAll, { signal }),
+    ]);
+    
+    let ptDocs = [];
+    let allDocs = [];
+    
+    if (ptResp.status === 'fulfilled' && ptResp.value.ok) {
+      const ptData = await ptResp.value.json();
+      ptDocs = (ptData.docs || []).filter(d => d.title);
+    }
+    if (allResp.status === 'fulfilled' && allResp.value.ok) {
+      const allData = await allResp.value.json();
+      allDocs = (allData.docs || []).filter(d => d.title);
+    }
+    
+    // Merge: português primeiro, depois resto (dedup por título+autor)
+    const seen = new Set();
+    const merged = [];
+    for (const doc of [...ptDocs, ...allDocs]) {
+      const authorFirst = (doc.author_name || [])[0] || '';
+      const norm = (doc.title + '|' + authorFirst).toLowerCase().replace(/\s+/g, '');
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      
+      // Calcula score pra ordenação posterior
+      let score = 0;
+      if ((doc.language || []).includes('por')) score += 40;
+      if (doc.cover_i) score += 25;
+      if (doc.number_of_pages_median) score += 8;
+      score += Math.min(15, doc.edition_count || 0);
+      if (doc.title.toLowerCase() === q.toLowerCase()) score += 20;
+      if (doc.title.toLowerCase().startsWith(q.toLowerCase())) score += 8;
+      
+      merged.push({
+        ...doc,
+        author_name: doc.author_name || [],
+        _source: 'ol',
+        _score: score,
+      });
+    }
+    
+    // Ordena por score (melhor primeiro)
+    merged.sort((a, b) => b._score - a._score);
+    return merged.slice(0, 12);
+  } catch(e) {
+    if (e.name === 'AbortError') throw e;
+    return [];
+  }
 }
 
 function renderAutocomplete(items) {
@@ -4968,20 +5320,21 @@ function selectAutocomplete(index) {
   // Chuta um gênero baseado em subjects (opcional)
   guessGenreFromSubjects(item.subject || []);
   
-  // Salva a capa — prioridade: Google > Amazon via ISBN > Open Library
+  // Salva a capa — prioridade: Open Library > Amazon > Google > ML
+  // (OL e Amazon retornam capas planas 2D; ML costuma ser foto 3D do livro)
   const key = coverKey(item.title, (item.author_name || [])[0] || '');
   if (!state.covers) state.covers = {};
   
-  // Capa salva em cascata: Amazon BR (mais confiável) > Google Books > Open Library
-  if (item.amz_cover) {
-    state.covers[key] = item.amz_cover;  // Amazon BR é a mais confiável para CORS
+  if (item.cover_i) {
+    // Open Library direto pelo ID (capa plana limpa)
+    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
+  } else if (item.amz_cover) {
+    state.covers[key] = item.amz_cover;
   } else if (item.isbn13 || item.isbn10) {
     const isbn = item.isbn13 || item.isbn10;
     state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`;
   } else if (item.cover_url) {
     state.covers[key] = item.cover_url;
-  } else if (item.cover_i) {
-    state.covers[key] = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
   }
   
   if (item.number_of_pages_median) {
@@ -5289,8 +5642,188 @@ function exportHtml() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// ============ COVER PICKER ============
+let coverPickerCurrentBook = null;
+
+function updateCurrentCoverPreview(book) {
+  const preview = document.getElementById("currentCoverPreview");
+  if (!preview) return;
+  preview.innerHTML = coverFallbackHTML(book, book.g);
+  const key = coverKey(book.t, book.a);
+  const cached = state.covers && state.covers[key];
+  if (cached && cached !== "NONE") {
+    loadCoverWithValidation(cached, (validUrl) => {
+      preview.innerHTML = `<img src="${validUrl}" alt="">`;
+    });
+  } else {
+    // Busca se não tiver
+    fetchCover(book.t, book.a).then(url => {
+      if (!url) return;
+      loadCoverWithValidation(url, (validUrl) => {
+        preview.innerHTML = `<img src="${validUrl}" alt="">`;
+      });
+    });
+  }
+}
+
+async function openCoverPicker() {
+  if (!editingBookId) return;
+  const book = getBookById(editingBookId);
+  if (!book) return;
+  coverPickerCurrentBook = book;
+  
+  document.getElementById("coverPickerBook").textContent = `"${book.t}" — ${book.a}`;
+  document.getElementById("customCoverUrl").value = "";
+  document.getElementById("coverPickerModal").classList.add("open");
+  document.body.style.overflow = "hidden";
+  
+  const grid = document.getElementById("coverPickerGrid");
+  grid.innerHTML = `<div class="cover-picker-empty">buscando capas ✦</div>`;
+  
+  // Busca em paralelo: Google Books, Open Library, Amazon (via ISBN)
+  const title = book.t;
+  const author = book.a;
+  const covers = [];
+  
+  // Google Books
+  try {
+    const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
+    const resp = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=10`);
+    if (resp.ok) {
+      const data = await resp.json();
+      (data.items || []).forEach(item => {
+        const info = item.volumeInfo || {};
+        if (info.imageLinks) {
+          const links = info.imageLinks;
+          let url = links.extraLarge || links.large || links.medium || links.thumbnail;
+          if (url) {
+            url = url.replace(/^http:/, 'https:').replace(/&edge=curl/, '').replace(/&zoom=\d+/, '');
+            covers.push({
+              url,
+              source: 'Google',
+              lang: info.language,
+              title: info.title,
+            });
+          }
+        }
+      });
+    }
+  } catch(e) {}
+  
+  // Open Library
+  try {
+    const fields = "cover_i,language,title,isbn";
+    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=10&fields=${fields}`;
+    const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
+    if (resp.ok) {
+      const data = await resp.json();
+      (data.docs || []).forEach(doc => {
+        if (doc.cover_i) {
+          covers.push({
+            url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
+            source: 'OL',
+            lang: (doc.language || [])[0],
+            title: doc.title,
+          });
+        }
+        // Amazon fallback via ISBN
+        const isbn = (doc.isbn || []).find(s => s.length === 13) || (doc.isbn || []).find(s => s.length === 10);
+        if (isbn) {
+          covers.push({
+            url: `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`,
+            source: 'AMZ',
+            lang: (doc.language || [])[0],
+            title: doc.title,
+          });
+        }
+      });
+    }
+  } catch(e) {}
+  
+  // Dedup por URL
+  const seen = new Set();
+  const unique = covers.filter(c => {
+    if (seen.has(c.url)) return false;
+    seen.add(c.url);
+    return true;
+  });
+  
+  renderCoverPicker(unique);
+}
+
+function renderCoverPicker(covers) {
+  const grid = document.getElementById("coverPickerGrid");
+  if (!covers || covers.length === 0) {
+    grid.innerHTML = `<div class="cover-picker-empty">
+      nenhuma capa encontrada ✦<br>
+      <small style="font-size:12px; opacity:0.7;">tente colar uma URL manualmente abaixo</small>
+    </div>`;
+    return;
+  }
+  
+  const currentKey = coverKey(coverPickerCurrentBook.t, coverPickerCurrentBook.a);
+  const currentUrl = state.covers && state.covers[currentKey];
+  
+  grid.innerHTML = covers.map((c, i) => {
+    const isSelected = c.url === currentUrl ? ' selected' : '';
+    return `<div class="cover-picker-item${isSelected}" onclick="selectCoverFromPicker('${c.url.replace(/'/g, "\\'")}')">
+      <img src="${c.url}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">
+      <div class="source-badge">${c.source}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectCoverFromPicker(url) {
+  if (!coverPickerCurrentBook) return;
+  const key = coverKey(coverPickerCurrentBook.t, coverPickerCurrentBook.a);
+  if (!state.covers) state.covers = {};
+  state.covers[key] = url;
+  saveState();
+  
+  // Marca visual
+  document.querySelectorAll('.cover-picker-item').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  
+  // Atualiza preview no modal de edição
+  updateCurrentCoverPreview(coverPickerCurrentBook);
+  
+  // Fecha com delay pra feedback visual
+  setTimeout(() => {
+    closeCoverPicker();
+    renderAll(); // Re-renderiza cards com nova capa
+  }, 300);
+}
+
+function applyCustomCover() {
+  if (!coverPickerCurrentBook) return;
+  const url = document.getElementById("customCoverUrl").value.trim();
+  if (!url) { alert("Cola uma URL válida ✦"); return; }
+  if (!url.match(/^https?:\/\//)) { alert("URL precisa começar com http:// ou https:// ✦"); return; }
+  
+  const key = coverKey(coverPickerCurrentBook.t, coverPickerCurrentBook.a);
+  if (!state.covers) state.covers = {};
+  state.covers[key] = url;
+  saveState();
+  
+  updateCurrentCoverPreview(coverPickerCurrentBook);
+  closeCoverPicker();
+  renderAll();
+}
+
+function closeCoverPicker() {
+  document.getElementById("coverPickerModal").classList.remove("open");
+  document.body.style.overflow = "";
+  coverPickerCurrentBook = null;
+}
+
+document.getElementById("coverPickerModal").addEventListener("click", (e) => {
+  if (e.target.id === "coverPickerModal") closeCoverPicker();
+});
+
 // ============ INIT ============
 state = loadState();
+// Sempre abre na aba "Lendo", independente do que estava salvo
+state.filter = "reading";
 
 async function init() {
   // Aviso se rodando via file:// (fetch bloqueado pelo browser)
