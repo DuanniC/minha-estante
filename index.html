@@ -117,15 +117,25 @@
   }
   
   .sync-indicator {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--ink-soft);
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 100px;
     background: var(--cream-dark);
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     transition: all 0.3s;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+  }
+  
+  @media (min-width: 720px) {
+    .sync-indicator {
+      font-size: 10px;
+      padding: 6px 10px;
+      gap: 5px;
+    }
   }
   
   .sync-indicator.syncing { background: var(--rose); color: var(--ink); }
@@ -579,8 +589,8 @@
   }
   
   .cover {
-    width: 100px;
-    min-width: 100px;
+    width: 110px;
+    min-width: 110px;
     aspect-ratio: 2/3;
     border-radius: 4px;
     position: relative;
@@ -589,20 +599,16 @@
       0 1px 2px rgba(42, 36, 32, 0.15),
       0 4px 12px rgba(42, 36, 32, 0.12);
     z-index: 2;
-    background: var(--cream-dark);
+    background: #fff;
   }
   
   .cover img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* contain garante que a capa INTEIRA apareça, sem cortes */
+    object-fit: contain;
     object-position: center;
     display: block;
-  }
-  
-  /* Capas do ML vêm com lombada 3D — melhora ajuste visual */
-  .cover img[data-source="ml"] {
-    object-fit: contain;
     background: #fff;
   }
   
@@ -3209,7 +3215,7 @@ async function syncFromSupabase() {
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
       renderAll();
-      setSyncStatus("synced", "sync");
+      setSyncStatus("synced", "✦ sincronizado");
     }
   } catch (e) {
     console.error(e);
@@ -3662,18 +3668,6 @@ function renderStats() {
         <div class="stat-year-small">${year === currentYear ? year : ''}</div>
       </div>
     `;
-    
-    // Meses desse ano ordenados do mais recente pro mais antigo
-    const months = Object.keys(y.months).map(Number).sort((a, b) => b - a);
-    months.forEach(m => {
-      html += `
-        <div class="stat-card" onclick="filterByMonth(${year}, ${m})">
-          <div class="stat-month-name">${MONTH_NAMES[m]}</div>
-          <div class="stat-month-count">${y.months[m]}</div>
-          <div class="stat-month-label">livro${y.months[m] > 1 ? 's' : ''}</div>
-        </div>
-      `;
-    });
   });
   
   html += `</div>`;
@@ -3781,8 +3775,7 @@ function renderGenres() {
     });
     
     container.style.gridTemplateColumns = "1fr";
-    let html = `<div class="book-list" style="border:none; padding:0;">`;
-    html += `<div class="book-list-title">${lidos.length} livro${lidos.length > 1 ? 's' : ''} concluído${lidos.length > 1 ? 's' : ''} ✓</div></div>`;
+    let html = `<div class="book-list" style="border:none; padding:0;"></div>`;
     
     // Ordena anos do mais recente pro mais antigo
     const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
@@ -5069,11 +5062,24 @@ async function searchTitles(q) {
         seen.add(norm);
         merged.push(item);
       }
-      if (merged.length >= 18) break;
+      if (merged.length >= 25) break;
     }
+    
+    // Re-ordena: items com score mais alto primeiro, depois por fonte (ML > Google > OL)
+    merged.sort((a, b) => {
+      // Google Books já tem _score calculado no searchGoogleBooks
+      const scoreA = a._score || 0;
+      const scoreB = b._score || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      // Desempate: ML vem primeiro, depois Google, depois OL
+      const sourceOrder = { ml: 0, google: 1, ol: 2 };
+      return (sourceOrder[a._source] ?? 3) - (sourceOrder[b._source] ?? 3);
+    });
+    
+    const final = merged.slice(0, 18);
 
-    autocompleteCache[q] = merged;
-    renderAutocomplete(merged);
+    autocompleteCache[q] = final;
+    renderAutocomplete(final);
   } catch (e) {
     if (e.name === 'AbortError') return;
     console.error(e);
@@ -5134,13 +5140,18 @@ async function searchMercadoLivre(q, signal) {
 
 async function searchGoogleBooks(q, signal) {
   const base = `https://www.googleapis.com/books/v1/volumes`;
-  const fields = `fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers,language))`;
+  const fields = `fields=items(volumeInfo(title,authors,imageLinks,pageCount,categories,industryIdentifiers,language,publishedDate,publisher))`;
 
-  // Três buscas paralelas: pt, geral e country=BR — maximize cobertura
+  // Quatro buscas paralelas pra maximizar cobertura de edições BR/PT:
+  // 1. langRestrict=pt (edições em português)
+  // 2. intitle: (match exato de título)
+  // 3. country=BR (vendidos no Brasil)
+  // 4. Geral (fallback)
   const queries = [
-    `${base}?q=${encodeURIComponent(q)}&maxResults=10&langRestrict=pt&printType=books&${fields}`,
-    `${base}?q=${encodeURIComponent(q)}&maxResults=10&printType=books&${fields}`,
-    `${base}?q=${encodeURIComponent(q)}&maxResults=10&printType=books&country=BR&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=20&langRestrict=pt&printType=books&${fields}`,
+    `${base}?q=intitle:${encodeURIComponent(q)}&maxResults=15&langRestrict=pt&printType=books&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=15&printType=books&country=BR&${fields}`,
+    `${base}?q=${encodeURIComponent(q)}&maxResults=15&printType=books&${fields}`,
   ];
 
   const results = await Promise.allSettled(
@@ -5153,7 +5164,7 @@ async function searchGoogleBooks(q, signal) {
   const out = [];
   for (const raw of allItems) {
     const v = raw.volumeInfo;
-    if (!v || !v.title) continue; // aceita mesmo sem autores conhecidos
+    if (!v || !v.title) continue;
     const authors = v.authors || [];
     const ids = v.industryIdentifiers || [];
     const isbn13 = (ids.find(x => x.type === 'ISBN_13') || {}).identifier || null;
@@ -5162,6 +5173,30 @@ async function searchGoogleBooks(q, signal) {
     const dedupeKey = isbn13 || isbn10 || (v.title + (authors[0]||'')).toLowerCase().replace(/\s/g,'');
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
+
+    // Ranking de qualidade
+    let score = 0;
+    const qLower = q.toLowerCase();
+    const titleLower = (v.title || '').toLowerCase();
+    
+    // Match exato de título (mais importante)
+    if (titleLower === qLower) score += 100;
+    else if (titleLower.startsWith(qLower)) score += 60;
+    else if (titleLower.includes(qLower)) score += 30;
+    
+    // Edições em português são prioritárias
+    if (v.language === 'pt') score += 80;
+    
+    // Capa existe
+    if (v.imageLinks) score += 40;
+    
+    // Páginas conhecidas
+    if (v.pageCount) score += 15;
+    
+    // Editoras BR conhecidas ganham boost
+    const pub = (v.publisher || '').toLowerCase();
+    const brPublishers = ['planeta', 'intrínseca', 'intrinseca', 'record', 'companhia das letras', 'verus', 'alt', 'rocco', 'sextante', 'novo conceito', 'suma', 'arqueiro', 'darkside', 'morro branco', 'valentina', 'editora globo'];
+    if (brPublishers.some(p => pub.includes(p))) score += 30;
 
     let googleCover = null;
     if (v.imageLinks) {
@@ -5186,10 +5221,16 @@ async function searchGoogleBooks(q, signal) {
       amz_cover: amzCover,
       cover_i: null,
       _source: 'google',
+      _score: score,
+      _language: v.language,
+      _publisher: v.publisher,
     });
-    if (out.length >= 15) break;
+    if (out.length >= 25) break;
   }
-  return out;
+  
+  // Ordena por score antes de retornar
+  out.sort((a, b) => b._score - a._score);
+  return out.slice(0, 15);
 }
 
 async function searchOpenLibrary(q, signal) {
