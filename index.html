@@ -3026,6 +3026,8 @@ let state  = { books: [], filter: "reading", covers: {} };
 let config = loadConfig();
 let supabase = null;
 let syncing  = false;
+let initialSyncDone = false; // vira true após o primeiro sync; evita buscar capas automáticas
+                             // antes do banco devolver as capas escolhidas manualmente
 
 // Fila para busca de capas — evita rate limit (429/503) da Google Books API
 let _coverQueue = [];
@@ -3501,6 +3503,7 @@ async function syncFromSupabase() {
       state.covers = oldCovers;
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
+      initialSyncDone = true; // agora pode buscar capas automáticas pros livros sem capa salva
       renderAll();
       setSyncStatus("synced", "✦ sincronizado");
     }
@@ -3659,6 +3662,7 @@ function skipSetup() {
   saveConfig();
   state = loadState();
   state.filter = "reading";
+  initialSyncDone = true; // modo offline — libera busca de capas automáticas
   hideSetup();
   renderAll();
   setSyncStatus("offline", "só local");
@@ -3700,6 +3704,17 @@ async function fetchBookMeta(title, author) {
   if (hasCover && hasPages) {
     return {
       cover: state.covers[key] === "NONE" ? null : state.covers[key],
+      pages: state.bookPages[key] || null,
+    };
+  }
+
+  // Se o sync inicial ainda não rodou, NÃO busca automaticamente.
+  // Isso evita corrida: banco tem a capa escolhida manualmente, mas o render
+  // disparou antes do sync terminar — sem essa guarda, a capa automática
+  // sobrescrevia a escolha do usuário. Retorna o que tiver em cache (ou vazio).
+  if (!initialSyncDone) {
+    return {
+      cover: state.covers[key] && state.covers[key] !== "NONE" ? state.covers[key] : null,
       pages: state.bookPages[key] || null,
     };
   }
@@ -4084,7 +4099,9 @@ function renderGenres() {
         loadCoverWithValidation(cached, (validUrl) => {
           el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
         });
-      } else {
+      } else if (initialSyncDone) {
+        // Só busca capa automática DEPOIS do sync trazer as capas escolhidas manualmente.
+        // Antes disso, mantém o fallback bonito pra não sobrescrever a escolha do usuário.
         fetchCover(book.t, book.a).then(url => {
           if (!url) return;
           const el = document.getElementById(coverId);
