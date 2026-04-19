@@ -1180,8 +1180,8 @@
   .book-status-group {
     display: flex;
     gap: 6px;
-    flex-direction: column;
-    align-items: flex-end;
+    flex-direction: row;
+    align-items: center;
     flex-shrink: 0;
   }
   
@@ -5073,14 +5073,26 @@ function closeAddBook() {
 }
 
 // ============ BUSCA VIA LINK DA AMAZON ============
-function extractAsinFromAmazonUrl(url) {
-  // Suporta formatos:
-  // amazon.com.br/dp/XXXXXXXXXX
-  // amazon.com.br/gp/product/XXXXXXXXXX
-  // amazon.com.br/TITULO/dp/XXXXXXXXXX
-  // amazon.com/dp/XXXXXXXXXX?...
-  const match = url.match(/(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
-  return match ? match[1] : null;
+// Extrai ASIN (pode ser ISBN-10) e o slug de título da URL da Amazon
+function parseAmazonUrl(url) {
+  // ASIN: /dp/XXXXXXXXXX ou /gp/product/XXXXXXXXXX
+  const asinMatch = url.match(/(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
+  const asin = asinMatch ? asinMatch[1] : null;
+
+  // Slug: parte antes de /dp/ — ex: "O-Nome-do-Vento-Patrick-Rothfuss"
+  const slugMatch = url.match(/amazon\.com(?:\.br)?\/([^\/]+)\/dp\//i);
+  let titleFromSlug = "";
+  if (slugMatch) {
+    titleFromSlug = slugMatch[1]
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, c => c.toUpperCase())
+      // Remove termos genéricos comuns no slug da Amazon
+      .replace(/\b(Livro|Book|Ebook|Kindle|Edition|Edição|Portuguese|Portugues|Vol|Volume)\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  return { asin, titleFromSlug };
 }
 
 async function fetchFromAmazon() {
@@ -5095,9 +5107,16 @@ async function fetchFromAmazon() {
     return;
   }
 
-  const asin = extractAsinFromAmazonUrl(url);
-  if (!asin) {
-    statusEl.textContent = "Não consegui identificar o livro nessa URL. Confere se é um link da Amazon ✦";
+  if (!url.includes("amazon.")) {
+    statusEl.textContent = "Não parece um link da Amazon ✦";
+    statusEl.className = "amazon-status err";
+    return;
+  }
+
+  const { asin, titleFromSlug } = parseAmazonUrl(url);
+
+  if (!asin && !titleFromSlug) {
+    statusEl.textContent = "Não consegui identificar o livro nessa URL ✦";
     statusEl.className = "amazon-status err";
     return;
   }
@@ -5106,138 +5125,160 @@ async function fetchFromAmazon() {
   statusEl.textContent = "Buscando dados...";
   statusEl.className = "amazon-status";
 
-  // O ASIN de livros físicos é o ISBN-10. Tenta buscar por ISBN primeiro, depois por ASIN genérico.
-  let found = false;
+  let best = null; // { title, authors, pageCount, imageLinks, categories }
 
-  // 1. Tenta Google Books por ISBN (mais rico em dados)
-  try {
-    const resp = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=isbn:${asin}&maxResults=1&fields=items(volumeInfo(title,authors,pageCount,imageLinks,categories,language))`
+  // Busca em paralelo: ISBN via Google Books + Open Library + slug via Google Books
+  const promises = [];
+
+  // 1. Google Books por ISBN (só se ASIN parece ISBN-10: começa com dígito ou 'B' não)
+  if (asin && !/^B/i.test(asin)) {
+    promises.push(
+      fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${asin}&maxResults=3`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const item = (data?.items || [])[0];
+          if (item?.volumeInfo?.title) return { ...item.volumeInfo, _source: 'isbn-google' };
+          return null;
+        }).catch(() => null)
     );
-    if (resp.ok) {
-      const data = await resp.json();
-      const item = (data.items || [])[0];
-      if (item && item.volumeInfo && item.volumeInfo.title) {
-        applyAmazonResult(item.volumeInfo, asin, 'google');
-        statusEl.textContent = "✦ Dados preenchidos! Confere e ajusta se precisar.";
-        statusEl.className = "amazon-status ok";
-        found = true;
-      }
-    }
-  } catch(e) {}
 
-  // 2. Fallback: Open Library por ISBN
-  if (!found) {
-    try {
-      const resp = await fetch(`https://openlibrary.org/isbn/${asin}.json`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.title) {
-          // Busca autor separado
+    // 2. Open Library por ISBN
+    promises.push(
+      fetch(`https://openlibrary.org/isbn/${asin}.json`)
+        .then(r => r.ok ? r.json() : null)
+        .then(async data => {
+          if (!data?.title) return null;
           let authorName = "";
-          if (data.authors && data.authors[0] && data.authors[0].key) {
+          if (data.authors?.[0]?.key) {
             try {
-              const authResp = await fetch(`https://openlibrary.org${data.authors[0].key}.json`);
-              if (authResp.ok) {
-                const authData = await authResp.json();
-                authorName = authData.name || authData.personal_name || "";
-              }
+              const ar = await fetch(`https://openlibrary.org${data.authors[0].key}.json`);
+              const ad = ar.ok ? await ar.json() : {};
+              authorName = ad.name || ad.personal_name || "";
             } catch(e) {}
           }
-          const info = {
+          return {
             title: data.title,
             authors: authorName ? [authorName] : [],
             pageCount: data.number_of_pages || null,
-            imageLinks: data.covers && data.covers[0]
+            imageLinks: data.covers?.[0]
               ? { thumbnail: `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg` }
               : null,
             categories: data.subjects || [],
+            _source: 'isbn-ol',
           };
-          applyAmazonResult(info, asin, 'ol');
-          statusEl.textContent = "✦ Dados preenchidos! Confere e ajusta se precisar.";
-          statusEl.className = "amazon-status ok";
-          found = true;
-        }
-      }
-    } catch(e) {}
+        }).catch(() => null)
+    );
   }
 
-  // 3. Fallback: busca por título usando o ASIN como query no Google Books
-  if (!found) {
-    try {
-      const resp = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${asin}&maxResults=1&fields=items(volumeInfo(title,authors,pageCount,imageLinks,categories))`
-      );
-      if (resp.ok) {
-        const data = await resp.json();
-        const item = (data.items || [])[0];
-        if (item && item.volumeInfo && item.volumeInfo.title) {
-          applyAmazonResult(item.volumeInfo, asin, 'google');
-          statusEl.textContent = "✦ Dados preenchidos! Confere se tá certo — pode não ser exato.";
-          statusEl.className = "amazon-status ok";
-          found = true;
-        }
-      }
-    } catch(e) {}
+  // 3. Google Books pelo slug do título (sempre, se disponível)
+  if (titleFromSlug) {
+    const q = encodeURIComponent(titleFromSlug);
+    promises.push(
+      fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&langRestrict=pt`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const item = (data?.items || [])[0];
+          if (item?.volumeInfo?.title) return { ...item.volumeInfo, _source: 'slug-google-pt' };
+          return null;
+        }).catch(() => null)
+    );
+    promises.push(
+      fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const item = (data?.items || [])[0];
+          if (item?.volumeInfo?.title) return { ...item.volumeInfo, _source: 'slug-google' };
+          return null;
+        }).catch(() => null)
+    );
   }
 
-  if (!found) {
-    statusEl.textContent = "Não encontrei dados pra esse livro. Preenche manualmente ✦";
-    statusEl.className = "amazon-status err";
+  // 4. Open Library pelo slug do título
+  if (titleFromSlug) {
+    const q = encodeURIComponent(titleFromSlug);
+    promises.push(
+      fetch(`https://openlibrary.org/search.json?q=${q}&limit=3&fields=title,author_name,number_of_pages_median,cover_i,subject`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          const doc = (data?.docs || [])[0];
+          if (!doc?.title) return null;
+          return {
+            title: doc.title,
+            authors: doc.author_name || [],
+            pageCount: doc.number_of_pages_median || null,
+            imageLinks: doc.cover_i
+              ? { thumbnail: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` }
+              : null,
+            categories: doc.subject || [],
+            _source: 'slug-ol',
+          };
+        }).catch(() => null)
+    );
+  }
+
+  const results = await Promise.all(promises);
+
+  // Escolhe o melhor resultado: prioridade ISBN > slug PT > slug geral
+  const priority = ['isbn-google', 'isbn-ol', 'slug-google-pt', 'slug-google', 'slug-ol'];
+  for (const src of priority) {
+    const found = results.find(r => r?._source === src);
+    if (found) { best = found; break; }
+  }
+
+  if (best) {
+    applyAmazonResult(best, asin);
+    const isPrecise = best._source.startsWith('isbn');
+    statusEl.textContent = isPrecise
+      ? "✦ Dados preenchidos com precisão!"
+      : "✦ Dados preenchidos! Confere se o título bate com o link.";
+    statusEl.className = "amazon-status ok";
+  } else {
+    // Último recurso: só preenche título pelo slug para o usuário completar
+    if (titleFromSlug) {
+      document.getElementById("newTitle").value = titleFromSlug;
+      statusEl.textContent = "Preenchemos o título pelo link — complete o autor ✦";
+      statusEl.className = "amazon-status ok";
+    } else {
+      statusEl.textContent = "Não encontrei dados. Preenche manualmente ✦";
+      statusEl.className = "amazon-status err";
+    }
   }
 
   btn.disabled = false;
 }
 
-function applyAmazonResult(info, asin, source) {
+function applyAmazonResult(info, asin) {
   const titleEl = document.getElementById("newTitle");
   const authorEl = document.getElementById("newAuthor");
   const pagesEl = document.getElementById("newPages");
 
-  if (info.title && !titleEl.value.trim()) {
-    titleEl.value = info.title;
-  } else if (info.title) {
-    // Já tem título — não sobrescreve, mas preenche os outros campos
-  }
-  // Sempre aplica autor e páginas se estiver vazio
+  if (info.title) titleEl.value = info.title;
   const authors = info.authors || [];
-  if (authors.length > 0 && !authorEl.value.trim()) {
-    authorEl.value = authors[0];
-  }
-  if (info.pageCount && !pagesEl.value) {
-    pagesEl.value = info.pageCount;
-  }
+  if (authors.length > 0) authorEl.value = authors[0];
+  if (info.pageCount) pagesEl.value = info.pageCount;
 
-  // Tenta adivinhar gênero
   guessGenreFromSubjects(info.categories || []);
 
-  // Salva a capa se tiver
+  // Salva a capa
   const finalTitle = titleEl.value.trim();
   const finalAuthor = authorEl.value.trim();
-  if (finalTitle && finalAuthor && info.imageLinks) {
-    const coverUrl = (info.imageLinks.extraLarge || info.imageLinks.large || info.imageLinks.medium || info.imageLinks.thumbnail || '')
-      .replace(/^http:/, 'https:')
-      .replace(/&edge=curl/, '')
-      .replace(/&zoom=\d+/, '');
-    if (coverUrl) {
-      if (!state.covers) state.covers = {};
-      state.covers[coverKey(finalTitle, finalAuthor)] = coverUrl;
-      // Também tenta capa Amazon via ASIN
-      const amzCover = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
-      if (source === 'ol' || !coverUrl) {
-        state.covers[coverKey(finalTitle, finalAuthor)] = amzCover;
-      }
-      saveState();
-    }
-  } else if (finalTitle && finalAuthor) {
-    // Sem capa da API — salva capa da Amazon pelo ASIN
+  if (finalTitle && finalAuthor) {
     if (!state.covers) state.covers = {};
-    const amzCover = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
-    state.covers[coverKey(finalTitle, finalAuthor)] = amzCover;
+    const key = coverKey(finalTitle, finalAuthor);
+    // Prioridade: capa da API > capa Amazon pelo ASIN
+    const apiCover = info.imageLinks
+      ? (info.imageLinks.extraLarge || info.imageLinks.large || info.imageLinks.medium || info.imageLinks.thumbnail || '')
+          .replace(/^http:/, 'https:').replace(/&edge=curl/, '').replace(/&zoom=\d+/, '')
+      : '';
+    if (apiCover) {
+      state.covers[key] = apiCover;
+    } else if (asin) {
+      state.covers[key] = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
+    }
     saveState();
   }
 
-  // Dispara autocomplete pra buscar mais dados se título ficou preenchido
+  // Fecha autocomplete se aberto
   const autocompleteEl = document.getElementById("titleAutocomplete");
   if (autocompleteEl) { autocompleteEl.innerHTML = ""; autocompleteEl.classList.remove("open"); }
 }
