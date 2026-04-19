@@ -1215,6 +1215,20 @@
     font-family: inherit;
   }
   .book-delete:active { opacity: 1; }
+
+  .book-edit-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 15px;
+    padding: 2px 6px;
+    opacity: 0.5;
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .book-edit-btn:hover { opacity: 1; }
+  .book-edit-btn:active { opacity: 1; }
   
   @keyframes confetti {
     0% { transform: translate(0,0) rotate(0); opacity: 1; }
@@ -1318,6 +1332,64 @@
     color: var(--rose-deep);
     border: 1.5px solid var(--rose-deep);
   }
+
+  /* Amazon URL section */
+  .amazon-divider {
+    margin: 4px 0 16px;
+  }
+  .amazon-divider-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .amazon-divider-line::before,
+  .amazon-divider-line::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--cream-dark);
+  }
+  .amazon-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .amazon-input-wrap .form-input {
+    flex: 1;
+    margin: 0;
+    font-size: 13px;
+  }
+  .amazon-fetch-btn {
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    border-radius: 100px;
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.15s;
+    flex-shrink: 0;
+  }
+  .amazon-fetch-btn:active { transform: scale(0.95); }
+  .amazon-fetch-btn:disabled { opacity: 0.5; cursor: default; }
+  .amazon-status {
+    margin-top: 8px;
+    font-size: 12px;
+    min-height: 18px;
+    color: var(--ink-soft);
+    transition: color 0.2s;
+  }
+  .amazon-status.ok { color: var(--sage-deep); }
+  .amazon-status.err { color: var(--rose-deep); }
   
   .stars-input {
     display: flex;
@@ -2385,6 +2457,15 @@ create policy "acesso total genres" on genres
       <label class="form-label">Total de páginas (opcional)</label>
       <input type="number" class="form-input" id="newPages" min="1" placeholder="deixa vazio pra buscar automático">
     </div>
+
+    <div class="amazon-divider" id="amazonSection">
+      <div class="amazon-divider-line"><span>ou cole um link da Amazon</span></div>
+      <div class="amazon-input-wrap">
+        <input type="url" class="form-input" id="amazonUrl" placeholder="https://www.amazon.com.br/dp/..." autocomplete="off">
+        <button class="amazon-fetch-btn" onclick="fetchFromAmazon()" id="amazonFetchBtn">Buscar ✦</button>
+      </div>
+      <div class="amazon-status" id="amazonStatus"></div>
+    </div>
     
     <button class="form-btn" onclick="addBook()">Adicionar à estante</button>
   </div>
@@ -3213,14 +3294,30 @@ async function syncFromSupabase() {
   setSyncStatus("syncing", "↻ sincronizando");
   try {
     const userId = currentUser ? currentUser.id : null;
-    // Busca livros do usuário + livros órfãos (user_id null, adicionados antes do login)
+    // Busca APENAS os livros do usuário logado — livros órfãos (user_id null)
+    // são adotados no init() antes do sync, então aqui só pegamos os do usuário.
+    // Isso evita que livros de outro usuário (que ficaram órfãos) apareçam na estante.
     const filter = userId
-      ? `or=(user_id.eq.${encodeURIComponent(userId)},user_id.is.null)&`
+      ? `user_id=eq.${encodeURIComponent(userId)}&`
       : '';
     const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
       const oldCovers = state.covers || {};
-      state.books = rows.map(bookFromDb);
+      // Preserva o status "reading" local caso o banco devolva inconsistência
+      const localReadingMap = {};
+      (state.books || []).forEach(b => {
+        if (b.status === 'reading') localReadingMap[b.id] = b;
+      });
+      state.books = rows.map(row => {
+        const book = bookFromDb(row);
+        // Se o livro estava como "lendo" localmente mas o banco devolveu diferente,
+        // mantém o status local (evita sumir o "lendo" por delay de sync)
+        if (localReadingMap[book.id] && book.status !== 'reading') {
+          book.status = localReadingMap[book.id].status;
+          book.startDate = book.startDate || localReadingMap[book.id].startDate;
+        }
+        return book;
+      });
       state.covers = oldCovers;
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
@@ -3837,7 +3934,9 @@ function renderGenres() {
     container.style.gridTemplateColumns = "1fr";
     let html = "";
     Object.entries(GENRES).forEach(([key, g]) => {
-      const booksInGenre = state.books.filter(b => b.g === key);
+      const booksInGenre = state.books
+        .filter(b => b.g === key)
+        .sort((a, b) => a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' }));
       if (booksInGenre.length === 0) return;
       html += `<div class="month-group">
         <div class="month-group-header">
@@ -4018,6 +4117,10 @@ function renderBookItemHTML(book, showGenre) {
   
   const favMark = book.favorite ? '<span class="book-fav-mark">♥</span>' : '';
   const genreLabel = showGenre && g ? `<div class="book-meta"><span>${g.emoji} ${g.name}</span></div>` : '';
+  // Na aba "todos", mostra botão de editar (lápis) para poder editar título/gênero
+  const editBtn = state.filter === "todos"
+    ? `<button class="book-edit-btn" onclick="openEditModal(${book.id})" aria-label="Editar">✎</button>`
+    : '';
   
   return `
     <div class="book-item">
@@ -4028,6 +4131,7 @@ function renderBookItemHTML(book, showGenre) {
         ${meta}
       </div>
       <div class="book-status-group">
+        ${editBtn}
         ${statusBtn}
         <button class="book-delete" onclick="deleteBook(${book.id})" aria-label="Deletar">✕</button>
       </div>
@@ -4944,6 +5048,10 @@ function openAddBook() {
   document.getElementById("newTitle").value = "";
   document.getElementById("newAuthor").value = "";
   document.getElementById("newPages").value = "";
+  const amazonUrlEl = document.getElementById("amazonUrl");
+  if (amazonUrlEl) amazonUrlEl.value = "";
+  const amazonStatusEl = document.getElementById("amazonStatus");
+  if (amazonStatusEl) { amazonStatusEl.textContent = ""; amazonStatusEl.className = "amazon-status"; }
   const autoEl = document.getElementById("titleAutocomplete");
   if (autoEl) { autoEl.innerHTML = ""; autoEl.classList.remove("open"); }
   
@@ -4957,6 +5065,181 @@ function openAddBook() {
 function closeAddBook() {
   document.getElementById("addModal").classList.remove("open");
   document.body.style.overflow = "";
+  // Limpa campo Amazon ao fechar
+  const amzUrl = document.getElementById("amazonUrl");
+  if (amzUrl) amzUrl.value = "";
+  const amzStatus = document.getElementById("amazonStatus");
+  if (amzStatus) { amzStatus.textContent = ""; amzStatus.className = "amazon-status"; }
+}
+
+// ============ BUSCA VIA LINK DA AMAZON ============
+function extractAsinFromAmazonUrl(url) {
+  // Suporta formatos:
+  // amazon.com.br/dp/XXXXXXXXXX
+  // amazon.com.br/gp/product/XXXXXXXXXX
+  // amazon.com.br/TITULO/dp/XXXXXXXXXX
+  // amazon.com/dp/XXXXXXXXXX?...
+  const match = url.match(/(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
+  return match ? match[1] : null;
+}
+
+async function fetchFromAmazon() {
+  const urlInput = document.getElementById("amazonUrl");
+  const statusEl = document.getElementById("amazonStatus");
+  const btn = document.getElementById("amazonFetchBtn");
+  const url = urlInput.value.trim();
+
+  if (!url) {
+    statusEl.textContent = "Cole um link da Amazon primeiro ✦";
+    statusEl.className = "amazon-status err";
+    return;
+  }
+
+  const asin = extractAsinFromAmazonUrl(url);
+  if (!asin) {
+    statusEl.textContent = "Não consegui identificar o livro nessa URL. Confere se é um link da Amazon ✦";
+    statusEl.className = "amazon-status err";
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = "Buscando dados...";
+  statusEl.className = "amazon-status";
+
+  // O ASIN de livros físicos é o ISBN-10. Tenta buscar por ISBN primeiro, depois por ASIN genérico.
+  let found = false;
+
+  // 1. Tenta Google Books por ISBN (mais rico em dados)
+  try {
+    const resp = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=isbn:${asin}&maxResults=1&fields=items(volumeInfo(title,authors,pageCount,imageLinks,categories,language))`
+    );
+    if (resp.ok) {
+      const data = await resp.json();
+      const item = (data.items || [])[0];
+      if (item && item.volumeInfo && item.volumeInfo.title) {
+        applyAmazonResult(item.volumeInfo, asin, 'google');
+        statusEl.textContent = "✦ Dados preenchidos! Confere e ajusta se precisar.";
+        statusEl.className = "amazon-status ok";
+        found = true;
+      }
+    }
+  } catch(e) {}
+
+  // 2. Fallback: Open Library por ISBN
+  if (!found) {
+    try {
+      const resp = await fetch(`https://openlibrary.org/isbn/${asin}.json`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.title) {
+          // Busca autor separado
+          let authorName = "";
+          if (data.authors && data.authors[0] && data.authors[0].key) {
+            try {
+              const authResp = await fetch(`https://openlibrary.org${data.authors[0].key}.json`);
+              if (authResp.ok) {
+                const authData = await authResp.json();
+                authorName = authData.name || authData.personal_name || "";
+              }
+            } catch(e) {}
+          }
+          const info = {
+            title: data.title,
+            authors: authorName ? [authorName] : [],
+            pageCount: data.number_of_pages || null,
+            imageLinks: data.covers && data.covers[0]
+              ? { thumbnail: `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg` }
+              : null,
+            categories: data.subjects || [],
+          };
+          applyAmazonResult(info, asin, 'ol');
+          statusEl.textContent = "✦ Dados preenchidos! Confere e ajusta se precisar.";
+          statusEl.className = "amazon-status ok";
+          found = true;
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 3. Fallback: busca por título usando o ASIN como query no Google Books
+  if (!found) {
+    try {
+      const resp = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${asin}&maxResults=1&fields=items(volumeInfo(title,authors,pageCount,imageLinks,categories))`
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        const item = (data.items || [])[0];
+        if (item && item.volumeInfo && item.volumeInfo.title) {
+          applyAmazonResult(item.volumeInfo, asin, 'google');
+          statusEl.textContent = "✦ Dados preenchidos! Confere se tá certo — pode não ser exato.";
+          statusEl.className = "amazon-status ok";
+          found = true;
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (!found) {
+    statusEl.textContent = "Não encontrei dados pra esse livro. Preenche manualmente ✦";
+    statusEl.className = "amazon-status err";
+  }
+
+  btn.disabled = false;
+}
+
+function applyAmazonResult(info, asin, source) {
+  const titleEl = document.getElementById("newTitle");
+  const authorEl = document.getElementById("newAuthor");
+  const pagesEl = document.getElementById("newPages");
+
+  if (info.title && !titleEl.value.trim()) {
+    titleEl.value = info.title;
+  } else if (info.title) {
+    // Já tem título — não sobrescreve, mas preenche os outros campos
+  }
+  // Sempre aplica autor e páginas se estiver vazio
+  const authors = info.authors || [];
+  if (authors.length > 0 && !authorEl.value.trim()) {
+    authorEl.value = authors[0];
+  }
+  if (info.pageCount && !pagesEl.value) {
+    pagesEl.value = info.pageCount;
+  }
+
+  // Tenta adivinhar gênero
+  guessGenreFromSubjects(info.categories || []);
+
+  // Salva a capa se tiver
+  const finalTitle = titleEl.value.trim();
+  const finalAuthor = authorEl.value.trim();
+  if (finalTitle && finalAuthor && info.imageLinks) {
+    const coverUrl = (info.imageLinks.extraLarge || info.imageLinks.large || info.imageLinks.medium || info.imageLinks.thumbnail || '')
+      .replace(/^http:/, 'https:')
+      .replace(/&edge=curl/, '')
+      .replace(/&zoom=\d+/, '');
+    if (coverUrl) {
+      if (!state.covers) state.covers = {};
+      state.covers[coverKey(finalTitle, finalAuthor)] = coverUrl;
+      // Também tenta capa Amazon via ASIN
+      const amzCover = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
+      if (source === 'ol' || !coverUrl) {
+        state.covers[coverKey(finalTitle, finalAuthor)] = amzCover;
+      }
+      saveState();
+    }
+  } else if (finalTitle && finalAuthor) {
+    // Sem capa da API — salva capa da Amazon pelo ASIN
+    if (!state.covers) state.covers = {};
+    const amzCover = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
+    state.covers[coverKey(finalTitle, finalAuthor)] = amzCover;
+    saveState();
+  }
+
+  // Dispara autocomplete pra buscar mais dados se título ficou preenchido
+  const autocompleteEl = document.getElementById("titleAutocomplete");
+  if (autocompleteEl) { autocompleteEl.innerHTML = ""; autocompleteEl.classList.remove("open"); }
 }
 
 async function addBook() {
@@ -5921,9 +6204,8 @@ async function init() {
   }
 
   setSyncStatus("syncing", "↻ carregando");
-  // Só renderiza antes do sync se já tem livros em cache local
-  // Caso contrário, espera o sync terminar para não mostrar estante vazia por 1 segundo
-  if (state.books && state.books.length > 0) renderAll();
+  // Não renderiza estado local antes do sync — evita o flash de alterações locais
+  // que serão sobrescritas pelo banco em seguida
 
   await loadGenresFromDb();
 
