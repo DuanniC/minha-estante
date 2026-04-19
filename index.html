@@ -5035,7 +5035,8 @@ window.addEventListener("load", () => {
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.toggle("active", t.dataset.filter === "reading");
   });
-  renderAll();
+  // NÃO chama renderAll() aqui — o sync vai renderizar depois de buscar o banco.
+  // Chamar renderAll() aqui causava o flash de 1 segundo mostrando dados locais desatualizados.
 });
 
 // ============ ADD BOOK ============
