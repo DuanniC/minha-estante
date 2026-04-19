@@ -3209,7 +3209,7 @@ async function syncFromSupabase() {
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
       renderAll();
-      setSyncStatus("synced", "✦ sincronizado");
+      setSyncStatus("synced", "✦ sync");
     }
   } catch (e) {
     console.error(e);
