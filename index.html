@@ -3477,6 +3477,12 @@ async function syncFromSupabase() {
       : '';
     const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
+      console.log('[sync] banco retornou', rows.length, 'livros');
+      const withCover = rows.filter(r => r.cover_url);
+      console.log('[sync] livros com cover_url no banco:', withCover.length);
+      if (withCover.length > 0) {
+        console.log('[sync] exemplos de capas no banco:', withCover.slice(0, 3).map(r => ({ title: r.title, cover: r.cover_url.slice(0, 60) })));
+      }
       const oldCovers = state.covers || {};
       // Preserva o status "reading" local caso o banco devolva inconsistência
       const localReadingMap = {};
@@ -3504,6 +3510,7 @@ async function syncFromSupabase() {
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
       initialSyncDone = true; // agora pode buscar capas automáticas pros livros sem capa salva
+      console.log('[sync] ✓ completo. state.covers tem', Object.keys(state.covers).length, 'entradas');
       renderAll();
       setSyncStatus("synced", "✦ sincronizado");
     }
@@ -3524,14 +3531,16 @@ async function pushBook(book) {
   setSyncStatus("syncing", "↻ salvando");
   try {
     const data = bookToDb(book);
+    console.log('[pushBook] enviando:', { id: data.id, title: data.title, cover_url: data.cover_url ? data.cover_url.slice(0, 60) + '...' : null });
     await supabaseFetch("books", {
       method: 'POST',
       body: JSON.stringify(data),
       headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     });
+    console.log('[pushBook] ✓ salvo com sucesso');
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
-    console.error(e);
+    console.error('[pushBook] ✗ ERRO:', e);
     setSyncStatus("error", "⚠ erro ao salvar");
   }
 }
