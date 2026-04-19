@@ -3689,29 +3689,51 @@ function coverKey(title, author) {
 
 // ── apiFetch: wrapper pro fetch que contorna o bloqueio do Safari iOS ────────
 // No iOS com "Impedir rastreamento entre sites" ligado (padrão), requisições
-// fetch pra googleapis/openlibrary são bloqueadas. Tenta direto primeiro
-// (funciona no desktop e Android); se falhar, faz retry via proxy CORS.
+// fetch pra googleapis/openlibrary/mercadolibre são bloqueadas silenciosamente
+// (demora MUITO tempo pra falhar). Solução:
+//  1. Se detectar iOS Safari, pula fetch direto e vai direto pro proxy
+//  2. Em outros browsers, tenta direto com timeout curto; se falhar, proxy
+const IS_IOS_SAFARI = (() => {
+  try {
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document);
+    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+    return isIOS && isSafari;
+  } catch(e) { return false; }
+})();
+
 const CORS_PROXIES = [
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
 ];
+
+function fetchWithTimeout(url, opts, timeoutMs) {
+  // Respeita AbortSignal externo se fornecido; senão cria um com timeout
+  if (opts && opts.signal) return fetch(url, opts);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...(opts || {}), signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 async function apiFetch(url, opts) {
-  try {
-    const resp = await fetch(url, opts);
-    if (resp.ok) return resp;
-    // Se a resposta não for ok por erro de rede/CORS, tenta proxies
-  } catch (e) {
-    // fetch lançou (erro de rede / CORS bloqueado pelo Safari)
+  // iOS Safari: pula fetch direto (quase sempre bloqueia e demora eternamente)
+  if (!IS_IOS_SAFARI) {
+    try {
+      const resp = await fetchWithTimeout(url, opts, 4000);
+      if (resp.ok) return resp;
+    } catch (e) { /* timeout ou CORS — tenta proxies */ }
   }
   for (const makeProxyUrl of CORS_PROXIES) {
     try {
-      const resp = await fetch(makeProxyUrl(url), opts);
+      const resp = await fetchWithTimeout(makeProxyUrl(url), opts, 8000);
       if (resp.ok) return resp;
-    } catch (e) { /* tenta próximo */ }
+    } catch (e) { /* próximo proxy */ }
   }
-  // Último recurso: retorna uma resposta falsa "não encontrou"
-  return new Response(JSON.stringify({ items: [], docs: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  // Último recurso: resposta falsa "nada encontrado"
+  return new Response(JSON.stringify({ items: [], docs: [], results: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
+
 
 // ============ CAPAS ============
 // Busca de capas e páginas: Google Books (prioridade) + Open Library (fallback)
@@ -6364,74 +6386,116 @@ async function openCoverPicker() {
   const grid = document.getElementById("coverPickerGrid");
   grid.innerHTML = `<div class="cover-picker-empty">buscando capas ✦</div>`;
   
-  // Busca em paralelo: Google Books, Open Library, Amazon (via ISBN)
   const title = book.t;
   const author = book.a;
   const covers = [];
+  const seenUrls = new Set();
   
-  // Google Books
-  try {
-    const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
-    const resp = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=10`);
-    if (resp.ok) {
-      const data = await resp.json();
-      (data.items || []).forEach(item => {
-        const info = item.volumeInfo || {};
-        if (info.imageLinks) {
-          const links = info.imageLinks;
-          let url = links.extraLarge || links.large || links.medium || links.thumbnail;
-          if (url) {
-            url = url.replace(/^http:/, 'https:').replace(/&edge=curl/, '').replace(/&zoom=\d+/, '');
+  // Renderiza progressivamente — conforme cada API responde, já mostra
+  const renderProgress = () => {
+    const unique = covers.filter(c => {
+      if (seenUrls.has(c.url)) return false;
+      seenUrls.add(c.url);
+      return true;
+    });
+    // Limpa "seenUrls" para próximo ciclo (só filtra duplicatas internas do batch atual)
+    // mas mantém o set externo para dedup entre batches
+    if (unique.length > 0) {
+      renderCoverPicker(unique);
+    }
+  };
+  
+  // Dispara as 3 buscas em paralelo. Cada uma adiciona capas ao array e re-renderiza.
+  const googleBooksPromise = (async () => {
+    try {
+      const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
+      const resp = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=10`);
+      if (resp.ok) {
+        const data = await resp.json();
+        (data.items || []).forEach(item => {
+          const info = item.volumeInfo || {};
+          // Capa
+          if (info.imageLinks) {
+            const links = info.imageLinks;
+            let url = links.extraLarge || links.large || links.medium || links.thumbnail;
+            if (url) {
+              url = url.replace(/^http:/, 'https:').replace(/&edge=curl/, '').replace(/&zoom=\d+/, '');
+              covers.push({ url, source: 'Google', lang: info.language, title: info.title });
+            }
+          }
+          // ISBN → Amazon (bônus: Google Books retorna ISBN, então usa isso também)
+          const ids = info.industryIdentifiers || [];
+          for (const id of ids) {
+            if (id.type === 'ISBN_13' || id.type === 'ISBN_10') {
+              covers.push({
+                url: `https://images-na.ssl-images-amazon.com/images/P/${id.identifier}.01.LZZZZZZZ.jpg`,
+                source: 'AMZ', lang: info.language, title: info.title,
+              });
+            }
+          }
+        });
+      }
+    } catch(e) { console.warn('[picker] Google Books falhou:', e); }
+    renderProgress();
+  })();
+  
+  const openLibraryPromise = (async () => {
+    try {
+      const fields = "cover_i,language,title,isbn";
+      const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=10&fields=${fields}`;
+      const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        (data.docs || []).forEach(doc => {
+          if (doc.cover_i) {
             covers.push({
-              url,
-              source: 'Google',
-              lang: info.language,
-              title: info.title,
+              url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
+              source: 'OL', lang: (doc.language || [])[0], title: doc.title,
             });
           }
-        }
-      });
-    }
-  } catch(e) {}
+          // Amazon fallback via ISBN do Open Library
+          const isbn = (doc.isbn || []).find(s => s.length === 13) || (doc.isbn || []).find(s => s.length === 10);
+          if (isbn) {
+            covers.push({
+              url: `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`,
+              source: 'AMZ', lang: (doc.language || [])[0], title: doc.title,
+            });
+          }
+        });
+      }
+    } catch(e) { console.warn('[picker] Open Library falhou:', e); }
+    renderProgress();
+  })();
   
-  // Open Library
-  try {
-    const fields = "cover_i,language,title,isbn";
-    const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=10&fields=${fields}`;
-    const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
-    if (resp.ok) {
-      const data = await resp.json();
-      (data.docs || []).forEach(doc => {
-        if (doc.cover_i) {
-          covers.push({
-            url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
-            source: 'OL',
-            lang: (doc.language || [])[0],
-            title: doc.title,
-          });
-        }
-        // Amazon fallback via ISBN
-        const isbn = (doc.isbn || []).find(s => s.length === 13) || (doc.isbn || []).find(s => s.length === 10);
-        if (isbn) {
-          covers.push({
-            url: `https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`,
-            source: 'AMZ',
-            lang: (doc.language || [])[0],
-            title: doc.title,
-          });
-        }
-      });
-    }
-  } catch(e) {}
+  // Mercado Livre — frequentemente tem capas brasileiras de alta qualidade
+  const mercadoLivrePromise = (async () => {
+    try {
+      const q = `${title} ${author}`.trim();
+      const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(q)}&category=MLB1574&limit=10`;
+      const resp = await apiFetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        (data.results || []).forEach(item => {
+          if (item.thumbnail) {
+            const thumb = item.thumbnail.replace(/\/(I|W)\d+\.webp/, '/W400.webp').replace('http://', 'https://');
+            covers.push({ url: thumb, source: 'ML', title: item.title });
+          }
+        });
+      }
+    } catch(e) { console.warn('[picker] Mercado Livre falhou:', e); }
+    renderProgress();
+  })();
   
-  // Dedup por URL
+  // Espera todas terminarem e faz render final
+  await Promise.allSettled([googleBooksPromise, openLibraryPromise, mercadoLivrePromise]);
+  
+  // Render final dedup geral
   const seen = new Set();
   const unique = covers.filter(c => {
     if (seen.has(c.url)) return false;
     seen.add(c.url);
     return true;
   });
-  
   renderCoverPicker(unique);
 }
 
