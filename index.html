@@ -3477,12 +3477,6 @@ async function syncFromSupabase() {
       : '';
     const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
-      console.log('[sync] banco retornou', rows.length, 'livros');
-      const withCover = rows.filter(r => r.cover_url);
-      console.log('[sync] livros com cover_url no banco:', withCover.length);
-      if (withCover.length > 0) {
-        console.log('[sync] exemplos de capas no banco:', withCover.slice(0, 3).map(r => ({ title: r.title, cover: r.cover_url.slice(0, 60) })));
-      }
       const oldCovers = state.covers || {};
       // Preserva o status "reading" local caso o banco devolva inconsistência
       const localReadingMap = {};
@@ -3510,7 +3504,6 @@ async function syncFromSupabase() {
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
       initialSyncDone = true; // agora pode buscar capas automáticas pros livros sem capa salva
-      console.log('[sync] ✓ completo. state.covers tem', Object.keys(state.covers).length, 'entradas');
       renderAll();
       setSyncStatus("synced", "✦ sincronizado");
     }
@@ -3531,16 +3524,14 @@ async function pushBook(book) {
   setSyncStatus("syncing", "↻ salvando");
   try {
     const data = bookToDb(book);
-    console.log('[pushBook] enviando:', { id: data.id, title: data.title, cover_url: data.cover_url ? data.cover_url.slice(0, 60) + '...' : null });
     await supabaseFetch("books", {
       method: 'POST',
       body: JSON.stringify(data),
       headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
     });
-    console.log('[pushBook] ✓ salvo com sucesso');
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
-    console.error('[pushBook] ✗ ERRO:', e);
+    console.error(e);
     setSyncStatus("error", "⚠ erro ao salvar");
   }
 }
@@ -3696,6 +3687,32 @@ function coverKey(title, author) {
   return `${title}|||${author}`.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+// ── apiFetch: wrapper pro fetch que contorna o bloqueio do Safari iOS ────────
+// No iOS com "Impedir rastreamento entre sites" ligado (padrão), requisições
+// fetch pra googleapis/openlibrary são bloqueadas. Tenta direto primeiro
+// (funciona no desktop e Android); se falhar, faz retry via proxy CORS.
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
+async function apiFetch(url, opts) {
+  try {
+    const resp = await fetch(url, opts);
+    if (resp.ok) return resp;
+    // Se a resposta não for ok por erro de rede/CORS, tenta proxies
+  } catch (e) {
+    // fetch lançou (erro de rede / CORS bloqueado pelo Safari)
+  }
+  for (const makeProxyUrl of CORS_PROXIES) {
+    try {
+      const resp = await fetch(makeProxyUrl(url), opts);
+      if (resp.ok) return resp;
+    } catch (e) { /* tenta próximo */ }
+  }
+  // Último recurso: retorna uma resposta falsa "não encontrou"
+  return new Response(JSON.stringify({ items: [], docs: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
+
 // ============ CAPAS ============
 // Busca de capas e páginas: Google Books (prioridade) + Open Library (fallback)
 
@@ -3728,19 +3745,25 @@ async function fetchBookMeta(title, author) {
     };
   }
 
+  // REGRA DE OURO: se já temos UMA capa real (não "NONE") no cache,
+  // NUNCA sobrescrever via busca automática. A capa pode ter sido escolhida
+  // manualmente pelo usuário ou já ter sido sincronizada do banco.
+  // Só buscamos automaticamente se o slot está genuinamente vazio.
+  const canWriteCover = !state.covers[key] || state.covers[key] === "NONE";
+
   // GOOGLE BOOKS PRIMEIRO (capas mais consistentes e em maior resolução)
   if (!hasCover || !hasPages) {
     try {
       const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
       const gUrl = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&langRestrict=pt`;
-      const resp = await fetch(gUrl);
+      const resp = await apiFetch(gUrl);
       if (resp.ok) {
         const data = await resp.json();
         let items = data.items || [];
         
         // Se não achou em português, tenta sem restrição de língua
         if (items.length === 0) {
-          const resp2 = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`);
+          const resp2 = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`);
           if (resp2.ok) {
             const data2 = await resp2.json();
             items = data2.items || [];
@@ -3767,7 +3790,7 @@ async function fetchBookMeta(title, author) {
             state.bookPages[key] = best.info.pageCount;
           }
           // Capa (Google Books tem várias resoluções)
-          if (!hasCover && best.info.imageLinks) {
+          if (canWriteCover && best.info.imageLinks) {
             // Prioridade: extraLarge > large > medium > thumbnail
             const links = best.info.imageLinks;
             let coverUrl = links.extraLarge || links.large || links.medium || links.thumbnail || links.smallThumbnail;
@@ -3791,7 +3814,7 @@ async function fetchBookMeta(title, author) {
     try {
       const fields = "cover_i,number_of_pages_median,isbn,language,edition_count,title";
       const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=5&fields=${fields}`;
-      const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
+      const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
       if (resp.ok) {
         const data = await resp.json();
         const docs = data.docs || [];
@@ -3812,7 +3835,7 @@ async function fetchBookMeta(title, author) {
             const withPages = ranked.find(d => d.number_of_pages_median);
             if (withPages) state.bookPages[key] = withPages.number_of_pages_median;
           }
-          if (!state.covers[key]) {
+          if (canWriteCover && !state.covers[key]) {
             const withCover = ranked.find(d => d.cover_i);
             if (withCover) {
               state.covers[key] = `https://covers.openlibrary.org/b/id/${withCover.cover_i}-L.jpg`;
@@ -3830,7 +3853,7 @@ async function fetchBookMeta(title, author) {
     } catch(e) { /* silencia */ }
   }
 
-  if (!state.covers[key]) state.covers[key] = "NONE";
+  if (canWriteCover && !state.covers[key]) state.covers[key] = "NONE";
   saveState();
   return {
     cover: state.covers[key] === "NONE" ? null : state.covers[key],
@@ -3843,24 +3866,37 @@ async function fetchBookMeta(title, author) {
 // - Rejeita imagens quase quadradas (capas de livro são ~2:3)
 function loadCoverWithValidation(url, onSuccess, onFailure) {
   if (!url) { if (onFailure) onFailure(); return; }
-  const img = new Image();
-  img.onload = () => {
-    // Open Library retorna placeholder de 1x1 quando não tem capa
-    if (img.naturalWidth < 50 || img.naturalHeight < 80) {
-      if (onFailure) onFailure();
-      return;
-    }
-    // Capa de livro tem aspect ratio próximo de 2:3 (0.67)
-    // Se for quase quadrada ou muito horizontal, provavelmente é placeholder
-    const ratio = img.naturalWidth / img.naturalHeight;
-    if (ratio > 1.1 || ratio < 0.4) {
-      if (onFailure) onFailure();
-      return;
-    }
-    if (onSuccess) onSuccess(url);
-  };
-  img.onerror = () => { if (onFailure) onFailure(); };
-  img.src = url;
+  let attemptedProxy = false;
+  function tryLoad(currentUrl) {
+    const img = new Image();
+    img.onload = () => {
+      // Open Library retorna placeholder de 1x1 quando não tem capa
+      if (img.naturalWidth < 50 || img.naturalHeight < 80) {
+        if (onFailure) onFailure();
+        return;
+      }
+      // Capa de livro tem aspect ratio próximo de 2:3 (0.67)
+      // Se for quase quadrada ou muito horizontal, provavelmente é placeholder
+      const ratio = img.naturalWidth / img.naturalHeight;
+      if (ratio > 1.1 || ratio < 0.4) {
+        if (onFailure) onFailure();
+        return;
+      }
+      if (onSuccess) onSuccess(currentUrl);
+    };
+    img.onerror = () => {
+      // Se a imagem falhou (ex: Safari iOS bloqueou), tenta via proxy CORS
+      if (!attemptedProxy) {
+        attemptedProxy = true;
+        const proxied = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        tryLoad(proxied);
+      } else {
+        if (onFailure) onFailure();
+      }
+    };
+    img.src = currentUrl;
+  }
+  tryLoad(url);
 }
 
 // Wrappers de compatibilidade — usam fetchBookMeta internamente
@@ -5406,7 +5442,7 @@ async function fetchFromAmazon() {
   // 1. Google Books por ISBN (só se ASIN parece ISBN-10: começa com dígito ou 'B' não)
   if (asin && !/^B/i.test(asin)) {
     promises.push(
-      fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${asin}&maxResults=3`)
+      apiFetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${asin}&maxResults=3`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           const item = (data?.items || [])[0];
@@ -5417,14 +5453,14 @@ async function fetchFromAmazon() {
 
     // 2. Open Library por ISBN
     promises.push(
-      fetch(`https://openlibrary.org/isbn/${asin}.json`)
+      apiFetch(`https://openlibrary.org/isbn/${asin}.json`)
         .then(r => r.ok ? r.json() : null)
         .then(async data => {
           if (!data?.title) return null;
           let authorName = "";
           if (data.authors?.[0]?.key) {
             try {
-              const ar = await fetch(`https://openlibrary.org${data.authors[0].key}.json`);
+              const ar = await apiFetch(`https://openlibrary.org${data.authors[0].key}.json`);
               const ad = ar.ok ? await ar.json() : {};
               authorName = ad.name || ad.personal_name || "";
             } catch(e) {}
@@ -5447,7 +5483,7 @@ async function fetchFromAmazon() {
   if (titleFromSlug) {
     const q = encodeURIComponent(titleFromSlug);
     promises.push(
-      fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&langRestrict=pt`)
+      apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&langRestrict=pt`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           const item = (data?.items || [])[0];
@@ -5456,7 +5492,7 @@ async function fetchFromAmazon() {
         }).catch(() => null)
     );
     promises.push(
-      fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`)
+      apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           const item = (data?.items || [])[0];
@@ -5470,7 +5506,7 @@ async function fetchFromAmazon() {
   if (titleFromSlug) {
     const q = encodeURIComponent(titleFromSlug);
     promises.push(
-      fetch(`https://openlibrary.org/search.json?q=${q}&limit=3&fields=title,author_name,number_of_pages_median,cover_i,subject`)
+      apiFetch(`https://openlibrary.org/search.json?q=${q}&limit=3&fields=title,author_name,number_of_pages_median,cover_i,subject`)
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           const doc = (data?.docs || [])[0];
@@ -5697,7 +5733,7 @@ async function searchMercadoLivre(q, signal) {
   // MLB1574 = categoria Livros no Mercado Livre Brasil
   const url = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(q)}&category=MLB1574&limit=12`;
   try {
-    const resp = await fetch(url, { signal });
+    const resp = await apiFetch(url, { signal });
     if (!resp.ok) return [];
     const data = await resp.json();
     const out = [];
@@ -5762,7 +5798,7 @@ async function searchGoogleBooks(q, signal) {
   ];
 
   const results = await Promise.allSettled(
-    queries.map(url => fetch(url, { signal }).then(r => r.ok ? r.json() : { items: [] }))
+    queries.map(url => apiFetch(url, { signal }).then(r => r.ok ? r.json() : { items: [] }))
   );
 
   const allItems = results.flatMap(r => r.status === 'fulfilled' ? (r.value.items || []) : []);
@@ -5849,8 +5885,8 @@ async function searchOpenLibrary(q, signal) {
   
   try {
     const [ptResp, allResp] = await Promise.allSettled([
-      fetch(urlPt, { signal }),
-      fetch(urlAll, { signal }),
+      apiFetch(urlPt, { signal }),
+      apiFetch(urlAll, { signal }),
     ]);
     
     let ptDocs = [];
@@ -6336,7 +6372,7 @@ async function openCoverPicker() {
   // Google Books
   try {
     const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
-    const resp = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=10`);
+    const resp = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=10`);
     if (resp.ok) {
       const data = await resp.json();
       (data.items || []).forEach(item => {
@@ -6362,7 +6398,7 @@ async function openCoverPicker() {
   try {
     const fields = "cover_i,language,title,isbn";
     const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=10&fields=${fields}`;
-    const resp = await fetch(`https://openlibrary.org/search.json?${q}`);
+    const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
     if (resp.ok) {
       const data = await resp.json();
       (data.docs || []).forEach(doc => {
