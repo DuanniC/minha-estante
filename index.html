@@ -3246,14 +3246,16 @@ function afterLogin(authData) {
   const user = authData.user;
   const gender = (user.user_metadata && user.user_metadata.gender) || null;
   currentUser = {
-    id:    user.id,
-    email: user.email,
-    name:  (user.user_metadata && user.user_metadata.display_name) || user.email.split("@")[0],
-    token: authData.access_token,
-    gender: gender,
+    id:      user.id,
+    email:   user.email,
+    name:    (user.user_metadata && user.user_metadata.display_name) || user.email.split("@")[0],
+    token:   authData.access_token,
+    refresh: authData.refresh_token,
+    expiresAt: authData.expires_at || (Math.floor(Date.now() / 1000) + (authData.expires_in || 3600)),
+    gender:  gender,
   };
   // Armazena token para reload automático
-  try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: authData.access_token, refresh: authData.refresh_token, user })); } catch(e) {}
+  try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: authData.access_token, refresh: authData.refresh_token, user, expiresAt: currentUser.expiresAt })); } catch(e) {}
   STORAGE_KEY = `minha_estante_v3_${currentUser.id}`;
   // Atualiza chip
   document.getElementById("userChip").style.display = "flex";
@@ -3282,7 +3284,7 @@ async function tryAutoLogin() {
   try {
     const saved = localStorage.getItem(LOGIN_KEY);
     if (!saved) return false;
-    const { token, refresh, user } = JSON.parse(saved);
+    const { token, refresh, user, expiresAt } = JSON.parse(saved);
     if (!token || !user) return false;
     const { url, key } = getSupabaseCreds();
     if (!url || !key || key === "SUA_CHAVE_AQUI") return false;
@@ -3399,8 +3401,31 @@ function setSyncStatus(status, text) {
   document.getElementById("syncText").textContent = text;
 }
 
+// Renova o token silenciosamente se estiver a menos de 5 min de expirar
+async function ensureFreshToken() {
+  if (!currentUser || !currentUser.refresh) return;
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = currentUser.expiresAt || 0;
+  if (expiresAt - now > 300) return; // ainda tem mais de 5 min, ok
+  try {
+    const { url, key } = getSupabaseCreds();
+    const resp = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": key },
+      body: JSON.stringify({ refresh_token: currentUser.refresh }),
+    });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    currentUser.token     = data.access_token;
+    currentUser.refresh   = data.refresh_token;
+    currentUser.expiresAt = data.expires_at || (now + (data.expires_in || 3600));
+    try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: data.access_token, refresh: data.refresh_token, user: data.user, expiresAt: currentUser.expiresAt })); } catch(e) {}
+  } catch(e) { /* falha silenciosa — a requisição principal vai retornar 401 */ }
+}
+
 async function supabaseFetch(path, options = {}) {
   if (!config.supabaseUrl || !config.supabaseKey) throw new Error("Supabase não configurado");
+  await ensureFreshToken();
   const url = `${config.supabaseUrl.replace(/\/$/, '')}/rest/v1/${path}`;
   // Usa o JWT do usuário logado para Row Level Security funcionar corretamente
   const authToken = (currentUser && currentUser.token) ? currentUser.token : config.supabaseKey;
