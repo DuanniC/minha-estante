@@ -2104,12 +2104,12 @@
   
   /* Month groups (aba Já lidos) */
   .month-group {
-    margin-bottom: 28px;
+    margin-bottom: 8px;
   }
   
   .month-group-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     padding: 14px 18px;
     background: var(--cream-dark);
@@ -2119,6 +2119,7 @@
     cursor: pointer;
     user-select: none;
     transition: background 0.2s ease;
+    gap: 10px;
   }
   
   .month-group-header:hover {
@@ -2130,17 +2131,24 @@
   }
   
   .month-group-toggle {
-    font-family: 'Fraunces', serif;
-    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     color: var(--ink-soft);
-    margin-right: 8px;
-    display: inline-block;
     transition: transform 0.25s ease;
-    transform: rotate(-90deg); /* fechado: chevron aponta pra direita */
+    transform: rotate(-90deg);
   }
   
   .month-group:not(.collapsed) .month-group-toggle {
-    transform: rotate(0deg); /* aberto: chevron aponta pra baixo */
+    transform: rotate(0deg);
+  }
+  
+  .month-group-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
   
   .month-group.collapsed .book-list {
@@ -2193,9 +2201,11 @@
     font-weight: 400;
   }
   .fav-gallery-sub {
-    font-size: 13px;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 20px;
     color: var(--ink-soft);
-    margin: -10px 4px 22px;
+    margin: 20px 4px 22px;
     letter-spacing: 0.2px;
   }
   .fav-gallery-grid {
@@ -2533,8 +2543,8 @@ create policy "acesso total genres" on genres
   
   <div class="hero">
     <span class="hero-deco">✦</span>
-    <h1>qual vai ser<br>sua <em id="heroWord">próxima</em><br>leitura?</h1>
-    <p>Gire a roda e deixa a sorte escolher por você.</p>
+    <h1 id="heroTitle">qual vai ser<br>sua <em id="heroWord">próxima</em><br>leitura?</h1>
+    <p id="heroSub">Gire a roda e deixa a sorte escolher por você.</p>
   </div>
   
   <div class="tabs">
@@ -4150,7 +4160,6 @@ function renderGenres() {
     const statusLabel = { reading: 'lendo', lido: 'lido', pendente: 'pendente', abandonado: 'abandonado' };
     
     let html = `
-      <div class="fav-gallery-header">seus <em>favoritos</em> ♥</div>
       <div class="fav-gallery-sub">${favs.length} ${favs.length > 1 ? 'livros que ficaram no coração' : 'livro que ficou no coração'}</div>
       <div class="fav-gallery-grid">
     `;
@@ -4251,7 +4260,10 @@ function renderGenres() {
         
         html += `<div class="month-group collapsed">
           <div class="month-group-header" onclick="toggleMonthGroup(this)">
-            <span class="month-group-title"><span class="month-group-toggle">⌃</span>${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+            <div class="month-group-left">
+              <span class="month-group-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+            </div>
             <span class="month-group-count">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''}</span>
           </div>
           <div class="book-list" style="border:none; padding:0; margin:0;">`;
@@ -4266,7 +4278,10 @@ function renderGenres() {
     if (semData.length > 0) {
       html += `<div class="month-group collapsed">
         <div class="month-group-header" onclick="toggleMonthGroup(this)">
-          <span class="month-group-title"><span class="month-group-toggle">⌃</span><em>sem data registrada</em></span>
+          <div class="month-group-left">
+            <span class="month-group-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="month-group-title"><em>sem data registrada</em></span>
+          </div>
           <span class="month-group-count">${semData.length}</span>
         </div>
         <div class="book-list" style="border:none; padding:0; margin:0;">`;
@@ -4295,7 +4310,10 @@ function renderGenres() {
       if (booksInGenre.length === 0) return;
       html += `<div class="month-group collapsed">
         <div class="month-group-header" onclick="toggleMonthGroup(this)">
-          <span class="month-group-title"><span class="month-group-toggle">⌃</span>${g.emoji} <em>${escapeHtml(g.name)}</em></span>
+          <div class="month-group-left">
+            <span class="month-group-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="month-group-title">${g.emoji} <em>${escapeHtml(g.name)}</em></span>
+          </div>
           <span class="month-group-count">${booksInGenre.length} livro${booksInGenre.length !== 1 ? 's' : ''}</span>
         </div>
         <div class="book-list" style="border:none; padding:0; margin:0;">`;
@@ -5372,12 +5390,57 @@ function deleteBook(id) {
   renderAll();
 }
 
+// ============ HERO TEXT POR ABA ============
+const HERO_TEXTS = {
+  todos: {
+    html: `todos os seus <em id="heroWord">livros</em><br>num só lugar.`,
+    sub: "A bagunça organizada de quem lê muito.",
+  },
+  reading: {
+    html: `essa é a sua <em id="heroWord">leitura</em> atual.`,
+    sub: "Página por página.",
+  },
+  pendente: {
+    html: `qual vai ser sua<br><em id="heroWord">próxima</em> leitura?`,
+    sub: "Gire a roda e deixa a sorte escolher por você.",
+  },
+  favoritos: {
+    html: `os livros que<br><em id="heroWord">marcaram</em> você.`,
+    sub: "Esses ficam no coração pra sempre.",
+  },
+  lido: {
+    html: `olha tudo que<br><em id="heroWord">você já</em> leu!`,
+    sub: "Cada livro, uma versão diferente de você.",
+  },
+  abandoned: {
+    html: `nem todo livro<br><em id="heroWord">merece</em> seu tempo.`,
+    sub: "Largar também é uma escolha corajosa.",
+  },
+};
+
+function updateHero(filter) {
+  const h = HERO_TEXTS[filter] || HERO_TEXTS.todos;
+  const titleEl = document.getElementById("heroTitle");
+  const subEl   = document.getElementById("heroSub");
+  if (!titleEl) return;
+
+  titleEl.innerHTML = h.html;
+  if (subEl) subEl.textContent = h.sub;
+
+  // re-aplica gênero ao heroWord (caso necessário)
+  const newWord = document.getElementById("heroWord");
+  if (newWord && currentUser && currentUser.gender === "masculino") {
+    newWord.classList.add("gender-masc");
+  }
+}
+
 // ============ FILTERS ============
 document.querySelectorAll(".tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
     state.filter = tab.dataset.filter;
+    updateHero(state.filter);
     saveState();
     renderAll();
   });
@@ -5386,6 +5449,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 window.addEventListener("load", () => {
   // Sempre abre na aba Lendo, independente do que estava salvo
   state.filter = "reading";
+  updateHero("reading");
   saveState();
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.toggle("active", t.dataset.filter === "reading");
