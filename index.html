@@ -2904,7 +2904,7 @@ create policy "acesso total genres" on genres
     <div class="reading-info" id="saveSessionInfo"></div>
     
     <div class="form-group" style="margin-top: 16px;">
-      <label class="form-label">Quanto você leu?</label>
+      <label class="form-label">Em qual página parou?</label>
       <div style="display: flex; gap: 10px; align-items: center;">
         <input type="number" class="form-input" id="sessionPageEnd" min="0" placeholder="página atual" style="flex:1">
         <span style="color: var(--ink-soft); font-size: 13px;" id="sessionPageTotal"></span>
@@ -4871,10 +4871,10 @@ function openSaveSession() {
   const book = getBookById(timerState.bookId);
   if (!book) return;
   
-  const totalSecs = getElapsedSeconds();
+  const totalSecs = Math.max(0, isNaN(getElapsedSeconds()) ? (timerState.elapsedBefore || 0) : getElapsedSeconds());
   pendingSession = {
     bookId: book.id,
-    startedAt: new Date(timerState.startedAt - (timerState.elapsedBefore || 0) * 1000).toISOString(),
+    startedAt: new Date(Number(timerState.startedAt) - (timerState.elapsedBefore || 0) * 1000).toISOString(),
     durationSeconds: totalSecs,
     pageStart: timerState.pageStart || 0,
   };
@@ -4906,12 +4906,14 @@ function closeSaveSession() {
 
 async function saveSession(markAsRead) {
   if (!pendingSession) return;
-  const book = getBookById(pendingSession.bookId);
+  const session = pendingSession;
+  pendingSession = null; // limpa imediatamente pra evitar duplo clique
+  const book = getBookById(session.bookId);
   if (!book) return;
   
   const pageEnd = parseInt(document.getElementById("sessionPageEnd").value) || book.pagesCurrent || 0;
-  pendingSession.pageEnd = pageEnd;
-  pendingSession.endedAt = new Date().toISOString();
+  session.pageEnd = pageEnd;
+  session.endedAt = new Date().toISOString();
   
   // Atualiza página atual do livro
   book.pagesCurrent = pageEnd;
@@ -4924,20 +4926,24 @@ async function saveSession(markAsRead) {
   
   saveState();
   pushBook(book);
-  
+
+  // Salva sessão localmente no state
+  if (!state.sessions) state.sessions = [];
+  state.sessions.push({ ...session, pageEnd: session.pageEnd, pageStart: session.pageStart });
+  saveState();
+
   // Salva sessão no Supabase
   try {
-    await pushSession(pendingSession);
+    await pushSession(session);
   } catch(e) { console.error(e); }
   
   // Fecha tudo e mostra resultado
   closeSaveSession();
   clearInterval(timerInterval);
   timerInterval = null;
-  const sessionData = { ...pendingSession };
+  const sessionData = { ...session };
   timerState = null;
   saveTimerState();
-  pendingSession = null;
   
   showSessionResult(book, sessionData);
   renderAll();
@@ -5028,18 +5034,37 @@ function showSessionResult(book, session) {
       pagesRead > 0 ? `${pagesRead} página${pagesRead > 1 ? 's' : ''} lidas` : '';
   }
   
-  // Estimativa de tempo restante
+  // Estimativa de tempo restante — usa média de todas as sessões com páginas lidas
   const pagesLeft = Math.max(0, total - current);
-  if (pagesLeft > 0 && pagesRead > 0 && session.durationSeconds > 0) {
-    const secPerPage = session.durationSeconds / pagesRead;
+
+  let secPerPage = 0;
+  const allSessions = (state.sessions || []).filter(s =>
+    s.bookId === book.id &&
+    s.durationSeconds > 0 &&
+    (s.pageEnd || 0) > (s.pageStart || 0)
+  );
+  // Garante que a sessão atual sempre está no pool
+  const currentInPool = allSessions.some(s => s.startedAt === session.startedAt);
+  if (!currentInPool && session.durationSeconds > 0 && pagesRead > 0) {
+    allSessions.push(session);
+  }
+  if (allSessions.length > 0) {
+    const totalSecs  = allSessions.reduce((a, s) => a + s.durationSeconds, 0);
+    const totalPages = allSessions.reduce((a, s) => a + ((s.pageEnd || 0) - (s.pageStart || 0)), 0);
+    secPerPage = totalSecs / totalPages;
+  } else if (pagesRead > 0 && session.durationSeconds > 0) {
+    secPerPage = session.durationSeconds / pagesRead;
+  }
+
+  if (pagesLeft > 0 && secPerPage > 0) {
     const secsLeft = Math.round(secPerPage * pagesLeft);
-    document.getElementById("sessionResultEstimate").innerHTML = 
+    document.getElementById("sessionResultEstimate").innerHTML =
       `Nesse ritmo, faltam <strong>${formatDuration(secsLeft)}</strong> pra terminar ✦`;
   } else if (pagesLeft > 0) {
-    document.getElementById("sessionResultEstimate").innerHTML = 
+    document.getElementById("sessionResultEstimate").innerHTML =
       `<em>Faltam ${pagesLeft} páginas</em>`;
   } else if (total > 0 && current >= total) {
-    document.getElementById("sessionResultEstimate").innerHTML = 
+    document.getElementById("sessionResultEstimate").innerHTML =
       `<em>Você terminou o livro ✦</em>`;
   } else {
     document.getElementById("sessionResultEstimate").innerHTML = '';
