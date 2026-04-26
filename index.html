@@ -2248,8 +2248,8 @@ display: -webkit-box;
 -webkit-box-orient: vertical;
 overflow: hidden;
 }
-.lido-gallery-stars { font-size: 9px; color: var(–accent); letter-spacing: 1px; }
-.lido-gallery-date { font-size: 10px; color: var(–ink-soft); }
+.lido-gallery-grid { padding-top: 10px; }
+.lido-gallery-grid + .lido-gallery-grid { margin-top: 0; }
 
 .fav-gallery-grid {
 display: grid;
@@ -4305,7 +4305,7 @@ function renderGenres() {
     return;
   }
   
-  // Aba "lido": galeria de capas (igual favoritos, cards menores)
+  // Aba "lido": galeria de capas agrupada por mês
   if (state.filter === "lido") {
     const lidos = state.books.filter(b => b.status === "lido");
     if (lidos.length === 0) {
@@ -4320,40 +4320,88 @@ function renderGenres() {
 
     container.style.gridTemplateColumns = "1fr";
 
-    // Ordena: mais recente primeiro (por endDate), sem data no final, depois alfabético
-    lidos.sort((a, b) => {
-      if (a.endDate && b.endDate) return b.endDate.localeCompare(a.endDate);
-      if (a.endDate) return -1;
-      if (b.endDate) return 1;
-      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+    const comData = lidos.filter(b => b.endDate);
+    const semData = lidos.filter(b => !b.endDate);
+
+    // Agrupa por ano → mês
+    const grouped = {};
+    comData.forEach(b => {
+      const [y, m] = b.endDate.split("-");
+      const monthIdx = parseInt(m) - 1;
+      if (!grouped[y]) grouped[y] = {};
+      if (!grouped[y][monthIdx]) grouped[y][monthIdx] = [];
+      grouped[y][monthIdx].push(b);
     });
 
-    let html = `
-      <div class="fav-gallery-sub">${lidos.length} ${lidos.length > 1 ? 'livros concluídos' : 'livro concluído'}</div>
-      <div class="lido-gallery-grid">
-    `;
+    let html = '';
 
-    lidos.forEach(book => {
-      const coverId = `lido-cover-${book.id}`;
-      const stars = book.rating
-        ? '★'.repeat(book.rating) + '<span class="empty-star">' + '★'.repeat(5 - book.rating) + '</span>'
-        : '';
-      const dateText = book.endDate ? formatDate(book.endDate) : '';
+    const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
+    years.forEach(year => {
+      const months = Object.keys(grouped[year]).map(Number).sort((a, b) => b - a);
+      months.forEach(monthIdx => {
+        const monthBooks = grouped[year][monthIdx];
+        monthBooks.sort((a, b) => b.endDate.localeCompare(a.endDate));
+
+        html += `
+          <div class="month-group">
+            <div class="month-group-header">
+              <div class="month-group-left">
+                <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+              </div>
+              <span class="month-group-count">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''}</span>
+            </div>
+            <div class="lido-gallery-grid">
+        `;
+
+        monthBooks.forEach(book => {
+          const coverId = `lido-cover-${book.id}`;
+          const stars = book.rating
+            ? '★'.repeat(book.rating) + '<span class="empty-star">' + '★'.repeat(5 - book.rating) + '</span>'
+            : '';
+          html += `
+            <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
+              <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
+              <div class="lido-gallery-info">
+                <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
+                ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div></div>`;
+      });
+    });
+
+    if (semData.length > 0) {
       html += `
-        <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
-          <div class="lido-gallery-cover" id="${coverId}">
-            ${coverFallbackHTML(book, book.g)}
+        <div class="month-group">
+          <div class="month-group-header">
+            <div class="month-group-left">
+              <span class="month-group-title"><em>sem data registrada</em></span>
+            </div>
+            <span class="month-group-count">${semData.length}</span>
           </div>
-          <div class="lido-gallery-info">
-            <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
-            ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
-            ${dateText ? `<div class="lido-gallery-date">${dateText}</div>` : ''}
-          </div>
-        </div>
+          <div class="lido-gallery-grid">
       `;
-    });
+      semData.forEach(book => {
+        const coverId = `lido-cover-${book.id}`;
+        const stars = book.rating
+          ? '★'.repeat(book.rating) + '<span class="empty-star">' + '★'.repeat(5 - book.rating) + '</span>'
+          : '';
+        html += `
+          <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
+            <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
+            <div class="lido-gallery-info">
+              <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
+              ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+    }
 
-    html += `</div>`;
     container.innerHTML = html;
 
     // Hidrata capas
@@ -4364,17 +4412,13 @@ function renderGenres() {
       if (cached && cached !== "NONE") {
         const el = document.getElementById(coverId);
         if (!el) return;
-        loadCoverWithValidation(cached, (validUrl) => {
-          el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}">`;
-        });
+        loadCoverWithValidation(cached, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">` });
       } else if (initialSyncDone) {
         fetchCover(book.t, book.a).then(url => {
           if (!url) return;
           const el = document.getElementById(coverId);
           if (!el) return;
-          loadCoverWithValidation(url, (validUrl) => {
-            el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}">`;
-          });
+          loadCoverWithValidation(url, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">` });
         });
       }
     });
