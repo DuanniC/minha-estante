@@ -2955,7 +2955,129 @@
   }
   .fav-gallery-status.lido { background: #d4dfc4; color: #3a4a2e; }
   .fav-gallery-status.reading { background: var(--rose); color: var(--ink); }
-  
+
+  /* Badge de ranking (1-10) na galeria de favoritos */
+  .fav-gallery-rank {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 6px;
+    border-radius: 100px;
+    background: var(--ink);
+    color: var(--cream);
+    font-family: 'Instrument Serif', serif;
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(42, 36, 32, 0.25);
+    line-height: 1;
+    z-index: 2;
+    letter-spacing: 0;
+  }
+  .fav-gallery-rank.top3 {
+    background: linear-gradient(135deg, #d4a853, #b88a3a);
+    color: #2a2420;
+    box-shadow: 0 2px 8px rgba(212, 168, 83, 0.45);
+  }
+
+  /* Estado de "arrastando" no item de favorito */
+  .fav-gallery-item {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+  }
+  .fav-gallery-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  .fav-gallery-item.drag-over {
+    transform: scale(1.04);
+  }
+  .fav-gallery-item.drag-over .fav-gallery-cover {
+    box-shadow: 0 0 0 3px var(--heart), 0 4px 14px rgba(42, 36, 32, 0.2);
+  }
+
+  /* Hint sobre drag-and-drop, no topo da aba favoritos */
+  .fav-drag-hint {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    text-align: center;
+    margin-bottom: 10px;
+    padding: 0 12px;
+  }
+
+  /* Modal de swap (Top 10 cheio) */
+  .swap-fav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .swap-fav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--cream-dark);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease;
+    border: 1.5px solid transparent;
+  }
+  .swap-fav-item:hover { background: var(--cream); border-color: var(--ink-soft); }
+  .swap-fav-item:active { transform: scale(0.98); }
+  .swap-fav-rank {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 100px;
+    background: var(--ink);
+    color: var(--cream);
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .swap-fav-cover {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 54px;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--cream);
+    box-shadow: 0 1px 4px rgba(42, 36, 32, 0.18);
+  }
+  .swap-fav-info { flex: 1; min-width: 0; }
+  .swap-fav-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .swap-fav-author {
+    font-size: 12px;
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Progress bar no card do livro lendo */
   .reading-progress-bar {
     margin-top: 6px;
@@ -3065,6 +3187,7 @@
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS reading_format text;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS pages_physical int;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS conversion jsonb;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS fav_rank int;
 
 -- PARA BANCO NOVO, rode tudo abaixo:
 create table books (
@@ -3083,6 +3206,7 @@ create table books (
   reading_format text,
   pages_physical int,
   conversion jsonb,
+  fav_rank int,
   created_at timestamptz default now()
 );
 
@@ -3429,7 +3553,8 @@ create policy "acesso total genres" on genres
     <button class="form-btn" id="startReadingBtn" onclick="startReadingFromEdit()" style="display:none;">Começar a ler ✦</button>
     <button class="form-btn" id="rereadBtn" onclick="rereadBookFromEdit()" style="display:none;">Reler ✦</button>
     <button class="form-btn secondary" id="saveEditBtn" onclick="saveEditOnly()" style="margin-top: 10px;">Salvar edição (continuar lendo)</button>
-    <button class="form-btn danger" onclick="confirmAbandon()" style="margin-top: 10px;">Abandonar livro</button>
+    <button class="form-btn danger" id="abandonBtn" onclick="confirmAbandon()" style="margin-top: 10px;">Abandonar livro</button>
+    <button class="form-btn danger" id="deleteBookBtn" onclick="confirmDeleteFromEdit()" style="margin-top: 10px; display:none;">Excluir livro</button>
   </div>
 </div>
 
@@ -3457,6 +3582,24 @@ create policy "acesso total genres" on genres
         <input type="url" class="form-input" id="customCoverUrl" placeholder="https://..." style="flex:1;">
         <button class="form-btn" onclick="applyCustomCover()" style="margin:0; flex-shrink:0; width:auto; padding:0 18px;">Usar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TROCAR FAVORITO (Top 10 cheio) -->
+<div class="modal-backdrop" id="swapFavModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title">Top 10 <em>cheio</em></h2>
+      <button class="modal-close" onclick="closeSwapFavoriteModal()">×</button>
+    </div>
+    <p class="modal-sub">Sua estante de favoritos só comporta 10. Escolha qual sai pra esse novo entrar ✦</p>
+
+    <div class="swap-fav-list" id="swapFavList"></div>
+
+    <div style="margin-top: 18px; display:flex; gap:8px;">
+      <button class="form-btn secondary" onclick="closeSwapFavoriteModal()" style="margin:0; flex:1;">Cancelar</button>
     </div>
   </div>
 </div>
@@ -4185,6 +4328,7 @@ function bookToDb(book) {
     reading_format: book.readingFormat || null,
     pages_physical: book.pagesPhysical || null,
     conversion: book.conversion || null,
+    fav_rank: (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : null,
     user_id: currentUser ? currentUser.id : null,
   };
 }
@@ -4205,6 +4349,7 @@ function bookFromDb(row) {
     readingFormat: row.reading_format || undefined,
     pagesPhysical: row.pages_physical || undefined,
     conversion: row.conversion || undefined,
+    favRank: (typeof row.fav_rank === 'number' && row.fav_rank > 0) ? row.fav_rank : undefined,
     _coverFromDb: row.cover_url || null, // temporário — consumido no sync
   };
 }
@@ -4271,11 +4416,28 @@ async function pushBook(book) {
   setSyncStatus("syncing", "↻ salvando");
   try {
     const data = bookToDb(book);
-    await supabaseFetch("books", {
-      method: 'POST',
-      body: JSON.stringify(data),
-      headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-    });
+    try {
+      await supabaseFetch("books", {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      });
+    } catch (innerErr) {
+      // Se o erro mencionar fav_rank, é coluna nova ainda não rodada no banco —
+      // retira o campo e tenta de novo pra não quebrar o sync.
+      const msg = String(innerErr && innerErr.message || '');
+      if (msg.includes('fav_rank')) {
+        const fallback = { ...data };
+        delete fallback.fav_rank;
+        await supabaseFetch("books", {
+          method: 'POST',
+          body: JSON.stringify(fallback),
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        });
+      } else {
+        throw innerErr;
+      }
+    }
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
     console.error(e);
@@ -4288,11 +4450,27 @@ async function pushNewBook(book) {
   setSyncStatus("syncing", "↻ salvando");
   try {
     const data = bookToDb(book);
-    const result = await supabaseFetch("books", {
-      method: 'POST',
-      body: JSON.stringify(data),
-      headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
-    });
+    let result;
+    try {
+      result = await supabaseFetch("books", {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      });
+    } catch (innerErr) {
+      const msg = String(innerErr && innerErr.message || '');
+      if (msg.includes('fav_rank')) {
+        const fallback = { ...data };
+        delete fallback.fav_rank;
+        result = await supabaseFetch("books", {
+          method: 'POST',
+          body: JSON.stringify(fallback),
+          headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        });
+      } else {
+        throw innerErr;
+      }
+    }
     // Se o servidor devolveu um ID diferente (unlikely pq a gente envia), atualiza
     if (result && result[0] && result[0].id !== book.id) {
       book.id = result[0].id;
@@ -5071,32 +5249,40 @@ function renderGenres() {
       return;
     }
     container.style.gridTemplateColumns = "1fr";
-    
-    // Ordena: lendo primeiro → lidos → pendentes → abandonados, e por título
-    const order = { reading: 0, lido: 1, pendente: 2, abandonado: 3 };
+
+    // Garante que todo favorito tenha um rank — pra livros legados que viraram
+    // favoritos antes do sistema Top 10 existir, atribui ranks na ordem em que
+    // aparecem (com até 10 itens, o resto fica sem rank temporariamente).
+    backfillFavRanks();
+
+    // Ordena: por favRank (1, 2, 3...). Sem rank vai pro fim por título.
     favs.sort((a, b) => {
-      const oa = order[a.status] ?? 4;
-      const ob = order[b.status] ?? 4;
-      if (oa !== ob) return oa - ob;
+      const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
+      const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
+      if (ra !== rb) return ra - rb;
       return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
     });
-    
+
     const statusLabel = { reading: 'lendo', lido: 'lido', pendente: 'pendente', abandonado: 'abandonado' };
-    
+
     let html = `
-      <div class="fav-gallery-sub">${favs.length} ${favs.length > 1 ? 'livros que ficaram no coração' : 'livro que ficou no coração'}</div>
-      <div class="fav-gallery-grid">
+      <div class="fav-gallery-sub">seu top ${Math.min(favs.length, 10)} ${favs.length > 1 ? 'no coração' : 'no coração'}</div>
+      <div class="fav-drag-hint">arraste pra reordenar ✦</div>
+      <div class="fav-gallery-grid" id="favGalleryGrid">
     `;
-    
+
     favs.forEach(book => {
       const coverId = `fav-cover-${book.id}`;
       const stars = book.rating
         ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
         : '';
-      const statusClass = book.status === 'reading' ? 'reading' : '';
+      const rank = (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : '';
+      const rankClass = (typeof book.favRank === 'number' && book.favRank >= 1 && book.favRank <= 3) ? 'top3' : '';
+      const rankBadge = rank ? `<div class="fav-gallery-rank ${rankClass}">${rank}</div>` : '';
       html += `
-        <div class="fav-gallery-item" onclick="openEditModal(${book.id})">
+        <div class="fav-gallery-item" data-book-id="${book.id}" draggable="true" onclick="openEditModal(${book.id})">
           <div class="fav-gallery-cover" id="${coverId}">
+            ${rankBadge}
             ${coverFallbackHTML(book, book.g)}
             <div class="fav-gallery-heart">♥</div>
           </div>
@@ -5109,20 +5295,26 @@ function renderGenres() {
         </div>
       `;
     });
-    
+
     html += `</div>`;
     container.innerHTML = html;
-    
-    // Hidrata capas assincronamente
+
+    // Liga drag-and-drop nos itens recém-renderizados
+    setupFavDragAndDrop();
+
+    // Hidrata capas assincronamente — preserva o badge de rank ao trocar o HTML
     favs.forEach(book => {
       const coverId = `fav-cover-${book.id}`;
+      const rank = (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : '';
+      const rankClass = (typeof book.favRank === 'number' && book.favRank >= 1 && book.favRank <= 3) ? 'top3' : '';
+      const rankBadge = rank ? `<div class="fav-gallery-rank ${rankClass}">${rank}</div>` : '';
       const key = coverKey(book.t, book.a);
       const cached = state.covers && state.covers[key];
       if (cached && cached !== "NONE") {
         const el = document.getElementById(coverId);
         if (!el) return;
         loadCoverWithValidation(cached, (validUrl) => {
-          el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
+          el.innerHTML = `${rankBadge}<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
         });
       } else if (initialSyncDone) {
         // Só busca capa automática DEPOIS do sync trazer as capas escolhidas manualmente.
@@ -5132,12 +5324,12 @@ function renderGenres() {
           const el = document.getElementById(coverId);
           if (!el) return;
           loadCoverWithValidation(url, (validUrl) => {
-            el.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
+            el.innerHTML = `${rankBadge}<img src="${validUrl}" alt="${escapeHtml(book.t)}"><div class="fav-gallery-heart">♥</div>`;
           });
         });
       }
     });
-    
+
     return;
   }
   
@@ -5174,14 +5366,12 @@ function renderGenres() {
     const comData = lidos.filter(b => b.endDate);
     const semData = lidos.filter(b => !b.endDate);
 
-    // Agrupa por ano → mês
+    // Agrupa SÓ por ano (não dividimos mais por mês)
     const grouped = {};
     comData.forEach(b => {
-      const [y, m] = b.endDate.split("-");
-      const monthIdx = parseInt(m) - 1;
-      if (!grouped[y]) grouped[y] = {};
-      if (!grouped[y][monthIdx]) grouped[y][monthIdx] = [];
-      grouped[y][monthIdx].push(b);
+      const [y] = b.endDate.split("-");
+      if (!grouped[y]) grouped[y] = [];
+      grouped[y].push(b);
     });
 
     let html = '';
@@ -5208,46 +5398,48 @@ function renderGenres() {
 
     const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
     years.forEach(year => {
-      const months = Object.keys(grouped[year]).map(Number).sort((a, b) => b - a);
-      months.forEach(monthIdx => {
-        const monthBooks = grouped[year][monthIdx];
-        monthBooks.sort((a, b) => b.endDate.localeCompare(a.endDate));
+      const yearBooks = grouped[year];
+      // Ordena livros do ano pelo término mais recente primeiro
+      yearBooks.sort((a, b) => b.endDate.localeCompare(a.endDate));
 
+      // O ano mais recente já abre expandido pra a leitura mais imediata ficar visível
+      const isFirstYear = (year === years[0]);
+      const collapsedClass = isFirstYear ? '' : 'collapsed';
+
+      html += `
+        <div class="month-group ${collapsedClass}">
+          <div class="month-group-header" onclick="toggleMonthGroup(this)">
+            <div class="month-group-left">
+              <div class="month-group-textblock">
+                <span class="month-group-title"><em>${year}</em></span>
+                <span class="month-group-meta">${yearBooks.length} livro${yearBooks.length > 1 ? 's' : ''} concluído${yearBooks.length > 1 ? 's' : ''}</span>
+              </div>
+            </div>
+            ${buildCoverStack(yearBooks)}
+            <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>
+          <div class="lido-gallery-grid month-group-content">
+      `;
+
+      yearBooks.forEach(book => {
+        const coverId = `lido-cover-${book.id}`;
+        const stars = book.rating
+          ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
+          : '';
+        const dateRange = formatReadingRange(book.startDate, book.endDate);
         html += `
-          <div class="month-group collapsed">
-            <div class="month-group-header" onclick="toggleMonthGroup(this)">
-              <div class="month-group-left">
-                <div class="month-group-textblock">
-                  <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
-                  <span class="month-group-meta">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''} concluído${monthBooks.length > 1 ? 's' : ''}</span>
-                </div>
-              </div>
-              ${buildCoverStack(monthBooks)}
-              <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
+            <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
+            <div class="lido-gallery-info">
+              <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
+              ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
+              ${dateRange ? `<div class="lido-gallery-dates">${dateRange}</div>` : ''}
             </div>
-            <div class="lido-gallery-grid month-group-content">
+          </div>
         `;
-
-        monthBooks.forEach(book => {
-          const coverId = `lido-cover-${book.id}`;
-          const stars = book.rating
-            ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
-            : '';
-          const dateRange = formatReadingRange(book.startDate, book.endDate);
-          html += `
-            <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
-              <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
-              <div class="lido-gallery-info">
-                <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
-                ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
-                ${dateRange ? `<div class="lido-gallery-dates">${dateRange}</div>` : ''}
-              </div>
-            </div>
-          `;
-        });
-
-        html += `</div></div>`;
       });
+
+      html += `</div></div>`;
     });
 
     if (semData.length > 0) {
@@ -5309,7 +5501,86 @@ function renderGenres() {
 
     return;
   }
-  
+
+  // Aba "abandoned": galeria de capas dos livros que não rolaram
+  if (state.filter === "abandoned") {
+    const allAbandoned = state.books.filter(b => b.status === "abandoned");
+    if (allAbandoned.length === 0) {
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">∅</div>
+          <div class="empty-text">nenhum livro abandonado por enquanto</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Aba abandoned não tem chips de ano, então mostra TODOS os abandonados
+    // (não aplica filtro de ano — senão livros antigos sumiriam por engano).
+    const abandonados = allAbandoned;
+
+    container.style.gridTemplateColumns = "1fr";
+
+    // Ordena: mais recentes primeiro (por endDate, depois startDate, depois título)
+    abandonados.sort((a, b) => {
+      const da = a.endDate || a.startDate || '';
+      const db = b.endDate || b.startDate || '';
+      if (da && db) return db.localeCompare(da);
+      if (da) return -1;
+      if (db) return 1;
+      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+    });
+
+    let html = `
+      <div class="fav-gallery-sub">${abandonados.length} ${abandonados.length > 1 ? 'livros que não rolaram' : 'livro que não rolou'}</div>
+      <div class="lido-gallery-grid">
+    `;
+
+    abandonados.forEach(book => {
+      const coverId = `aband-cover-${book.id}`;
+      const stars = book.rating
+        ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
+        : '';
+      const stoppedAt = book.endDate
+        ? `parou em ${formatDate(book.endDate)}`
+        : (book.startDate ? `começou em ${formatDate(book.startDate)}` : '');
+      html += `
+        <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
+          <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
+          <div class="lido-gallery-info">
+            <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
+            ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
+            ${stoppedAt ? `<div class="lido-gallery-dates">${stoppedAt}</div>` : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+
+    // Hidrata capas
+    abandonados.forEach(book => {
+      const coverId = `aband-cover-${book.id}`;
+      const key = coverKey(book.t, book.a);
+      const cached = state.covers && state.covers[key];
+      if (cached && cached !== "NONE") {
+        const el = document.getElementById(coverId);
+        if (!el) return;
+        loadCoverWithValidation(cached, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">` });
+      } else if (initialSyncDone) {
+        fetchCover(book.t, book.a).then(url => {
+          if (!url) return;
+          const el = document.getElementById(coverId);
+          if (!el) return;
+          loadCoverWithValidation(url, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">` });
+        });
+      }
+    });
+
+    return;
+  }
+
   // Aba "todos": lista plana agrupada por gênero
   if (state.filter === "todos") {
     if (state.books.length === 0) {
@@ -5497,6 +5768,240 @@ function renderGenres() {
       </div>
     `;
   }
+}
+
+// ============ FAVORITOS: TOP 10 ============
+
+// Retroativamente atribui favRank a favoritos antigos (que podem ter virado
+// favoritos antes do Top 10 existir) E compacta ranks pra eliminar gaps.
+// Mantém a ordem relativa dos que já têm rank.
+function backfillFavRanks() {
+  const favs = state.books.filter(b => b.favorite);
+  if (favs.length === 0) return;
+
+  // Separa quem já tem rank de quem não tem
+  const withRank = favs
+    .filter(b => typeof b.favRank === 'number' && b.favRank > 0)
+    .sort((a, b) => a.favRank - b.favRank);
+  const withoutRank = favs
+    .filter(b => !(typeof b.favRank === 'number' && b.favRank > 0))
+    .sort((a, b) => a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' }));
+
+  // Junta na ordem final: primeiro os com rank (ordenados), depois os sem (alfabético)
+  const ordered = [...withRank, ...withoutRank];
+
+  // Reatribui 1..10. Acima de 10, deixa null (não faz parte do Top 10).
+  let changed = false;
+  ordered.forEach((book, i) => {
+    if (i < 10) {
+      const desired = i + 1;
+      if (book.favRank !== desired) {
+        book.favRank = desired;
+        changed = true;
+        pushBook(book);
+      }
+    } else {
+      if (book.favRank != null) {
+        book.favRank = null;
+        changed = true;
+        pushBook(book);
+      }
+    }
+  });
+  if (changed) saveState();
+}
+
+// ── DRAG-AND-DROP ──────────────────────────────────────────────────────────
+// Suporta tanto mouse (HTML5 drag) quanto toque (custom touch handling),
+// porque drag nativo no mobile é capenga.
+let favDragState = {
+  draggingId: null,
+  // Para touch:
+  touchStartY: 0,
+  touchStartX: 0,
+  touchActive: false,
+  ghost: null,
+  lastOverEl: null,
+};
+
+function setupFavDragAndDrop() {
+  const grid = document.getElementById("favGalleryGrid");
+  if (!grid) return;
+  const items = Array.from(grid.querySelectorAll(".fav-gallery-item"));
+
+  items.forEach(item => {
+    // Drag nativo (desktop)
+    item.addEventListener('dragstart', onFavDragStart);
+    item.addEventListener('dragend', onFavDragEnd);
+    item.addEventListener('dragover', onFavDragOver);
+    item.addEventListener('dragleave', onFavDragLeave);
+    item.addEventListener('drop', onFavDrop);
+
+    // Touch (mobile) — long-press inicia o drag pra não conflitar com scroll/clique
+    item.addEventListener('touchstart', onFavTouchStart, { passive: true });
+    item.addEventListener('touchmove', onFavTouchMove, { passive: false });
+    item.addEventListener('touchend', onFavTouchEnd);
+    item.addEventListener('touchcancel', onFavTouchEnd);
+  });
+}
+
+function onFavDragStart(e) {
+  const item = e.currentTarget;
+  favDragState.draggingId = parseInt(item.dataset.bookId);
+  item.classList.add('dragging');
+  // Necessário em Firefox pra ativar o drag
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(favDragState.draggingId)); } catch (_) {}
+  }
+}
+
+function onFavDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.fav-gallery-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+  favDragState.draggingId = null;
+}
+
+function onFavDragOver(e) {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  const item = e.currentTarget;
+  if (parseInt(item.dataset.bookId) === favDragState.draggingId) return;
+  document.querySelectorAll('.fav-gallery-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+  item.classList.add('drag-over');
+}
+
+function onFavDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onFavDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const target = e.currentTarget;
+  const targetId = parseInt(target.dataset.bookId);
+  const draggingId = favDragState.draggingId;
+  target.classList.remove('drag-over');
+  if (!draggingId || draggingId === targetId) return;
+  reorderFavorites(draggingId, targetId);
+}
+
+// ── TOUCH HANDLERS ──
+let favTouchPressTimer = null;
+function onFavTouchStart(e) {
+  const item = e.currentTarget;
+  const touch = e.touches[0];
+  favDragState.touchStartY = touch.clientY;
+  favDragState.touchStartX = touch.clientX;
+  favDragState.touchActive = false;
+
+  // Long-press de 350ms ativa o modo arrastar
+  favTouchPressTimer = setTimeout(() => {
+    favDragState.touchActive = true;
+    favDragState.draggingId = parseInt(item.dataset.bookId);
+    item.classList.add('dragging');
+    // Vibração discreta como feedback (se suportado)
+    try { if (navigator.vibrate) navigator.vibrate(15); } catch (_) {}
+  }, 350);
+}
+
+function onFavTouchMove(e) {
+  // Se ainda não ativou drag, deixa o scroll natural acontecer
+  if (!favDragState.touchActive) {
+    // Cancela o long-press se o dedo se moveu muito (provavelmente é scroll)
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - favDragState.touchStartX);
+    const dy = Math.abs(touch.clientY - favDragState.touchStartY);
+    if (dx > 10 || dy > 10) {
+      clearTimeout(favTouchPressTimer);
+      favTouchPressTimer = null;
+    }
+    return;
+  }
+
+  // Drag ativo — bloqueia scroll
+  e.preventDefault();
+  const touch = e.touches[0];
+  const target = document.elementFromPoint(touch.clientX, touch.clientY);
+  const overItem = target && target.closest('.fav-gallery-item');
+
+  // Atualiza highlight de hover
+  if (favDragState.lastOverEl && favDragState.lastOverEl !== overItem) {
+    favDragState.lastOverEl.classList.remove('drag-over');
+    favDragState.lastOverEl = null;
+  }
+  if (overItem && parseInt(overItem.dataset.bookId) !== favDragState.draggingId) {
+    overItem.classList.add('drag-over');
+    favDragState.lastOverEl = overItem;
+  }
+}
+
+function onFavTouchEnd(e) {
+  clearTimeout(favTouchPressTimer);
+  favTouchPressTimer = null;
+
+  if (!favDragState.touchActive) return;
+
+  // Pega a posição final do dedo a partir de changedTouches
+  const touch = e.changedTouches && e.changedTouches[0];
+  let droppedOnId = null;
+  if (touch) {
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const overItem = target && target.closest('.fav-gallery-item');
+    if (overItem) droppedOnId = parseInt(overItem.dataset.bookId);
+  }
+
+  // Limpa estado visual
+  document.querySelectorAll('.fav-gallery-item.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.fav-gallery-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+  const draggingId = favDragState.draggingId;
+  favDragState.draggingId = null;
+  favDragState.touchActive = false;
+  favDragState.lastOverEl = null;
+
+  if (draggingId && droppedOnId && droppedOnId !== draggingId) {
+    // Bloqueia o clique que dispararia depois do touchend
+    e.preventDefault();
+    reorderFavorites(draggingId, droppedOnId);
+  }
+}
+
+// Move o livro `sourceId` pra posição do `targetId` e desloca o resto
+function reorderFavorites(sourceId, targetId) {
+  const source = getBookById(sourceId);
+  const target = getBookById(targetId);
+  if (!source || !target) return;
+  if (!source.favorite || !target.favorite) return;
+
+  // Pega lista ordenada por rank atual
+  const ordered = state.books
+    .filter(b => b.favorite)
+    .sort((a, b) => {
+      const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
+      const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
+      if (ra !== rb) return ra - rb;
+      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+    });
+
+  const fromIdx = ordered.findIndex(b => b.id === sourceId);
+  const toIdx = ordered.findIndex(b => b.id === targetId);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+
+  // Remove e re-insere na nova posição
+  const [moved] = ordered.splice(fromIdx, 1);
+  ordered.splice(toIdx, 0, moved);
+
+  // Reatribui ranks 1..N
+  ordered.forEach((b, i) => {
+    const desired = i + 1;
+    if (b.favRank !== desired) {
+      b.favRank = desired;
+      pushBook(b);
+    }
+  });
+  saveState();
+  renderAll();
 }
 
 function renderBookItemHTML(book, showGenre) {
@@ -6196,6 +6701,7 @@ function confirmStartReading() {
 let editingBookId = null;
 let selectedStars = 0;
 let editingFavorite = false;
+let editingFavRank = null; // posição (1-10) que o livro vai ocupar nos favoritos
 
 function openEditModal(bookId) {
   const book = getBookById(bookId);
@@ -6203,6 +6709,7 @@ function openEditModal(bookId) {
   editingBookId = bookId;
   selectedStars = book.rating || 0;
   editingFavorite = !!book.favorite;
+  editingFavRank = (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : null;
   
   document.getElementById("editModalBook").textContent = `"${book.t}" — ${book.a}`;
   document.getElementById("editTitle").value = book.t || '';
@@ -6257,39 +6764,54 @@ function updateMarkReadVisibility(book) {
   const startBtn = document.getElementById("startReadingBtn");
   const rereadBtn = document.getElementById("rereadBtn");
   const saveBtn = document.getElementById("saveEditBtn");
+  const abandonBtn = document.getElementById("abandonBtn");
+  const deleteBtn = document.getElementById("deleteBookBtn");
   if (!markBtn || !startBtn || !rereadBtn || !saveBtn || !book) return;
-  
+
   // Pega valores atuais dos inputs (podem ter sido editados)
   const currentInput = parseInt(document.getElementById("editPagesCurrent").value);
   const totalInput = parseInt(document.getElementById("editPagesTotal").value);
   const current = isNaN(currentInput) ? 0 : currentInput;
   const total = isNaN(totalInput) ? 0 : totalInput;
   const hasPages = total > 0;
-  
+
   // Reset principais
   markBtn.style.display = "none";
   startBtn.style.display = "none";
   rereadBtn.style.display = "none";
-  
+
+  // Botões "perigosos" no rodapé do modal:
+  // - "lido": só faz sentido "Excluir" (já leu, não tem o que abandonar)
+  // - resto: "Abandonar livro" como antes
+  if (abandonBtn && deleteBtn) {
+    if (book.status === "lido") {
+      abandonBtn.style.display = "none";
+      deleteBtn.style.display = "";
+    } else {
+      abandonBtn.style.display = "";
+      deleteBtn.style.display = "none";
+    }
+  }
+
   // Texto do botão "Salvar edição" — só faz sentido "(continuar lendo)" se está lendo
   if (book.status === "reading") {
     saveBtn.textContent = "Salvar edição (continuar lendo)";
   } else {
     saveBtn.textContent = "Salvar edição";
   }
-  
+
   // Já é lido → mostra "Reler"
   if (book.status === "lido") {
     rereadBtn.style.display = "";
     return;
   }
-  
+
   // Pendente → começar a ler
   if (book.status === "pendente") {
     startBtn.style.display = "";
     return;
   }
-  
+
   // Lendo (reading) ou abandonado
   if (book.status === "reading" || book.status === "abandoned") {
     if (!hasPages) {
@@ -6599,8 +7121,101 @@ function renderFavoriteToggle() {
 }
 
 function toggleFavorite() {
-  editingFavorite = !editingFavorite;
+  // Desfavoritar é sempre permitido — limpa o ranking
+  if (editingFavorite) {
+    editingFavorite = false;
+    editingFavRank = null;
+    renderFavoriteToggle();
+    return;
+  }
+
+  // Quer favoritar — vê quantos favoritos já existem (excluindo o livro atual,
+  // pra caso ele esteja sendo reavaliado)
+  const currentId = editingBookId;
+  const otherFavs = state.books.filter(b => b.favorite && b.id !== currentId);
+
+  if (otherFavs.length >= 10) {
+    // Estante de favoritos cheia — abre modal pra escolher quem sai
+    openSwapFavoriteModal();
+    return;
+  }
+
+  // Tem espaço — favorita e atribui o próximo rank disponível
+  const usedRanks = new Set(otherFavs.map(b => b.favRank).filter(r => typeof r === 'number'));
+  let nextRank = 1;
+  while (usedRanks.has(nextRank) && nextRank <= 10) nextRank++;
+  editingFavorite = true;
+  editingFavRank = nextRank <= 10 ? nextRank : (otherFavs.length + 1);
   renderFavoriteToggle();
+}
+
+// ============ SWAP DE FAVORITO (Top 10 cheio) ============
+function openSwapFavoriteModal() {
+  const list = document.getElementById("swapFavList");
+  if (!list) return;
+  // Pega os favoritos atuais (excluindo o livro sendo editado, por garantia),
+  // ordenados pelo rank (1, 2, 3...) — sem rank vai pro fim
+  const favs = state.books
+    .filter(b => b.favorite && b.id !== editingBookId)
+    .sort((a, b) => {
+      const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
+      const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
+      if (ra !== rb) return ra - rb;
+      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+    });
+
+  list.innerHTML = favs.map((b, i) => {
+    const rank = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : (i + 1);
+    const ck = coverKey(b.t, b.a);
+    const coverUrl = state.covers && state.covers[ck] && state.covers[ck] !== "NONE" ? state.covers[ck] : '';
+    const coverStyle = coverUrl ? `background-image:url('${coverUrl}')` : '';
+    return `
+      <div class="swap-fav-item" onclick="confirmSwapFavorite(${b.id})">
+        <div class="swap-fav-rank">${rank}</div>
+        <div class="swap-fav-cover" style="${coverStyle}"></div>
+        <div class="swap-fav-info">
+          <div class="swap-fav-title">${escapeHtml(b.t)}</div>
+          <div class="swap-fav-author">${escapeHtml(b.a)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById("swapFavModal").classList.add("open");
+}
+
+function closeSwapFavoriteModal() {
+  document.getElementById("swapFavModal").classList.remove("open");
+}
+
+function confirmSwapFavorite(removedBookId) {
+  const removed = getBookById(removedBookId);
+  if (!removed) { closeSwapFavoriteModal(); return; }
+  if (!confirm(`Tirar "${removed.t}" do Top 10 e colocar o livro novo no lugar?`)) return;
+
+  const freedRank = (typeof removed.favRank === 'number' && removed.favRank > 0) ? removed.favRank : null;
+
+  // Remove o antigo do Top 10
+  removed.favorite = false;
+  removed.favRank = null;
+  saveState();
+  pushBook(removed);
+
+  // Atribui o rank liberado (ou o próximo disponível) ao livro sendo editado
+  editingFavorite = true;
+  if (freedRank) {
+    editingFavRank = freedRank;
+  } else {
+    const otherFavs = state.books.filter(b => b.favorite && b.id !== editingBookId);
+    const used = new Set(otherFavs.map(b => b.favRank).filter(r => typeof r === 'number'));
+    let nextRank = 1;
+    while (used.has(nextRank) && nextRank <= 10) nextRank++;
+    editingFavRank = nextRank;
+  }
+
+  renderFavoriteToggle();
+  closeSwapFavoriteModal();
+  renderAll();
 }
 
 document.querySelectorAll("#starsInput .star").forEach(star => {
@@ -6624,6 +7239,12 @@ function applyCommonEditFields(book) {
   if (newGenre && GENRES[newGenre]) book.g = newGenre;
   book.rating = selectedStars || null;
   book.favorite = editingFavorite;
+  // Sincroniza ranking: se está favoritado, salva o rank; se não, limpa
+  if (editingFavorite) {
+    book.favRank = (typeof editingFavRank === 'number' && editingFavRank > 0) ? editingFavRank : null;
+  } else {
+    book.favRank = null;
+  }
   if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
   if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
 }
@@ -6679,6 +7300,25 @@ function confirmAbandon() {
   saveState();
   pushBook(book);
   
+  closeEditModal();
+  if (currentGenre) { renderWheel(currentGenre); renderBookList(currentGenre); updateModalSub(); }
+  renderAll();
+}
+
+// Exclui de vez o livro a partir do modal de edição. Usado no lugar de
+// "Abandonar livro" quando o livro já está com status "lido" — não faz
+// sentido abandonar algo que já foi terminado.
+function confirmDeleteFromEdit() {
+  if (!editingBookId) return;
+  const book = getBookById(editingBookId);
+  if (!book) return;
+  if (!confirm(`Excluir "${book.t}" da estante? Essa ação não tem volta.`)) return;
+
+  const idToDelete = editingBookId;
+  state.books = state.books.filter(b => b.id !== idToDelete);
+  saveState();
+  deleteBookFromDb(idToDelete);
+
   closeEditModal();
   if (currentGenre) { renderWheel(currentGenre); renderBookList(currentGenre); updateModalSub(); }
   renderAll();
