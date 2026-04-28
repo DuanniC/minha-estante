@@ -2310,6 +2310,244 @@
   
   /* GERENCIAR GÊNEROS - fim */
   
+  /* Toggle de formato de leitura (iPad / Físico) */
+  .form-label-hint {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    font-weight: 400;
+    font-size: 13px;
+    margin-left: 4px;
+  }
+
+  .format-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .format-toggle-btn {
+    background: var(--cream-dark);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink-soft);
+  }
+
+  .format-toggle-btn:hover {
+    background: var(--cream);
+  }
+
+  .format-toggle-btn.active {
+    background: var(--ink);
+    color: var(--cream);
+    border-color: var(--ink);
+  }
+
+  .format-toggle-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .format-toggle-label {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+
+  .format-hint {
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: rgba(232, 169, 160, 0.1);
+    border: 1px solid rgba(232, 169, 160, 0.25);
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    line-height: 1.4;
+  }
+
+  .format-calibrate-btn {
+    background: var(--rose);
+    color: var(--ink);
+    border: none;
+    border-radius: 100px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
+    transition: transform 0.15s ease, background 0.2s ease;
+    letter-spacing: 0.2px;
+  }
+
+  .format-calibrate-btn:hover { background: var(--rose-deep); color: var(--cream); }
+  .format-calibrate-btn:active { transform: scale(0.96); }
+
+  .calibration-status {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(122, 139, 108, 0.12);
+    border: 1px solid rgba(122, 139, 108, 0.25);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--sage-deep);
+    line-height: 1.4;
+  }
+  .calibration-status strong { color: var(--ink); }
+
+  /* Calibration modal */
+  .calib-anchors-section {
+    margin-bottom: 20px;
+    padding-top: 6px;
+  }
+
+  .calib-anchors-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .calib-anchors-help {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    opacity: 0.9;
+  }
+
+  .calib-anchor-header {
+    margin-bottom: 6px !important;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+  }
+  .calib-anchor-header span:nth-child(1) { padding-left: 4px; }
+  .calib-anchor-header span:nth-child(3) { padding-left: 4px; }
+
+  .calib-anchor-row {
+    display: grid;
+    grid-template-columns: 1fr 14px 1fr 32px;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .calib-anchor-row input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--cream-dark);
+    background: var(--cream);
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+  }
+
+  .calib-anchor-row input:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+
+  .calib-anchor-arrow {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  .calib-anchor-remove {
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: background 0.15s ease;
+  }
+  .calib-anchor-remove:hover { background: var(--cream-dark); color: var(--rose-deep); }
+
+  .calib-add-anchor {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--ink-soft);
+    color: var(--ink-soft);
+    border-radius: 12px;
+    padding: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    margin-top: 4px;
+  }
+  .calib-add-anchor:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: rgba(255,255,255,0.3);
+  }
+
+  .calib-preview {
+    background: rgba(255,255,255,0.4);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+    min-height: 40px;
+  }
+  .calib-preview strong {
+    font-family: 'Fraunces', serif;
+    font-style: normal;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* Format badge no card do livro */
+  .format-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: rgba(255,255,255,0.5);
+    padding: 2px 7px;
+    border-radius: 100px;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(42, 36, 32, 0.06);
+  }
+  .format-badge.ipad { color: var(--rose-deep); }
+
   /* Month groups (aba Já lidos) */
   .month-group {
     margin-bottom: 8px;
@@ -2319,23 +2557,58 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
-    background: var(--cream-dark);
-    border-radius: 18px;
-    margin-bottom: 4px;
-    margin-top: 10px;
+    padding: 18px 22px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.45) 0%, var(--cream-dark) 100%);
+    border-radius: 22px;
+    margin-bottom: 6px;
     cursor: pointer;
     user-select: none;
-    transition: background 0.2s ease;
-    gap: 10px;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
+    gap: 14px;
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow: 0 1px 3px rgba(42, 36, 32, 0.04);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .month-group:not(.collapsed) .month-group-header {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    margin-bottom: 0;
   }
   
   .month-group-header:hover {
-    background: var(--cream);
+    box-shadow: 0 4px 14px rgba(42, 36, 32, 0.08);
+    transform: translateY(-1px);
   }
   
   .month-group-header:active {
     transform: scale(0.995);
+  }
+
+  /* Numeração grande do mês — visual de "página de livro" */
+  .month-group-number {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 42px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -2px;
+    flex-shrink: 0;
+    min-width: 56px;
+    text-align: center;
+    font-variation-settings: "opsz" 144;
+    position: relative;
+  }
+
+  .month-group-number::after {
+    content: "";
+    position: absolute;
+    right: -7px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(42, 36, 32, 0.2), transparent);
   }
   
   .month-group-toggle {
@@ -2344,19 +2617,30 @@
     justify-content: center;
     flex-shrink: 0;
     color: var(--ink-soft);
-    transition: transform 0.25s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform: rotate(-90deg);
+    opacity: 0.6;
   }
   
   .month-group:not(.collapsed) .month-group-toggle {
     transform: rotate(0deg);
+    opacity: 1;
   }
   
   .month-group-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
     min-width: 0;
+    flex: 1;
+  }
+
+  .month-group-textblock {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
   }
   
   .month-group.collapsed .book-list {
@@ -2369,10 +2653,12 @@
   
   .month-group-title {
     font-family: 'Fraunces', serif;
-    font-weight: 400;
-    font-size: 20px;
+    font-weight: 500;
+    font-size: 19px;
     color: var(--ink);
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
+    line-height: 1.15;
+    font-variation-settings: "opsz" 14;
   }
   
   .month-group-title em {
@@ -2380,21 +2666,113 @@
     font-style: italic;
     color: var(--ink-soft);
     font-weight: 400;
+    font-size: 17px;
+    letter-spacing: 0;
+  }
+
+  .month-group-meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--ink-soft);
+    opacity: 0.75;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+  }
+
+  /* Stack de mini-capas no header colapsado */
+  .month-group-covers {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-right: 4px;
+  }
+
+  .month-group-cover-mini {
+    width: 26px;
+    height: 36px;
+    border-radius: 3px;
+    background: var(--cream);
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 1px 4px rgba(42, 36, 32, 0.18), 0 0 0 1px rgba(42, 36, 32, 0.06);
+    margin-left: -8px;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .month-group-cover-mini:first-child {
+    margin-left: 0;
+  }
+
+  .month-group-cover-mini.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--ink-soft);
+    opacity: 0.5;
+  }
+
+  .month-group:not(.collapsed) .month-group-covers {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, width 0.3s ease;
   }
   
   .month-group-count {
+    font-family: 'Inter', sans-serif;
     font-size: 11px;
     color: var(--ink-soft);
     font-weight: 500;
-    letter-spacing: 0.5px;
-    background: var(--cream);
-    padding: 4px 10px;
+    letter-spacing: 0.4px;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 5px 11px;
     border-radius: 100px;
+    flex-shrink: 0;
+    border: 1px solid rgba(42, 36, 32, 0.06);
+  }
+
+  /* Conteúdo expandido fica "pendurado" abaixo do header */
+  .month-group:not(.collapsed) .month-group-content {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 0 0 18px 18px;
+    padding: 16px 14px 18px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-top: none;
+    margin-top: 0;
   }
   
   .month-group .book-item {
     padding: 12px 18px;
   }
+
+  /* Mobile: numeração um pouco menor */
+  @media (max-width: 480px) {
+    .month-group-header {
+      padding: 16px 18px;
+      gap: 10px;
+      border-radius: 20px;
+    }
+    .month-group-number {
+      font-size: 36px;
+      min-width: 46px;
+    }
+    .month-group-title {
+      font-size: 17px;
+    }
+    .month-group-title em {
+      font-size: 15px;
+    }
+    .month-group-cover-mini {
+      width: 22px;
+      height: 30px;
+    }
+    .month-group-left {
+      gap: 11px;
+    }
+  }
+  
   
   /* ============ FAVORITOS — GALERIA DE CAPAS ============ */
   .fav-gallery-header {
@@ -2674,6 +3052,9 @@
 -- SE JÁ CRIOU O BANCO ANTES, rode só isso:
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
 -- UPDATE books SET user_id = auth.uid() WHERE user_id IS NULL;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS reading_format text;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS pages_physical int;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS conversion jsonb;
 
 -- PARA BANCO NOVO, rode tudo abaixo:
 create table books (
@@ -2689,6 +3070,9 @@ create table books (
   favorite boolean default false,
   pages_total int,
   pages_current int default 0,
+  reading_format text,
+  pages_physical int,
+  conversion jsonb,
   created_at timestamptz default now()
 );
 
@@ -2880,16 +3264,77 @@ create policy "acesso total genres" on genres
       <input type="number" class="form-input" id="newPages" min="1" placeholder="deixa vazio pra buscar automático">
     </div>
 
+    <div class="form-group">
+      <label class="form-label">Como vai ler? <span class="form-label-hint">isso ajusta a contagem de páginas</span></label>
+      <div class="format-toggle">
+        <button type="button" class="format-toggle-btn active" data-format="fisico" onclick="selectReadingFormat('fisico')">
+          <span class="format-toggle-icon">📕</span>
+          <span class="format-toggle-label">Físico</span>
+        </button>
+        <button type="button" class="format-toggle-btn" data-format="ipad" onclick="selectReadingFormat('ipad')">
+          <span class="format-toggle-icon">📱</span>
+          <span class="format-toggle-label">iPad / e-book</span>
+        </button>
+      </div>
+      <div id="formatHint" class="format-hint" style="display:none;">
+        <span>O total de páginas no iPad costuma ser diferente do físico.</span>
+        <button type="button" class="format-calibrate-btn" onclick="openCalibrateModal()">Calibrar conversão ✦</button>
+      </div>
+      <div id="calibrationStatus" class="calibration-status" style="display:none;"></div>
+    </div>
+
     <div class="amazon-divider" id="amazonSection">
       <div class="amazon-divider-line"><span>ou cole um link da Amazon</span></div>
       <div class="amazon-input-wrap">
-        <input type="url" class="form-input" id="amazonUrl" placeholder="https://www.amazon.com.br/dp/..." autocomplete="off">
+        <input type="url" class="form-input" id="amazonUrl" placeholder="https://amazon.com.br/... ou https://a.co/d/..." autocomplete="off">
         <button class="amazon-fetch-btn" onclick="fetchFromAmazon()" id="amazonFetchBtn">Buscar ✦</button>
       </div>
       <div class="amazon-status" id="amazonStatus"></div>
     </div>
     
     <button class="form-btn" onclick="addBook()">Adicionar à estante</button>
+  </div>
+</div>
+
+<!-- MODAL CALIBRAR CONVERSÃO IPAD ↔ FÍSICO -->
+<div class="modal-backdrop" id="calibrateModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Calibrar</em> conversão</h2>
+      <button class="modal-close" onclick="closeCalibrateModal()">×</button>
+    </div>
+    <p class="modal-sub">A contagem de páginas no iPad e no físico não bate. Informe pelo menos um par pra calcular a proporção ✦</p>
+
+    <div class="form-group">
+      <label class="form-label">Total de páginas no físico (Amazon) <span class="form-label-hint">opcional, mas recomendado</span></label>
+      <input type="number" class="form-input" id="calibPagesPhysical" min="1" placeholder="ex: 279">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Total de páginas no iPad <span class="form-label-hint">opcional</span></label>
+      <input type="number" class="form-input" id="calibPagesIpad" min="1" placeholder="ex: 165">
+    </div>
+
+    <div class="calib-anchors-section">
+      <div class="calib-anchors-label">Pontos de referência <span class="form-label-hint">opcional — quanto mais pares, mais preciso</span></div>
+      <div class="calib-anchors-help">
+        Em qualquer ponto do livro (início de um capítulo, por exemplo), anote a página no iPad e a página correspondente no físico.
+      </div>
+      <div class="calib-anchor-row calib-anchor-header">
+        <span>📱 página iPad</span>
+        <span></span>
+        <span>📕 página física</span>
+        <span></span>
+      </div>
+      <div id="calibAnchorsList"></div>
+      <button type="button" class="calib-add-anchor" onclick="addCalibAnchor()">+ Adicionar par</button>
+    </div>
+
+    <div class="calib-preview" id="calibPreview"></div>
+
+    <button class="form-btn" onclick="saveCalibration()">Salvar calibração ✦</button>
+    <button class="form-btn secondary" onclick="closeCalibrateModal()" style="margin-top: 10px;">Cancelar</button>
   </div>
 </div>
 
@@ -3745,6 +4190,10 @@ function bookToDb(book) {
     pages_total: book.pagesTotal || null,
     pages_current: book.pagesCurrent || 0,
     cover_url: coverForDb,
+    // Formato de leitura e dados de conversão iPad ↔ físico
+    reading_format: book.readingFormat || null,
+    pages_physical: book.pagesPhysical || null,
+    conversion: book.conversion || null,
     user_id: currentUser ? currentUser.id : null,
   };
 }
@@ -3762,6 +4211,9 @@ function bookFromDb(row) {
     favorite: !!row.favorite,
     pagesTotal: row.pages_total || undefined,
     pagesCurrent: row.pages_current || 0,
+    readingFormat: row.reading_format || undefined,
+    pagesPhysical: row.pages_physical || undefined,
+    conversion: row.conversion || undefined,
     _coverFromDb: row.cover_url || null, // temporário — consumido no sync
   };
 }
@@ -4722,6 +5174,26 @@ function renderGenres() {
 
     let html = '';
 
+    // Helper: gera HTML do stack de mini-capas pra mostrar no header colapsado
+    const buildCoverStack = (books) => {
+      const max = 3;
+      const sample = books.slice(0, max);
+      let stackHtml = '<div class="month-group-covers">';
+      sample.forEach(b => {
+        const ck = coverKey(b.t, b.a);
+        const coverUrl = state.covers && state.covers[ck] && state.covers[ck] !== "NONE" ? state.covers[ck] : '';
+        if (coverUrl) {
+          stackHtml += `<div class="month-group-cover-mini" style="background-image:url('${coverUrl}')"></div>`;
+        } else {
+          // placeholder com letra inicial
+          const letter = (b.t || '?').charAt(0).toUpperCase();
+          stackHtml += `<div class="month-group-cover-mini placeholder">${letter}</div>`;
+        }
+      });
+      stackHtml += '</div>';
+      return stackHtml;
+    };
+
     const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
     years.forEach(year => {
       const months = Object.keys(grouped[year]).map(Number).sort((a, b) => b - a);
@@ -4733,10 +5205,13 @@ function renderGenres() {
           <div class="month-group collapsed">
             <div class="month-group-header" onclick="toggleMonthGroup(this)">
               <div class="month-group-left">
-                <span class="month-group-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+                <div class="month-group-textblock">
+                  <span class="month-group-title">${MONTH_NAMES[monthIdx]} <em>de ${year}</em></span>
+                  <span class="month-group-meta">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''} concluído${monthBooks.length > 1 ? 's' : ''}</span>
+                </div>
               </div>
-              <span class="month-group-count">${monthBooks.length} livro${monthBooks.length > 1 ? 's' : ''}</span>
+              ${buildCoverStack(monthBooks)}
+              <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
             </div>
             <div class="lido-gallery-grid month-group-content">
         `;
@@ -4766,10 +5241,14 @@ function renderGenres() {
         <div class="month-group collapsed">
           <div class="month-group-header" onclick="toggleMonthGroup(this)">
             <div class="month-group-left">
-              <span class="month-group-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-              <span class="month-group-title"><em>sem data registrada</em></span>
+              <span class="month-group-number" style="font-style:italic; opacity:0.5;">∼</span>
+              <div class="month-group-textblock">
+                <span class="month-group-title"><em>sem data registrada</em></span>
+                <span class="month-group-meta">${semData.length} livro${semData.length > 1 ? 's' : ''}</span>
+              </div>
             </div>
-            <span class="month-group-count">${semData.length}</span>
+            ${buildCoverStack(semData)}
+            <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           </div>
           <div class="lido-gallery-grid month-group-content">
       `;
@@ -4831,10 +5310,13 @@ function renderGenres() {
       html += `<div class="month-group collapsed">
         <div class="month-group-header" onclick="toggleMonthGroup(this)">
           <div class="month-group-left">
-            <span class="month-group-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="month-group-title">${g.emoji} <em>${escapeHtml(g.name)}</em></span>
+            <span class="month-group-number" style="font-size:32px;">${g.emoji}</span>
+            <div class="month-group-textblock">
+              <span class="month-group-title"><em>${escapeHtml(g.name)}</em></span>
+              <span class="month-group-meta">${booksInGenre.length} livro${booksInGenre.length !== 1 ? 's' : ''}</span>
+            </div>
           </div>
-          <span class="month-group-count">${booksInGenre.length} livro${booksInGenre.length !== 1 ? 's' : ''}</span>
+          <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
         <div class="book-list" style="border:none; padding:0; margin:0;">`;
       booksInGenre.forEach(b => { html += renderBookItemHTML(b, false); });
@@ -4905,8 +5387,20 @@ function renderGenres() {
         if (book.pagesTotal && book.pagesTotal > 0) {
           const current = book.pagesCurrent || 0;
           const pct = Math.min(100, (current / book.pagesTotal) * 100);
+          // Se for iPad com calibração, mostra também o equivalente em páginas físicas
+          let physicalHint = '';
+          if (book.readingFormat === 'ipad' && book.conversion) {
+            const physicalEquiv = pageToPhysical(book, current);
+            const physicalTotal = book.pagesPhysical || pageToPhysical(book, book.pagesTotal);
+            if (physicalEquiv && physicalTotal) {
+              physicalHint = ` <span style="opacity:0.7; font-style:italic;">(≈ ${physicalEquiv}/${physicalTotal} físico)</span>`;
+            }
+          }
+          const formatBadge = book.readingFormat === 'ipad'
+            ? '<span class="format-badge ipad">📱 iPad</span> '
+            : '';
           progressHTML = `
-            <div class="reading-progress-text">pág. ${current} / ${book.pagesTotal} · ${Math.round(pct)}%</div>
+            <div class="reading-progress-text">${formatBadge}pág. ${current} / ${book.pagesTotal} · ${Math.round(pct)}%${physicalHint}</div>
             <div class="reading-progress-bar"><div class="reading-progress-fill" style="width:${pct}%"></div></div>
           `;
         }
@@ -6286,7 +6780,12 @@ function openAddBook() {
   if (amazonStatusEl) { amazonStatusEl.textContent = ""; amazonStatusEl.className = "amazon-status"; }
   const autoEl = document.getElementById("titleAutocomplete");
   if (autoEl) { autoEl.innerHTML = ""; autoEl.classList.remove("open"); }
-  
+
+  // Reset formato de leitura — padrão "físico"
+  selectReadingFormat('fisico');
+  pendingCalibration = null;
+  document.getElementById("calibrationStatus").style.display = 'none';
+
   setupAutocomplete();
   
   document.getElementById("addModal").classList.add("open");
@@ -6302,36 +6801,363 @@ function closeAddBook() {
   if (amzUrl) amzUrl.value = "";
   const amzStatus = document.getElementById("amazonStatus");
   if (amzStatus) { amzStatus.textContent = ""; amzStatus.className = "amazon-status"; }
+  pendingCalibration = null;
 }
 
+// ============ FORMATO DE LEITURA (iPad / Físico) E CONVERSÃO ============
+let pendingReadingFormat = 'fisico';
+let pendingCalibration = null; // { pagesPhysical, pagesIpad, anchors: [{ipad, fisico}, ...] }
+
+function selectReadingFormat(format) {
+  pendingReadingFormat = format;
+  document.querySelectorAll('.format-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.format === format);
+  });
+  // Mostra hint só pra iPad
+  const hint = document.getElementById('formatHint');
+  if (hint) hint.style.display = format === 'ipad' ? 'flex' : 'none';
+  // Esconde status de calibração se voltou pra físico
+  if (format === 'fisico') {
+    const cs = document.getElementById('calibrationStatus');
+    if (cs) cs.style.display = 'none';
+  } else {
+    updateCalibrationStatus();
+  }
+}
+
+function updateCalibrationStatus() {
+  const el = document.getElementById('calibrationStatus');
+  if (!el) return;
+  if (pendingCalibration && (pendingCalibration.anchors?.length || (pendingCalibration.pagesPhysical && pendingCalibration.pagesIpad))) {
+    const ratio = computeConversionRatio(pendingCalibration);
+    if (ratio) {
+      el.style.display = 'block';
+      el.innerHTML = `✦ Calibrado — proporção <strong>1 pág. iPad ≈ ${ratio.toFixed(2)} pág. físico</strong>`;
+    } else {
+      el.style.display = 'none';
+    }
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Calcula a proporção (págs físicas por págs iPad) usando os anchors + totais
+function computeConversionRatio(calib) {
+  if (!calib) return null;
+  const ratios = [];
+  if (Array.isArray(calib.anchors)) {
+    calib.anchors.forEach(a => {
+      if (a && a.ipad > 0 && a.fisico > 0) {
+        ratios.push(a.fisico / a.ipad);
+      }
+    });
+  }
+  if (calib.pagesPhysical > 0 && calib.pagesIpad > 0) {
+    ratios.push(calib.pagesPhysical / calib.pagesIpad);
+  }
+  if (!ratios.length) return null;
+  // Média dos ratios — robusto contra outliers menores
+  const avg = ratios.reduce((s, r) => s + r, 0) / ratios.length;
+  return avg;
+}
+
+// Converte página: do formato lido (iPad) → equivalente no físico
+function pageToPhysical(book, pageInFormat) {
+  if (!book || !pageInFormat) return pageInFormat;
+  if (book.readingFormat !== 'ipad' || !book.conversion) return pageInFormat;
+  const r = computeConversionRatio(book.conversion);
+  if (!r) return pageInFormat;
+  return Math.round(pageInFormat * r);
+}
+
+// Estima total de páginas no formato sendo lido a partir do total físico
+function estimatePagesInFormat(pagesPhysical, conversion) {
+  if (!pagesPhysical) return null;
+  const r = computeConversionRatio(conversion);
+  if (!r || r === 0) return pagesPhysical;
+  return Math.round(pagesPhysical / r);
+}
+
+// ──────── MODAL DE CALIBRAÇÃO ────────
+function openCalibrateModal() {
+  // Pré-preenche com o que já existe no estado
+  const physicalPages = parseInt(document.getElementById('newPages').value) || '';
+  document.getElementById('calibPagesPhysical').value =
+    pendingCalibration?.pagesPhysical || physicalPages || '';
+  document.getElementById('calibPagesIpad').value =
+    pendingCalibration?.pagesIpad || '';
+
+  const list = document.getElementById('calibAnchorsList');
+  list.innerHTML = '';
+  const anchors = pendingCalibration?.anchors?.length ? pendingCalibration.anchors : [{ ipad: '', fisico: '' }];
+  anchors.forEach(a => addCalibAnchor(a.ipad, a.fisico));
+
+  updateCalibPreview();
+
+  // Listeners para preview ao vivo
+  ['calibPagesPhysical', 'calibPagesIpad'].forEach(id => {
+    const el = document.getElementById(id);
+    el.oninput = updateCalibPreview;
+  });
+
+  document.getElementById('calibrateModal').classList.add('open');
+}
+
+function closeCalibrateModal() {
+  document.getElementById('calibrateModal').classList.remove('open');
+}
+
+function addCalibAnchor(ipadVal = '', fisicoVal = '') {
+  const list = document.getElementById('calibAnchorsList');
+  const row = document.createElement('div');
+  row.className = 'calib-anchor-row';
+  row.innerHTML = `
+    <input type="number" min="1" placeholder="ex: 39" class="calib-ipad" value="${ipadVal}">
+    <span class="calib-anchor-arrow">→</span>
+    <input type="number" min="1" placeholder="ex: 64" class="calib-fisico" value="${fisicoVal}">
+    <button type="button" class="calib-anchor-remove" onclick="this.parentElement.remove(); updateCalibPreview();">×</button>
+  `;
+  row.querySelectorAll('input').forEach(inp => {
+    inp.oninput = updateCalibPreview;
+  });
+  list.appendChild(row);
+  updateCalibPreview();
+}
+
+function readCalibrationFromModal() {
+  const pagesPhysical = parseInt(document.getElementById('calibPagesPhysical').value) || 0;
+  const pagesIpad = parseInt(document.getElementById('calibPagesIpad').value) || 0;
+  const anchors = [];
+  document.querySelectorAll('#calibAnchorsList .calib-anchor-row').forEach(row => {
+    const ipad = parseInt(row.querySelector('.calib-ipad').value) || 0;
+    const fisico = parseInt(row.querySelector('.calib-fisico').value) || 0;
+    if (ipad > 0 && fisico > 0) anchors.push({ ipad, fisico });
+  });
+  return { pagesPhysical, pagesIpad, anchors };
+}
+
+function updateCalibPreview() {
+  const calib = readCalibrationFromModal();
+  const previewEl = document.getElementById('calibPreview');
+  const ratio = computeConversionRatio(calib);
+  if (!ratio) {
+    previewEl.innerHTML = 'preencha pelo menos um par ou ambos os totais para ver a proporção ✦';
+    return;
+  }
+  let extra = '';
+  if (calib.pagesPhysical && !calib.pagesIpad) {
+    const est = Math.round(calib.pagesPhysical / ratio);
+    extra = ` <br>≈ <strong>${est}</strong> páginas no iPad`;
+  } else if (calib.pagesIpad && !calib.pagesPhysical) {
+    const est = Math.round(calib.pagesIpad * ratio);
+    extra = ` <br>≈ <strong>${est}</strong> páginas no físico`;
+  }
+  previewEl.innerHTML = `1 pág. no iPad ≈ <strong>${ratio.toFixed(2)}</strong> pág. no físico${extra}`;
+}
+
+function saveCalibration() {
+  const calib = readCalibrationFromModal();
+  const ratio = computeConversionRatio(calib);
+  if (!ratio) {
+    alert('Informe ao menos um par de páginas ou os dois totais ✦');
+    return;
+  }
+  pendingCalibration = calib;
+  closeCalibrateModal();
+  updateCalibrationStatus();
+}
+
+
+
 // ============ BUSCA VIA LINK DA AMAZON ============
-// Extrai ASIN (pode ser ISBN-10) e o slug de título da URL da Amazon
+// Resolve link curto da Amazon (a.co/d/XXX, amzn.to/XXX) para URL completa.
+// O proxy CORS segue o redirect 301/302 e devolve o HTML da página final;
+// extraímos o ASIN do HTML e/ou da URL canônica que aparece nele.
+async function resolveAmazonShortLink(shortUrl) {
+  // Garante https://
+  if (!/^https?:\/\//i.test(shortUrl)) shortUrl = 'https://' + shortUrl;
+
+  let html = '';
+  for (const makeProxyUrl of CORS_PROXIES) {
+    try {
+      const resp = await fetchWithTimeout(makeProxyUrl(shortUrl), {}, 10000);
+      if (resp.ok) {
+        html = await resp.text();
+        if (html && html.length > 500) break;
+      }
+    } catch(e) { /* tenta próximo proxy */ }
+  }
+  if (!html) return { url: null, asin: null };
+
+  // 1. Tenta extrair URL canônica (presente em <link rel="canonical">, og:url, etc.)
+  const canonicalPatterns = [
+    /<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i,
+    /<meta\s+property=["']og:url["']\s+content=["']([^"']+)["']/i,
+    /<meta\s+name=["']url["']\s+content=["']([^"']+)["']/i,
+  ];
+  for (const pat of canonicalPatterns) {
+    const m = html.match(pat);
+    if (m && m[1] && /amazon\./i.test(m[1])) {
+      return { url: m[1], asin: extractAsinFromAny(m[1]) || extractAsinFromAny(html) };
+    }
+  }
+
+  // 2. Tenta extrair só o ASIN diretamente do HTML como fallback
+  const asin = extractAsinFromAny(html);
+  if (asin) return { url: null, asin };
+
+  return { url: null, asin: null };
+}
+
+// Procura ASIN em qualquer string (URL ou HTML)
+function extractAsinFromAny(text) {
+  if (!text) return null;
+  // /dp/XXXXXXXXXX, /gp/product/XXXXXXXXXX, ASIN=XXXXXXXXXX, "asin":"XXXXXXXXXX"
+  const patterns = [
+    /(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i,
+    /[?&]asin=([A-Z0-9]{10})/i,
+    /["']asin["']\s*:\s*["']([A-Z0-9]{10})["']/i,
+    /data-asin=["']([A-Z0-9]{10})["']/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// Extrai ASIN (pode ser ISBN-10), título e autor da URL da Amazon
 function parseAmazonUrl(url) {
   // ASIN: /dp/XXXXXXXXXX ou /gp/product/XXXXXXXXXX
   const asinMatch = url.match(/(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
   const asin = asinMatch ? asinMatch[1] : null;
 
-  // Slug: parte antes de /dp/ — ex: "O-Nome-do-Vento-Patrick-Rothfuss"
-  const slugMatch = url.match(/amazon\.com(?:\.br)?\/([^\/]+)\/dp\//i);
-  let titleFromSlug = "";
-  if (slugMatch) {
-    titleFromSlug = slugMatch[1]
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, c => c.toUpperCase())
-      // Remove termos genéricos comuns no slug da Amazon
-      .replace(/\b(Livro|Book|Ebook|Kindle|Edition|Edição|Portuguese|Portugues|Vol|Volume)\b/gi, "")
-      .replace(/\s{2,}/g, " ")
-      .trim();
+  // Slug do título: aceita 3 formatos de URL da Amazon:
+  //   .../titulo-do-livro/dp/ASIN/...    (formato clássico)
+  //   .../dp/ASIN/...                    (sem slug — não dá pra extrair nada)
+  //   .../titulo-do-livro-Autor-Nome     (sem /dp/, formato de busca)
+  let rawSlug = "";
+  let m;
+  if ((m = url.match(/amazon\.com(?:\.br)?\/([^\/?#]+)\/dp\//i))) {
+    rawSlug = m[1];
+  } else if ((m = url.match(/amazon\.com(?:\.br)?\/([^\/?#]+?)(?:[\/?#]|$)/i))) {
+    // Sem /dp/ — pega o primeiro segmento que tenha pelo menos 2 hífens (slug de título)
+    if (m[1] && m[1].split('-').length >= 3) rawSlug = m[1];
   }
 
-  return { asin, titleFromSlug };
+  let titleFromSlug = "";
+  let authorFromSlug = "";
+
+  if (rawSlug) {
+    // 1. Decodifica URL-encoding (%C3%A3 → ã, etc.)
+    let decoded = rawSlug;
+    try { decoded = decodeURIComponent(rawSlug); } catch(e) {
+      try { decoded = decodeURIComponent(rawSlug.replace(/%(?![0-9A-Fa-f]{2})/g, '%25')); } catch(e2) {}
+    }
+
+    // 2. Remove sufixos comuns que vêm depois do nome do autor:
+    //    "ebook-kindle", "edicao-portugues", "vol-1", numeros tipo "ed-2"
+    //    Esses não fazem parte nem do título nem do autor.
+    let cleaned = decoded
+      .replace(/-ebook(-kindle)?$/i, '')
+      .replace(/-(?:livro|book)(-(?:eletr[oô]nico|fisico|f[ií]sico))?$/i, '')
+      .replace(/-(?:edi[cç][aã]o|edition)-(?:portugues|portuguesa|portugu[eê]s|brasileira)$/i, '')
+      .replace(/-(?:portugu[eê]se?|portugu[eê]sa)$/i, '')
+      .replace(/-vol(?:ume)?-?\d*$/i, '')
+      .replace(/-pdf$/i, '');
+
+    // 3. Substitui hífens por espaços
+    let words = cleaned.split('-').map(w => w.trim()).filter(Boolean);
+
+    // 4. Separa título e autor: a heurística é que o autor são as últimas 2-3
+    //    palavras que começam com maiúscula no original (ou com inicial maiúscula
+    //    quando capitalizamos). Como os slugs da Amazon são tudo lowercase,
+    //    isso não funciona — então usamos uma heurística de comprimento:
+    //    autor = últimas 2 palavras se forem >= 3 letras cada. Mas só fazemos
+    //    isso se houver pelo menos 4 palavras totais (título + autor de 2).
+    if (words.length >= 4) {
+      const last = words[words.length - 1];
+      const beforeLast = words[words.length - 2];
+      // Pega 2 últimas como autor se ambas tiverem cara de nome próprio
+      if (last.length >= 2 && beforeLast.length >= 2 && /^[a-zãéíóúçâêôü]+$/i.test(last) && /^[a-zãéíóúçâêôü]+$/i.test(beforeLast)) {
+        authorFromSlug = capitalize(beforeLast) + ' ' + capitalize(last);
+        words = words.slice(0, -2);
+      }
+    }
+
+    // 5. Capitaliza o título (cada palavra com inicial maiúscula)
+    titleFromSlug = words.map(capitalize).join(' ').trim();
+
+    // 6. Sanity check: se o título acabou ficando vazio ou ridiculamente longo
+    //    (>120 chars sem ter sido limpo direito), descarta
+    if (titleFromSlug.length > 150) titleFromSlug = "";
+  }
+
+  return { asin, titleFromSlug, authorFromSlug };
+}
+
+function capitalize(word) {
+  if (!word) return word;
+  // Preposições/artigos pequenos ficam em minúscula
+  const small = ['de', 'do', 'da', 'dos', 'das', 'e', 'a', 'o', 'as', 'os', 'no', 'na', 'nos', 'nas', 'em', 'um', 'uma'];
+  if (small.includes(word.toLowerCase())) return word.toLowerCase();
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+// Normaliza string para comparação: minúsculas, sem acentos, sem pontuação
+function normalizeForCompare(s) {
+  if (!s) return '';
+  return s.toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // tira acentos
+    .replace(/[^a-z0-9\s]/g, ' ')                     // tira pontuação
+    .replace(/\s+/g, ' ').trim();
+}
+
+// Verifica se o título da API "bate" com o que extraímos da URL.
+// Usado pra descartar resultados de ISBN bagunçados onde a API retorna outro livro.
+// Estratégia: compara conjuntos de palavras significativas (≥3 letras, sem stopwords)
+// e exige overlap de pelo menos 1 palavra significativa OU match no autor.
+function titlesMatch(apiTitle, urlTitle, apiAuthors, urlAuthor) {
+  if (!urlTitle) return true; // sem referência, aceita
+  if (!apiTitle) return false;
+
+  const stop = new Set([
+    'de', 'do', 'da', 'dos', 'das', 'e', 'a', 'o', 'as', 'os', 'no', 'na',
+    'nos', 'nas', 'em', 'um', 'uma', 'para', 'por', 'com', 'sem', 'que',
+    'the', 'and', 'of', 'to', 'in', 'on', 'at', 'for', 'with', 'by',
+  ]);
+  const wordsOf = s => new Set(
+    normalizeForCompare(s).split(' ').filter(w => w.length >= 3 && !stop.has(w))
+  );
+
+  const apiWords = wordsOf(apiTitle);
+  const urlWords = wordsOf(urlTitle);
+
+  // Se o slug da URL é muito curto (1-2 palavras significativas), usa só 1 word match
+  // Senão, exige pelo menos uma palavra em comum.
+  let titleOverlap = 0;
+  urlWords.forEach(w => { if (apiWords.has(w)) titleOverlap++; });
+
+  if (titleOverlap >= 1) return true;
+
+  // Fallback: se autor bate (mesmo sobrenome), aceita mesmo com título diferente
+  // (pode ser edição diferente do mesmo livro, ou variação de título)
+  if (urlAuthor && apiAuthors?.length) {
+    const urlAuthorWords = wordsOf(urlAuthor);
+    const apiAuthorWords = wordsOf(apiAuthors.join(' '));
+    let authorOverlap = 0;
+    urlAuthorWords.forEach(w => { if (apiAuthorWords.has(w)) authorOverlap++; });
+    if (authorOverlap >= 1) return true;
+  }
+
+  return false;
 }
 
 async function fetchFromAmazon() {
   const urlInput = document.getElementById("amazonUrl");
   const statusEl = document.getElementById("amazonStatus");
   const btn = document.getElementById("amazonFetchBtn");
-  const url = urlInput.value.trim();
+  let url = urlInput.value.trim();
 
   if (!url) {
     statusEl.textContent = "Cole um link da Amazon primeiro ✦";
@@ -6339,16 +7165,12 @@ async function fetchFromAmazon() {
     return;
   }
 
-  if (!url.includes("amazon.")) {
+  // Aceita link da Amazon ou shortener do app (a.co, amzn.to, amzn.eu, amzn.com)
+  const isShortLink = /^(https?:\/\/)?(www\.)?(a\.co|amzn\.to|amzn\.eu|amzn\.com)\//i.test(url);
+  const isFullAmazon = url.includes("amazon.");
+
+  if (!isShortLink && !isFullAmazon) {
     statusEl.textContent = "Não parece um link da Amazon ✦";
-    statusEl.className = "amazon-status err";
-    return;
-  }
-
-  const { asin, titleFromSlug } = parseAmazonUrl(url);
-
-  if (!asin && !titleFromSlug) {
-    statusEl.textContent = "Não consegui identificar o livro nessa URL ✦";
     statusEl.className = "amazon-status err";
     return;
   }
@@ -6356,6 +7178,37 @@ async function fetchFromAmazon() {
   btn.disabled = true;
   statusEl.textContent = "Buscando dados...";
   statusEl.className = "amazon-status";
+
+  // Se for shortener do app, resolve o redirect primeiro pra obter URL completa + ASIN
+  if (isShortLink) {
+    statusEl.textContent = "Resolvendo link curto...";
+    const resolved = await resolveAmazonShortLink(url);
+    if (resolved.url) {
+      url = resolved.url;
+      // Atualiza o input pra refletir a URL completa (visual feedback)
+      urlInput.value = url;
+    } else if (resolved.asin) {
+      // Conseguiu o ASIN mas não a URL completa — monta uma URL canônica
+      url = `https://www.amazon.com.br/dp/${resolved.asin}`;
+      urlInput.value = url;
+    } else {
+      statusEl.textContent = "Não consegui resolver esse link curto. Cola o link completo ✦";
+      statusEl.className = "amazon-status err";
+      btn.disabled = false;
+      return;
+    }
+  }
+
+  const { asin, titleFromSlug, authorFromSlug } = parseAmazonUrl(url);
+
+  if (!asin && !titleFromSlug) {
+    statusEl.textContent = "Não consegui identificar o livro nessa URL ✦";
+    statusEl.className = "amazon-status err";
+    btn.disabled = false;
+    return;
+  }
+
+  statusEl.textContent = "Buscando dados...";
 
   let best = null; // { title, authors, pageCount, imageLinks, categories }
 
@@ -6448,27 +7301,91 @@ async function fetchFromAmazon() {
     );
   }
 
+  // Adiciona scraping direto da página da Amazon — pega páginas/gênero quando as APIs falham
+  promises.push(scrapeAmazonPage(url).catch(() => null));
+
   const results = await Promise.all(promises);
+  const amazonData = results[results.length - 1]; // último é o scraping
+
+  // VALIDAÇÃO CRUZADA: se temos um título extraído do slug da URL, ele é a
+  // "fonte de verdade" — APIs (especialmente Google Books / Open Library)
+  // ocasionalmente retornam livros COMPLETAMENTE diferentes pra um ISBN
+  // (registros bagunçados). Se o título da API tiver 0 palavras em comum
+  // com o slug da URL, esse resultado é descartado.
+  const filteredResults = results.map(r => {
+    if (!r) return null;
+    if (!titleFromSlug) return r; // sem slug pra comparar, aceita tudo
+    if (titlesMatch(r.title, titleFromSlug, r.authors, authorFromSlug)) return r;
+    // Resultado não bate com a URL — descarta
+    console.warn('Resultado da API descartado por não bater com a URL:',
+      r._source, '→ "' + r.title + '" (autor: ' + (r.authors?.[0] || '') + ')',
+      'vs URL "' + titleFromSlug + '" (autor: ' + authorFromSlug + ')');
+    return null;
+  });
 
   // Escolhe o melhor resultado: prioridade ISBN > slug PT > slug geral
   const priority = ['isbn-google', 'isbn-ol', 'slug-google-pt', 'slug-google', 'slug-ol'];
   for (const src of priority) {
-    const found = results.find(r => r?._source === src);
+    const found = filteredResults.find(r => r?._source === src);
     if (found) { best = found; break; }
+  }
+
+  // Se nenhuma API passou na validação, mas temos slug da URL, fabrica um
+  // resultado a partir do slug (com scraping da Amazon como complemento)
+  if (!best && titleFromSlug) {
+    best = {
+      title: titleFromSlug,
+      authors: authorFromSlug ? [authorFromSlug] : [],
+      pageCount: null,
+      imageLinks: null,
+      categories: [],
+      _source: 'url-slug',
+    };
+  }
+
+  // Mescla dados do scraping da Amazon — preenche lacunas que as APIs não retornaram
+  // (mas só se o scraping também bate com o slug — mesma validação cruzada)
+  const amazonDataValid = (amazonData && (!titleFromSlug || titlesMatch(amazonData.title, titleFromSlug, amazonData.authors, authorFromSlug))) ? amazonData : null;
+  if (amazonDataValid) {
+    if (!best) {
+      best = { ...amazonDataValid, _source: 'amazon-scrape' };
+    } else {
+      // Páginas: scraping da Amazon ganha (mais confiável pra edição PT)
+      if (amazonDataValid.pageCount) best.pageCount = amazonDataValid.pageCount;
+      // Gênero: usa scraping se as APIs não tiverem
+      if (amazonDataValid.categories?.length && !best.categories?.length) {
+        best.categories = amazonDataValid.categories;
+      }
+      // Fallback de título/autor caso APIs venham vazias
+      if (!best.title && amazonDataValid.title) best.title = amazonDataValid.title;
+      if ((!best.authors || !best.authors.length) && amazonDataValid.authors?.length) {
+        best.authors = amazonDataValid.authors;
+      }
+    }
   }
 
   if (best) {
     applyAmazonResult(best, asin);
     const isPrecise = best._source.startsWith('isbn');
-    statusEl.textContent = isPrecise
-      ? "✦ Dados preenchidos com precisão!"
-      : "✦ Dados preenchidos! Confere se o título bate com o link.";
+    const isFromSlug = best._source === 'url-slug';
+    if (isPrecise) {
+      statusEl.textContent = "✦ Dados preenchidos com precisão!";
+    } else if (isFromSlug) {
+      statusEl.textContent = "✦ Dados preenchidos pelo link — confere se está certo!";
+    } else {
+      statusEl.textContent = "✦ Dados preenchidos! Confere se o título bate com o link.";
+    }
     statusEl.className = "amazon-status ok";
   } else {
-    // Último recurso: só preenche título pelo slug para o usuário completar
+    // Último recurso: preenche título e (se conseguiu) autor a partir do slug
     if (titleFromSlug) {
-      document.getElementById("newTitle").value = titleFromSlug;
-      statusEl.textContent = "Preenchemos o título pelo link — complete o autor ✦";
+      setFieldNoAutocomplete("newTitle", titleFromSlug);
+      if (authorFromSlug) {
+        document.getElementById("newAuthor").value = authorFromSlug;
+        statusEl.textContent = "Preenchemos pelo link — confere se está certo ✦";
+      } else {
+        statusEl.textContent = "Preenchemos o título pelo link — complete o autor ✦";
+      }
       statusEl.className = "amazon-status ok";
     } else {
       statusEl.textContent = "Não encontrei dados. Preenche manualmente ✦";
@@ -6479,15 +7396,134 @@ async function fetchFromAmazon() {
   btn.disabled = false;
 }
 
+// Seta valor num input de título sem disparar o autocomplete (que ficaria em loop
+// se o título for um slug bruto da Amazon, sem match em nenhum índice de busca)
+function setFieldNoAutocomplete(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = value;
+  // Cancela qualquer busca pendente de autocomplete
+  if (typeof autocompleteDebounce !== 'undefined' && autocompleteDebounce) {
+    clearTimeout(autocompleteDebounce);
+    autocompleteDebounce = null;
+  }
+  if (typeof autocompleteAbort !== 'undefined' && autocompleteAbort) {
+    try { autocompleteAbort.abort(); } catch(e) {}
+    autocompleteAbort = null;
+  }
+  const results = document.getElementById("titleAutocomplete");
+  if (results) { results.innerHTML = ""; results.classList.remove("open"); }
+}
+
+// Faz scraping da página da Amazon via proxy CORS pra extrair páginas/gênero
+async function scrapeAmazonPage(url) {
+  let html = '';
+  for (const makeProxyUrl of CORS_PROXIES) {
+    try {
+      const resp = await fetchWithTimeout(makeProxyUrl(url), {}, 9000);
+      if (resp.ok) {
+        html = await resp.text();
+        if (html && html.length > 1000) break;
+      }
+    } catch(e) { /* tenta próximo */ }
+  }
+  if (!html) return null;
+
+  const result = { _source: 'amazon-scrape' };
+
+  // Título — meta og:title é confiável
+  const titleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)
+    || html.match(/<meta\s+name=["']title["']\s+content=["']([^"']+)["']/i);
+  if (titleMatch) {
+    let t = titleMatch[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+    // Limpa sufixos comuns: " : Amazon.com.br: ..." ou " | Amazon..."
+    t = t.split(/\s*[:|]\s*Amazon/i)[0].trim();
+    result.title = t;
+  }
+
+  // Páginas — Amazon usa "Número de páginas" (PT) ou "Print length"/"Pages" (EN)
+  // Aparece em tags <span> ou em "details_div"
+  const pagePatterns = [
+    /(\d{2,4})\s*p[áa]ginas/i,
+    /Número de p[áa]ginas[^<]*<\/span>\s*<span[^>]*>\s*(\d{2,4})/i,
+    /N[úu]mero de p[áa]ginas[^>]*>\s*<\/?[^>]*>\s*(\d{2,4})/i,
+    /Print length[^<]*<\/span>\s*<span[^>]*>\s*(\d{2,4})/i,
+    /"numberOfPages"\s*:\s*"?(\d{2,4})/i,
+    /(\d{2,4})\s*pages/i,
+  ];
+  for (const pat of pagePatterns) {
+    const m = html.match(pat);
+    if (m) {
+      const n = parseInt(m[1]);
+      if (n >= 20 && n <= 5000) {
+        result.pageCount = n;
+        break;
+      }
+    }
+  }
+
+  // Categorias — breadcrumb da Amazon ("zg_hrsr" ou "wayfinding-breadcrumbs")
+  // Pega categorias dos breadcrumbs e da seção "Best Sellers Rank"
+  const categories = [];
+  const breadcrumbMatches = html.match(/wayfinding-breadcrumbs[\s\S]{0,3000}?<\/ul>/i);
+  if (breadcrumbMatches) {
+    const links = breadcrumbMatches[0].match(/<a[^>]*>([^<]+)<\/a>/gi) || [];
+    links.forEach(a => {
+      const text = a.replace(/<[^>]+>/g, '').trim();
+      if (text && text.length < 60) categories.push(text);
+    });
+  }
+  // Best sellers rank tem categorias mais específicas
+  const bsrMatch = html.match(/Best Sellers Rank[\s\S]{0,2500}?<\/(?:tr|li|div)>/i)
+    || html.match(/Mais Vendidos[\s\S]{0,2500}?<\/(?:tr|li|div)>/i)
+    || html.match(/zg_hrsr[\s\S]{0,2500}?<\/ul>/i);
+  if (bsrMatch) {
+    const links = bsrMatch[0].match(/<a[^>]*>([^<]+)<\/a>/gi) || [];
+    links.forEach(a => {
+      const text = a.replace(/<[^>]+>/g, '').trim();
+      if (text && text.length < 80) categories.push(text);
+    });
+  }
+  if (categories.length) result.categories = categories;
+
+  // Autor — link com "byline"
+  const authorMatch = html.match(/<a[^>]*class="[^"]*contributorNameID[^"]*"[^>]*>([^<]+)<\/a>/i)
+    || html.match(/<a[^>]*data-asin[^>]*"author"[^>]*>([^<]+)<\/a>/i)
+    || html.match(/"author"\s*:\s*\[?\s*{?\s*"name"\s*:\s*"([^"]+)"/i);
+  if (authorMatch) {
+    result.authors = [authorMatch[1].trim()];
+  }
+
+  // Capa — imagem em alta qualidade
+  const imgMatch = html.match(/"hiRes"\s*:\s*"([^"]+)"/i)
+    || html.match(/"large"\s*:\s*"([^"]+)"/i)
+    || html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
+  if (imgMatch) {
+    result.imageLinks = { thumbnail: imgMatch[1].replace(/\\u002F/g, '/').replace(/\\\//g, '/') };
+  }
+
+  // Só retorna se conseguiu extrair pelo menos algo útil
+  if (result.pageCount || result.categories?.length || result.title) {
+    return result;
+  }
+  return null;
+}
+
 function applyAmazonResult(info, asin) {
   const titleEl = document.getElementById("newTitle");
   const authorEl = document.getElementById("newAuthor");
   const pagesEl = document.getElementById("newPages");
 
-  if (info.title) titleEl.value = info.title;
+  if (info.title) {
+    setFieldNoAutocomplete("newTitle", info.title);
+  }
   const authors = info.authors || [];
   if (authors.length > 0) authorEl.value = authors[0];
-  if (info.pageCount) pagesEl.value = info.pageCount;
+  // Páginas: valida intervalo plausível para um livro (>= 20, <= 5000)
+  // Evita salvar valores ruins (1, 0, 9999) que algumas APIs/scrapers retornam
+  if (info.pageCount && info.pageCount >= 20 && info.pageCount <= 5000) {
+    pagesEl.value = info.pageCount;
+  }
 
   guessGenreFromSubjects(info.categories || []);
 
@@ -6531,9 +7567,36 @@ async function addBook() {
     t: title, a: author, g: genre,
     status: "pendente", favorite: false,
     pagesCurrent: 0,
+    readingFormat: pendingReadingFormat || 'fisico',
   };
-  if (!isNaN(pagesInput) && pagesInput > 0) {
-    newBook.pagesTotal = pagesInput;
+
+  // Lógica de páginas considerando formato + calibração
+  // - Físico: pagesTotal é direto o que a Amazon/usuário informou
+  // - iPad com calibração: pagesTotal = total no iPad; pagesPhysical = total da Amazon
+  // - iPad sem calibração: pagesTotal = o que veio (assume que já é o do iPad)
+  if (pendingReadingFormat === 'ipad' && pendingCalibration) {
+    const calib = pendingCalibration;
+    newBook.conversion = {
+      pagesPhysical: calib.pagesPhysical || null,
+      pagesIpad: calib.pagesIpad || null,
+      anchors: calib.anchors || [],
+    };
+    // Total a usar internamente é o do iPad (formato sendo lido)
+    if (calib.pagesIpad > 0) {
+      newBook.pagesTotal = calib.pagesIpad;
+    } else if (calib.pagesPhysical > 0) {
+      // Estima iPad pelo físico via proporção
+      newBook.pagesTotal = estimatePagesInFormat(calib.pagesPhysical, calib);
+    } else if (!isNaN(pagesInput) && pagesInput > 0) {
+      newBook.pagesTotal = pagesInput;
+    }
+    // Guarda o total físico pra mostrar nos cards / WhatsApp / etc.
+    if (calib.pagesPhysical) newBook.pagesPhysical = calib.pagesPhysical;
+  } else {
+    // Físico ou iPad sem calibração — total direto
+    if (!isNaN(pagesInput) && pagesInput > 0) {
+      newBook.pagesTotal = pagesInput;
+    }
   }
   
   state.books.push(newBook);
@@ -6548,7 +7611,13 @@ async function addBook() {
   if (!newBook.pagesTotal) {
     fetchPages(title, author).then(pages => {
       if (pages) {
-        newBook.pagesTotal = pages;
+        // Se for iPad com calibração e veio o físico, converte
+        if (newBook.readingFormat === 'ipad' && newBook.conversion) {
+          newBook.pagesPhysical = pages;
+          newBook.pagesTotal = estimatePagesInFormat(pages, newBook.conversion);
+        } else {
+          newBook.pagesTotal = pages;
+        }
         saveState();
         pushBook(newBook);
         renderAll();
@@ -6957,12 +8026,14 @@ function guessGenreFromSubjects(subjects) {
   const select = document.getElementById("newGenre");
   if (!select) return;
   const joined = (subjects || []).join(" ").toLowerCase();
-  
+
+  // Suspense/horror tem prioridade sobre romance — muitos thrillers são vendidos
+  // dentro de "ficção romântica" mas o gênero "verdadeiro" é suspense
   const mapping = [
-    { keys: ['romance', 'love stor', 'chick lit'], genre: 'romance' },
-    { keys: ['fantasy', 'magic', 'fairy', 'dragon', 'elf'], genre: 'fantasia' },
-    { keys: ['thriller', 'suspense', 'mystery', 'crime', 'detective'], genre: 'suspense' },
-    { keys: ['witch', 'gothic', 'horror', 'occult'], genre: 'bruxaria' },
+    { keys: ['suspense', 'thriller', 'mystery', 'mistério', 'misterio', 'crime', 'detective', 'detetive', 'policial', 'investiga'], genre: 'suspense' },
+    { keys: ['witch', 'bruxa', 'bruxaria', 'gothic', 'gótico', 'gotico', 'horror', 'terror', 'occult', 'oculto', 'sombri', 'sobrenatural'], genre: 'bruxaria' },
+    { keys: ['fantasy', 'fantasia', 'magic', 'magia', 'fairy', 'fada', 'dragon', 'dragão', 'dragao', 'elf', 'elfo', 'épica', 'epica', 'mitolog'], genre: 'fantasia' },
+    { keys: ['romance', 'love stor', 'romântic', 'romantic', 'chick lit', 'paixão', 'paixao', 'amor'], genre: 'romance' },
   ];
   
   for (const m of mapping) {
