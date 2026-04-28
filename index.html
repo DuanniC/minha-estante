@@ -2837,6 +2837,16 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  .lido-gallery-dates {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    opacity: 0.65;
+    line-height: 1.2;
+    letter-spacing: 0.1px;
+    margin-top: 1px;
+  }
   .lido-gallery-grid { padding-top: 10px; }
   .lido-gallery-grid + .lido-gallery-grid { margin-top: 0; }
 
@@ -3262,25 +3272,6 @@ create policy "acesso total genres" on genres
     <div class="form-group">
       <label class="form-label">Total de páginas (opcional)</label>
       <input type="number" class="form-input" id="newPages" min="1" placeholder="deixa vazio pra buscar automático">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Como vai ler? <span class="form-label-hint">isso ajusta a contagem de páginas</span></label>
-      <div class="format-toggle">
-        <button type="button" class="format-toggle-btn active" data-format="fisico" onclick="selectReadingFormat('fisico')">
-          <span class="format-toggle-icon">📕</span>
-          <span class="format-toggle-label">Físico</span>
-        </button>
-        <button type="button" class="format-toggle-btn" data-format="ipad" onclick="selectReadingFormat('ipad')">
-          <span class="format-toggle-icon">📱</span>
-          <span class="format-toggle-label">iPad / e-book</span>
-        </button>
-      </div>
-      <div id="formatHint" class="format-hint" style="display:none;">
-        <span>O total de páginas no iPad costuma ser diferente do físico.</span>
-        <button type="button" class="format-calibrate-btn" onclick="openCalibrateModal()">Calibrar conversão ✦</button>
-      </div>
-      <div id="calibrationStatus" class="calibration-status" style="display:none;"></div>
     </div>
 
     <div class="amazon-divider" id="amazonSection">
@@ -4721,6 +4712,27 @@ function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
+// Formato curto e discreto: "12/jan – 28/fev" (mês abreviado, sem ano).
+// Usado nos cards de livros já lidos. Quando ano é diferente, inclui ano nas duas pontas.
+const SHORT_MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function formatShortDate(iso, includeYear = false) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  const mm = SHORT_MONTHS[parseInt(m) - 1] || m;
+  return includeYear ? `${parseInt(d)}/${mm}/${y.slice(2)}` : `${parseInt(d)}/${mm}`;
+}
+
+function formatReadingRange(startDate, endDate) {
+  if (!startDate && !endDate) return "";
+  if (!startDate) return formatShortDate(endDate);
+  if (!endDate) return `desde ${formatShortDate(startDate)}`;
+  const sameYear = startDate.slice(0, 4) === endDate.slice(0, 4);
+  if (sameYear) {
+    return `${formatShortDate(startDate)} – ${formatShortDate(endDate)}`;
+  }
+  return `${formatShortDate(startDate, true)} – ${formatShortDate(endDate, true)}`;
+}
+
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5221,12 +5233,14 @@ function renderGenres() {
           const stars = book.rating
             ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
             : '';
+          const dateRange = formatReadingRange(book.startDate, book.endDate);
           html += `
             <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
               <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
               <div class="lido-gallery-info">
                 <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
                 ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
+                ${dateRange ? `<div class="lido-gallery-dates">${dateRange}</div>` : ''}
               </div>
             </div>
           `;
@@ -5257,12 +5271,14 @@ function renderGenres() {
         const stars = book.rating
           ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
           : '';
+        const dateRange = formatReadingRange(book.startDate, book.endDate);
         html += `
           <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
             <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
             <div class="lido-gallery-info">
               <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
               ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
+              ${dateRange ? `<div class="lido-gallery-dates">${dateRange}</div>` : ''}
             </div>
           </div>
         `;
@@ -6671,14 +6687,28 @@ function confirmAbandon() {
 // ============ BOOK LIST NO MODAL DE GÊNERO ============
 function renderBookList(genreKey) {
   const container = document.getElementById("bookList");
-  const books = genreKey === null ? state.books : state.books.filter(b => b.g === genreKey);
-  
+  let books = genreKey === null ? state.books : state.books.filter(b => b.g === genreKey);
+
+  // Respeita o filtro da aba ativa:
+  // - "pendente" (rotulada "Todos"): mostra pendente + lendo (tudo que não terminou)
+  // - "reading": só os que estão sendo lidos
+  // - "lido": só os terminados
+  // - "favoritos": só os favoritos
+  // - "abandoned": só os abandonados
+  if (state.filter === "pendente") {
+    books = books.filter(b => b.status === "pendente" || b.status === "reading");
+  } else if (state.filter === "favoritos") {
+    books = books.filter(b => b.favorite);
+  } else if (state.filter && state.filter !== "todos") {
+    books = books.filter(b => b.status === state.filter);
+  }
+
   if (books.length === 0) { container.innerHTML = ""; return; }
-  
+
   const order = { pendente: 0, reading: 1, lido: 2, abandoned: 3 };
   const sorted = [...books].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
-  
-  let html = `<div class="book-list-title">todos do gênero · ${books.length}</div>`;
+
+  let html = `<div class="book-list-title">do gênero · ${books.length}</div>`;
   sorted.forEach(book => { html += renderBookItemHTML(book, false); });
   container.innerHTML = html;
 }
@@ -6781,11 +6811,6 @@ function openAddBook() {
   const autoEl = document.getElementById("titleAutocomplete");
   if (autoEl) { autoEl.innerHTML = ""; autoEl.classList.remove("open"); }
 
-  // Reset formato de leitura — padrão "físico"
-  selectReadingFormat('fisico');
-  pendingCalibration = null;
-  document.getElementById("calibrationStatus").style.display = 'none';
-
   setupAutocomplete();
   
   document.getElementById("addModal").classList.add("open");
@@ -6821,6 +6846,15 @@ function selectReadingFormat(format) {
     const cs = document.getElementById('calibrationStatus');
     if (cs) cs.style.display = 'none';
   } else {
+    // iPad: aplica automaticamente a última proporção salva, se existir
+    if (!pendingCalibration && state.lastIpadRatio && state.lastIpadRatio > 0) {
+      pendingCalibration = {
+        pagesPhysical: null,
+        pagesIpad: null,
+        anchors: [],
+        rememberedRatio: state.lastIpadRatio, // marca como vinda da memória
+      };
+    }
     updateCalibrationStatus();
   }
 }
@@ -6828,13 +6862,22 @@ function selectReadingFormat(format) {
 function updateCalibrationStatus() {
   const el = document.getElementById('calibrationStatus');
   if (!el) return;
-  if (pendingCalibration && (pendingCalibration.anchors?.length || (pendingCalibration.pagesPhysical && pendingCalibration.pagesIpad))) {
-    const ratio = computeConversionRatio(pendingCalibration);
-    if (ratio) {
-      el.style.display = 'block';
-      el.innerHTML = `✦ Calibrado — proporção <strong>1 pág. iPad ≈ ${ratio.toFixed(2)} pág. físico</strong>`;
+  // Calcula ratio: ou da calibração explícita, ou da proporção lembrada
+  let ratio = null;
+  let isRemembered = false;
+  if (pendingCalibration) {
+    ratio = computeConversionRatio(pendingCalibration);
+    if (!ratio && pendingCalibration.rememberedRatio) {
+      ratio = pendingCalibration.rememberedRatio;
+      isRemembered = true;
+    }
+  }
+  if (ratio) {
+    el.style.display = 'block';
+    if (isRemembered) {
+      el.innerHTML = `✦ Usando proporção lembrada do último livro: <strong>1 pág. iPad ≈ ${ratio.toFixed(2)} pág. físico</strong>`;
     } else {
-      el.style.display = 'none';
+      el.innerHTML = `✦ Calibrado — proporção <strong>1 pág. iPad ≈ ${ratio.toFixed(2)} pág. físico</strong>`;
     }
   } else {
     el.style.display = 'none';
@@ -6855,7 +6898,11 @@ function computeConversionRatio(calib) {
   if (calib.pagesPhysical > 0 && calib.pagesIpad > 0) {
     ratios.push(calib.pagesPhysical / calib.pagesIpad);
   }
-  if (!ratios.length) return null;
+  if (!ratios.length) {
+    // Fallback: proporção lembrada de calibração anterior
+    if (calib.rememberedRatio && calib.rememberedRatio > 0) return calib.rememberedRatio;
+    return null;
+  }
   // Média dos ratios — robusto contra outliers menores
   const avg = ratios.reduce((s, r) => s + r, 0) / ratios.length;
   return avg;
@@ -6963,6 +7010,9 @@ function saveCalibration() {
     return;
   }
   pendingCalibration = calib;
+  // Lembra a proporção pra próximos livros iPad — evita ter que calibrar tudo de novo
+  state.lastIpadRatio = ratio;
+  saveState();
   closeCalibrateModal();
   updateCalibrationStatus();
 }
@@ -7441,26 +7491,51 @@ async function scrapeAmazonPage(url) {
     result.title = t;
   }
 
-  // Páginas — Amazon usa "Número de páginas" (PT) ou "Print length"/"Pages" (EN)
-  // Aparece em tags <span> ou em "details_div"
-  const pagePatterns = [
-    /(\d{2,4})\s*p[áa]ginas/i,
-    /Número de p[áa]ginas[^<]*<\/span>\s*<span[^>]*>\s*(\d{2,4})/i,
-    /N[úu]mero de p[áa]ginas[^>]*>\s*<\/?[^>]*>\s*(\d{2,4})/i,
-    /Print length[^<]*<\/span>\s*<span[^>]*>\s*(\d{2,4})/i,
-    /"numberOfPages"\s*:\s*"?(\d{2,4})/i,
-    /(\d{2,4})\s*pages/i,
-  ];
-  for (const pat of pagePatterns) {
-    const m = html.match(pat);
-    if (m) {
-      const n = parseInt(m[1]);
-      if (n >= 20 && n <= 5000) {
-        result.pageCount = n;
-        break;
+  // Páginas — começa pelos padrões MAIS específicos pra evitar falsos positivos
+  // (ex: "200 páginas" em descrição/review). A Amazon BR usa "Número de páginas",
+  // a US "Print length"/"Pages", e o JSON-LD usa "numberOfPages".
+  let pageCount = null;
+
+  // 1. JSON-LD estruturado — fonte mais confiável quando presente
+  const jsonLdMatch = html.match(/"numberOfPages"\s*:\s*"?(\d{2,4})"?/i);
+  if (jsonLdMatch) {
+    const n = parseInt(jsonLdMatch[1]);
+    if (n >= 20 && n <= 5000) pageCount = n;
+  }
+
+  // 2. Detalhes do produto: "Número de páginas: 424" ou "Número de páginas — 424"
+  //    Procura num bloco amplo após o label, com qualquer tag/whitespace/pontuação
+  if (!pageCount) {
+    const labelPatterns = [
+      // "Número de páginas" seguido de até 200 chars de HTML, depois o número
+      /N[úu]mero de p[áa]ginas[\s\S]{0,200}?(\d{2,4})\s*(?:p[áa]ginas)?/i,
+      /Print length[\s\S]{0,200}?(\d{2,4})\s*pages/i,
+      /Páginas[\s\S]{0,80}?:\s*(\d{2,4})/i,
+      // A pattern "424 páginas" próximo de "Detalhes" ou "Idioma" (estrutura ficha)
+      /(?:Detalhes do produto|Idioma)[\s\S]{0,800}?(\d{2,4})\s*p[áa]ginas/i,
+    ];
+    for (const pat of labelPatterns) {
+      const m = html.match(pat);
+      if (m) {
+        const n = parseInt(m[1]);
+        if (n >= 20 && n <= 5000) {
+          pageCount = n;
+          break;
+        }
       }
     }
   }
+
+  // 3. Último recurso: "X páginas" qualquer (mais frouxo, pode ter falso positivo)
+  if (!pageCount) {
+    const looseMatch = html.match(/\b(\d{2,4})\s*p[áa]ginas\b/i);
+    if (looseMatch) {
+      const n = parseInt(looseMatch[1]);
+      if (n >= 20 && n <= 5000) pageCount = n;
+    }
+  }
+
+  if (pageCount) result.pageCount = pageCount;
 
   // Categorias — breadcrumb da Amazon ("zg_hrsr" ou "wayfinding-breadcrumbs")
   // Pega categorias dos breadcrumbs e da seção "Best Sellers Rank"
@@ -7567,36 +7642,10 @@ async function addBook() {
     t: title, a: author, g: genre,
     status: "pendente", favorite: false,
     pagesCurrent: 0,
-    readingFormat: pendingReadingFormat || 'fisico',
   };
 
-  // Lógica de páginas considerando formato + calibração
-  // - Físico: pagesTotal é direto o que a Amazon/usuário informou
-  // - iPad com calibração: pagesTotal = total no iPad; pagesPhysical = total da Amazon
-  // - iPad sem calibração: pagesTotal = o que veio (assume que já é o do iPad)
-  if (pendingReadingFormat === 'ipad' && pendingCalibration) {
-    const calib = pendingCalibration;
-    newBook.conversion = {
-      pagesPhysical: calib.pagesPhysical || null,
-      pagesIpad: calib.pagesIpad || null,
-      anchors: calib.anchors || [],
-    };
-    // Total a usar internamente é o do iPad (formato sendo lido)
-    if (calib.pagesIpad > 0) {
-      newBook.pagesTotal = calib.pagesIpad;
-    } else if (calib.pagesPhysical > 0) {
-      // Estima iPad pelo físico via proporção
-      newBook.pagesTotal = estimatePagesInFormat(calib.pagesPhysical, calib);
-    } else if (!isNaN(pagesInput) && pagesInput > 0) {
-      newBook.pagesTotal = pagesInput;
-    }
-    // Guarda o total físico pra mostrar nos cards / WhatsApp / etc.
-    if (calib.pagesPhysical) newBook.pagesPhysical = calib.pagesPhysical;
-  } else {
-    // Físico ou iPad sem calibração — total direto
-    if (!isNaN(pagesInput) && pagesInput > 0) {
-      newBook.pagesTotal = pagesInput;
-    }
+  if (!isNaN(pagesInput) && pagesInput > 0) {
+    newBook.pagesTotal = pagesInput;
   }
   
   state.books.push(newBook);
@@ -7611,13 +7660,7 @@ async function addBook() {
   if (!newBook.pagesTotal) {
     fetchPages(title, author).then(pages => {
       if (pages) {
-        // Se for iPad com calibração e veio o físico, converte
-        if (newBook.readingFormat === 'ipad' && newBook.conversion) {
-          newBook.pagesPhysical = pages;
-          newBook.pagesTotal = estimatePagesInFormat(pages, newBook.conversion);
-        } else {
-          newBook.pagesTotal = pages;
-        }
+        newBook.pagesTotal = pages;
         saveState();
         pushBook(newBook);
         renderAll();
