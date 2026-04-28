@@ -473,17 +473,17 @@
   /* Card de destaque - "Este ano" / ano selecionado */
   .stat-card.year-hero {
     grid-column: 1 / -1;
-    background: linear-gradient(135deg, #f5d5cf 0%, #e8b8b0 60%, #d99088 100%);
+    background: linear-gradient(135deg, #f5d5cf 0%, #e8b8b0 50%, #c97b72 100%);
     color: var(--ink);
     padding: 14px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     border: none;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(201, 123, 114, 0.15);
+    box-shadow: 0 4px 16px rgba(201, 123, 114, 0.25);
   }
   
   /* Variante masculina - azul */
@@ -522,15 +522,15 @@
   .stat-hero-label {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--ink);
     opacity: 0.75;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
   }
   
   .stat-hero-number {
     font-family: 'Fraunces', serif;
-    font-size: 38px;
+    font-size: 44px;
     font-weight: 300;
     line-height: 1;
     color: var(--ink);
@@ -543,16 +543,16 @@
     font-size: 18px;
     color: var(--ink);
     opacity: 0.7;
-    margin-left: 5px;
+    margin-left: 6px;
   }
   
   .stat-hero-sub {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ink);
     opacity: 0.65;
-    margin-top: 3px;
+    margin-top: 4px;
   }
   
   /* Cards de outros anos - menores e coloridos diferentes */
@@ -2309,244 +2309,6 @@
   }
   
   /* GERENCIAR GÊNEROS - fim */
-  
-  /* Toggle de formato de leitura (iPad / Físico) */
-  .form-label-hint {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    color: var(--ink-soft);
-    opacity: 0.7;
-    font-weight: 400;
-    font-size: 13px;
-    margin-left: 4px;
-  }
-
-  .format-toggle {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
-
-  .format-toggle-btn {
-    background: var(--cream-dark);
-    border: 1.5px solid transparent;
-    border-radius: 14px;
-    padding: 14px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: 'Inter', sans-serif;
-    color: var(--ink-soft);
-  }
-
-  .format-toggle-btn:hover {
-    background: var(--cream);
-  }
-
-  .format-toggle-btn.active {
-    background: var(--ink);
-    color: var(--cream);
-    border-color: var(--ink);
-  }
-
-  .format-toggle-icon {
-    font-size: 22px;
-    line-height: 1;
-  }
-
-  .format-toggle-label {
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.2px;
-  }
-
-  .format-hint {
-    margin-top: 10px;
-    padding: 12px 14px;
-    background: rgba(232, 169, 160, 0.1);
-    border: 1px solid rgba(232, 169, 160, 0.25);
-    border-radius: 12px;
-    font-size: 13px;
-    color: var(--ink-soft);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    line-height: 1.4;
-  }
-
-  .format-calibrate-btn {
-    background: var(--rose);
-    color: var(--ink);
-    border: none;
-    border-radius: 100px;
-    padding: 7px 14px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    flex-shrink: 0;
-    font-family: 'Inter', sans-serif;
-    transition: transform 0.15s ease, background 0.2s ease;
-    letter-spacing: 0.2px;
-  }
-
-  .format-calibrate-btn:hover { background: var(--rose-deep); color: var(--cream); }
-  .format-calibrate-btn:active { transform: scale(0.96); }
-
-  .calibration-status {
-    margin-top: 10px;
-    padding: 10px 14px;
-    background: rgba(122, 139, 108, 0.12);
-    border: 1px solid rgba(122, 139, 108, 0.25);
-    border-radius: 12px;
-    font-size: 12px;
-    color: var(--sage-deep);
-    line-height: 1.4;
-  }
-  .calibration-status strong { color: var(--ink); }
-
-  /* Calibration modal */
-  .calib-anchors-section {
-    margin-bottom: 20px;
-    padding-top: 6px;
-  }
-
-  .calib-anchors-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--ink-soft);
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .calib-anchors-help {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    color: var(--ink-soft);
-    font-size: 13px;
-    line-height: 1.4;
-    margin-bottom: 12px;
-    opacity: 0.9;
-  }
-
-  .calib-anchor-header {
-    margin-bottom: 6px !important;
-    font-family: 'Inter', sans-serif;
-    font-size: 11px;
-    color: var(--ink-soft);
-    opacity: 0.7;
-    letter-spacing: 0.3px;
-    font-weight: 500;
-  }
-  .calib-anchor-header span:nth-child(1) { padding-left: 4px; }
-  .calib-anchor-header span:nth-child(3) { padding-left: 4px; }
-
-  .calib-anchor-row {
-    display: grid;
-    grid-template-columns: 1fr 14px 1fr 32px;
-    gap: 6px;
-    margin-bottom: 8px;
-    align-items: center;
-  }
-
-  .calib-anchor-row input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--cream-dark);
-    background: var(--cream);
-    border-radius: 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    color: var(--ink);
-  }
-
-  .calib-anchor-row input:focus {
-    outline: none;
-    border-color: var(--ink);
-  }
-
-  .calib-anchor-arrow {
-    text-align: center;
-    color: var(--ink-soft);
-    font-size: 14px;
-  }
-
-  .calib-anchor-remove {
-    background: transparent;
-    border: none;
-    color: var(--ink-soft);
-    cursor: pointer;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: background 0.15s ease;
-  }
-  .calib-anchor-remove:hover { background: var(--cream-dark); color: var(--rose-deep); }
-
-  .calib-add-anchor {
-    width: 100%;
-    background: transparent;
-    border: 1px dashed var(--ink-soft);
-    color: var(--ink-soft);
-    border-radius: 12px;
-    padding: 12px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    margin-top: 4px;
-  }
-  .calib-add-anchor:hover {
-    border-color: var(--ink);
-    color: var(--ink);
-    background: rgba(255,255,255,0.3);
-  }
-
-  .calib-preview {
-    background: rgba(255,255,255,0.4);
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    color: var(--ink-soft);
-    font-size: 14px;
-    line-height: 1.5;
-    text-align: center;
-    min-height: 40px;
-  }
-  .calib-preview strong {
-    font-family: 'Fraunces', serif;
-    font-style: normal;
-    font-weight: 500;
-    color: var(--ink);
-  }
-
-  /* Format badge no card do livro */
-  .format-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--ink-soft);
-    background: rgba(255,255,255,0.5);
-    padding: 2px 7px;
-    border-radius: 100px;
-    letter-spacing: 0.3px;
-    border: 1px solid rgba(42, 36, 32, 0.06);
-  }
-  .format-badge.ipad { color: var(--rose-deep); }
 
   /* Month groups (aba Já lidos) */
   .month-group {
@@ -2866,7 +2628,6 @@
     padding: 4px 0 12px;
     min-width: 0;
   }
-  /* Linha de mês: sem card, separador sutil entre meses */
   .lido-month-row {
     display: flex;
     align-items: stretch;
@@ -2875,7 +2636,6 @@
     border-bottom: 1px solid rgba(232, 221, 196, 0.6);
   }
   .lido-month-row:last-child { border-bottom: none; }
-  /* Rótulo lateral, rotacionado vertical no desktop */
   .lido-month-label {
     display: flex;
     align-items: center;
@@ -2896,10 +2656,7 @@
     text-transform: lowercase;
     line-height: 1;
   }
-  .lido-month-name em {
-    font-style: italic;
-    color: var(--ink-soft);
-  }
+  .lido-month-name em { font-style: italic; color: var(--ink-soft); }
   .lido-month-year {
     font-style: italic;
     color: var(--ink-soft);
@@ -2914,15 +2671,14 @@
     border-radius: 100px;
     letter-spacing: 0.3px;
     font-weight: 500;
-    /* Compensa a rotação do container pra o número ficar legível "em pé" */
     writing-mode: horizontal-tb;
     transform: rotate(180deg);
     line-height: 1.3;
   }
-  /* Trilha de capas com scroll horizontal */
   .lido-month-covers {
     display: flex;
     gap: 10px;
+    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 2px 2px 8px;
@@ -2935,10 +2691,7 @@
   }
   .lido-month-covers::-webkit-scrollbar { height: 4px; }
   .lido-month-covers::-webkit-scrollbar-track { background: transparent; }
-  .lido-month-covers::-webkit-scrollbar-thumb {
-    background: var(--cream-dark);
-    border-radius: 100px;
-  }
+  .lido-month-covers::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 100px; }
   .lido-timeline-item {
     flex: 0 0 auto;
     width: 86px;
@@ -2961,12 +2714,7 @@
     justify-content: center;
     box-shadow: 0 2px 8px rgba(42, 36, 32, 0.16);
   }
-  .lido-timeline-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
+  .lido-timeline-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .lido-timeline-title {
     font-size: 11px;
     font-weight: 600;
@@ -2987,7 +2735,6 @@
   }
   .lido-timeline-stars .empty-star { color: rgba(42, 36, 32, 0.18); }
 
-  /* ── Mobile: rótulo vai pra cima, capas quebram em wrap (rolagem vertical) ── */
   @media (max-width: 600px) {
     .lido-month-row {
       flex-direction: column;
@@ -3005,13 +2752,9 @@
       min-width: 0;
       gap: 8px;
     }
-    .lido-month-count {
-      writing-mode: horizontal-tb;
-      transform: none;
-    }
+    .lido-month-count { writing-mode: horizontal-tb; transform: none; }
     .lido-month-name { font-size: 20px; }
     .lido-month-year { font-size: 16px; }
-    /* Mobile: sem scroll lateral — capas quebram em wrap */
     .lido-month-covers {
       flex-wrap: wrap;
       overflow-x: visible;
@@ -3401,9 +3144,6 @@
 -- SE JÁ CRIOU O BANCO ANTES, rode só isso:
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
 -- UPDATE books SET user_id = auth.uid() WHERE user_id IS NULL;
--- ALTER TABLE books ADD COLUMN IF NOT EXISTS reading_format text;
--- ALTER TABLE books ADD COLUMN IF NOT EXISTS pages_physical int;
--- ALTER TABLE books ADD COLUMN IF NOT EXISTS conversion jsonb;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS fav_rank int;
 
 -- PARA BANCO NOVO, rode tudo abaixo:
@@ -3420,9 +3160,6 @@ create table books (
   favorite boolean default false,
   pages_total int,
   pages_current int default 0,
-  reading_format text,
-  pages_physical int,
-  conversion jsonb,
   fav_rank int,
   created_at timestamptz default now()
 );
@@ -3628,47 +3365,6 @@ create policy "acesso total genres" on genres
   </div>
 </div>
 
-<!-- MODAL CALIBRAR CONVERSÃO IPAD ↔ FÍSICO -->
-<div class="modal-backdrop" id="calibrateModal">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-head">
-      <h2 class="modal-title"><em>Calibrar</em> conversão</h2>
-      <button class="modal-close" onclick="closeCalibrateModal()">×</button>
-    </div>
-    <p class="modal-sub">A contagem de páginas no iPad e no físico não bate. Informe pelo menos um par pra calcular a proporção ✦</p>
-
-    <div class="form-group">
-      <label class="form-label">Total de páginas no físico (Amazon) <span class="form-label-hint">opcional, mas recomendado</span></label>
-      <input type="number" class="form-input" id="calibPagesPhysical" min="1" placeholder="ex: 279">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Total de páginas no iPad <span class="form-label-hint">opcional</span></label>
-      <input type="number" class="form-input" id="calibPagesIpad" min="1" placeholder="ex: 165">
-    </div>
-
-    <div class="calib-anchors-section">
-      <div class="calib-anchors-label">Pontos de referência <span class="form-label-hint">opcional — quanto mais pares, mais preciso</span></div>
-      <div class="calib-anchors-help">
-        Em qualquer ponto do livro (início de um capítulo, por exemplo), anote a página no iPad e a página correspondente no físico.
-      </div>
-      <div class="calib-anchor-row calib-anchor-header">
-        <span>📱 página iPad</span>
-        <span></span>
-        <span>📕 página física</span>
-        <span></span>
-      </div>
-      <div id="calibAnchorsList"></div>
-      <button type="button" class="calib-add-anchor" onclick="addCalibAnchor()">+ Adicionar par</button>
-    </div>
-
-    <div class="calib-preview" id="calibPreview"></div>
-
-    <button class="form-btn" onclick="saveCalibration()">Salvar calibração ✦</button>
-    <button class="form-btn secondary" onclick="closeCalibrateModal()" style="margin-top: 10px;">Cancelar</button>
-  </div>
-</div>
 
 <div class="modal-backdrop" id="readingModal">
   <div class="modal">
@@ -4541,10 +4237,6 @@ function bookToDb(book) {
     pages_total: book.pagesTotal || null,
     pages_current: book.pagesCurrent || 0,
     cover_url: coverForDb,
-    // Formato de leitura e dados de conversão iPad ↔ físico
-    reading_format: book.readingFormat || null,
-    pages_physical: book.pagesPhysical || null,
-    conversion: book.conversion || null,
     fav_rank: (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : null,
     user_id: currentUser ? currentUser.id : null,
   };
@@ -4563,9 +4255,6 @@ function bookFromDb(row) {
     favorite: !!row.favorite,
     pagesTotal: row.pages_total || undefined,
     pagesCurrent: row.pages_current || 0,
-    readingFormat: row.reading_format || undefined,
-    pagesPhysical: row.pages_physical || undefined,
-    conversion: row.conversion || undefined,
     favRank: (typeof row.fav_rank === 'number' && row.fav_rank > 0) ? row.fav_rank : undefined,
     _coverFromDb: row.cover_url || null, // temporário — consumido no sync
   };
@@ -4587,19 +4276,8 @@ async function syncFromSupabase() {
     const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
       const oldCovers = state.covers || {};
-      // Preserva o status "reading" local caso o banco devolva inconsistência
-      const localReadingMap = {};
-      (state.books || []).forEach(b => {
-        if (b.status === 'reading') localReadingMap[b.id] = b;
-      });
       state.books = rows.map(row => {
         const book = bookFromDb(row);
-        // Se o livro estava como "lendo" localmente mas o banco devolveu diferente,
-        // mantém o status local (evita sumir o "lendo" por delay de sync)
-        if (localReadingMap[book.id] && book.status !== 'reading') {
-          book.status = localReadingMap[book.id].status;
-          book.startDate = book.startDate || localReadingMap[book.id].startDate;
-        }
         // Hidrata capa vinda do banco no cache local — garante que a escolha
         // manual do usuário apareça em qualquer dispositivo
         if (book._coverFromDb) {
@@ -5372,18 +5050,8 @@ function renderYearFilter() {
 
 function setYearFilter(year) {
   state.selectedYear = year;
-  state.lidoPage = 1;
   saveState();
   renderAll();
-}
-
-function setLidoPage(page) {
-  const allLidos = applyYearFilterToBooks(state.books.filter(b => b.status === "lido"));
-  const totalPages = Math.max(1, Math.ceil(allLidos.length / 15));
-  if (page < 1 || page > totalPages) return;
-  state.lidoPage = page;
-  renderGenres();
-  document.getElementById("genres").scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Helper: dado o filtro de ano ativo, retorna o conjunto de livros filtrado
@@ -5613,10 +5281,8 @@ function renderGenres() {
 
     const comData = lidos.filter(b => b.endDate);
     const semData = lidos.filter(b => !b.endDate);
-
     const showingAllYears = (state.selectedYear === "todos");
 
-    // Agrupa por ano-mês (chave "YYYY-MM")
     const byMonth = {};
     comData.forEach(b => {
       const [y, m] = b.endDate.split("-");
@@ -5625,27 +5291,21 @@ function renderGenres() {
       byMonth[key].books.push(b);
     });
 
-    // Ordena chaves do mais recente pro mais antigo
     const sortedKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
 
-    // Paginação: fatia os livros totais em páginas de 15
+    // Paginação por total de livros (15 por página)
     const PAGE_SIZE = 15;
-    const totalBooks = lidos.length;
-    const totalPages = Math.max(1, Math.ceil(totalBooks / PAGE_SIZE));
-    if (!state.lidoPage || state.lidoPage < 1 || state.lidoPage > totalPages) state.lidoPage = 1;
-
-    // Determina quais livros aparecem nesta página (mantém ordem por mês)
     const allSorted = [];
     sortedKeys.forEach(key => {
-      const g = byMonth[key];
-      g.books.sort((a, b) => b.endDate.localeCompare(a.endDate));
-      g.books.forEach(b => allSorted.push(b));
+      byMonth[key].books.sort((a, b) => b.endDate.localeCompare(a.endDate));
+      byMonth[key].books.forEach(b => allSorted.push(b));
     });
     semData.forEach(b => allSorted.push(b));
 
+    const totalPages = Math.max(1, Math.ceil(allSorted.length / PAGE_SIZE));
+    if (!state.lidoPage || state.lidoPage < 1 || state.lidoPage > totalPages) state.lidoPage = 1;
     const pageStart = (state.lidoPage - 1) * PAGE_SIZE;
-    const pageEnd = pageStart + PAGE_SIZE;
-    const pageBookIds = new Set(allSorted.slice(pageStart, pageEnd).map(b => b.id));
+    const pageBookIds = new Set(allSorted.slice(pageStart, pageStart + PAGE_SIZE).map(b => b.id));
 
     let html = '<div class="lido-timeline">';
 
@@ -5667,7 +5327,6 @@ function renderGenres() {
           </div>
           <div class="lido-month-covers">
       `;
-
       visibleBooks.forEach(book => {
         const coverId = `lido-cover-${book.id}`;
         const stars = book.rating
@@ -5681,11 +5340,9 @@ function renderGenres() {
           </div>
         `;
       });
-
       html += `</div></div>`;
     });
 
-    // Livros sem data na página atual
     const semDataPage = semData.filter(b => pageBookIds.has(b.id));
     if (semDataPage.length > 0) {
       html += `
@@ -5714,7 +5371,6 @@ function renderGenres() {
 
     html += '</div>';
 
-    // Paginação
     if (totalPages > 1) {
       html += '<div class="lido-pagination">';
       html += `<button class="lido-page-arrow" onclick="setLidoPage(${state.lidoPage - 1})" ${state.lidoPage === 1 ? 'disabled' : ''}>‹</button>`;
@@ -5727,8 +5383,7 @@ function renderGenres() {
 
     container.innerHTML = html;
 
-    // Hidrata capas da página atual
-    allSorted.slice(pageStart, pageEnd).forEach(book => {
+    allSorted.slice(pageStart, pageStart + PAGE_SIZE).forEach(book => {
       const coverId = `lido-cover-${book.id}`;
       const key = coverKey(book.t, book.a);
       const cached = state.covers && state.covers[key];
@@ -5921,20 +5576,8 @@ function renderGenres() {
         if (book.pagesTotal && book.pagesTotal > 0) {
           const current = book.pagesCurrent || 0;
           const pct = Math.min(100, (current / book.pagesTotal) * 100);
-          // Se for iPad com calibração, mostra também o equivalente em páginas físicas
-          let physicalHint = '';
-          if (book.readingFormat === 'ipad' && book.conversion) {
-            const physicalEquiv = pageToPhysical(book, current);
-            const physicalTotal = book.pagesPhysical || pageToPhysical(book, book.pagesTotal);
-            if (physicalEquiv && physicalTotal) {
-              physicalHint = ` <span style="opacity:0.7; font-style:italic;">(≈ ${physicalEquiv}/${physicalTotal} físico)</span>`;
-            }
-          }
-          const formatBadge = book.readingFormat === 'ipad'
-            ? '<span class="format-badge ipad">📱 iPad</span> '
-            : '';
           progressHTML = `
-            <div class="reading-progress-text">${formatBadge}pág. ${current} / ${book.pagesTotal} · ${Math.round(pct)}%${physicalHint}</div>
+            <div class="reading-progress-text">pág. ${current} / ${book.pagesTotal} · ${Math.round(pct)}%</div>
             <div class="reading-progress-bar"><div class="reading-progress-fill" style="width:${pct}%"></div></div>
           `;
         }
@@ -7663,7 +7306,6 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     state.filter = tab.dataset.filter;
     state.selectedYear = null; // reset filtro de ano ao trocar de aba
-    state.lidoPage = 1; // reset paginação dos lidos
     updateHero(state.filter);
     saveState();
     renderAll();
@@ -7714,197 +7356,7 @@ function closeAddBook() {
   if (amzUrl) amzUrl.value = "";
   const amzStatus = document.getElementById("amazonStatus");
   if (amzStatus) { amzStatus.textContent = ""; amzStatus.className = "amazon-status"; }
-  pendingCalibration = null;
 }
-
-// ============ FORMATO DE LEITURA (iPad / Físico) E CONVERSÃO ============
-let pendingReadingFormat = 'fisico';
-let pendingCalibration = null; // { pagesPhysical, pagesIpad, anchors: [{ipad, fisico}, ...] }
-
-function selectReadingFormat(format) {
-  pendingReadingFormat = format;
-  document.querySelectorAll('.format-toggle-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.format === format);
-  });
-  // Mostra hint só pra iPad
-  const hint = document.getElementById('formatHint');
-  if (hint) hint.style.display = format === 'ipad' ? 'flex' : 'none';
-  // Esconde status de calibração se voltou pra físico
-  if (format === 'fisico') {
-    const cs = document.getElementById('calibrationStatus');
-    if (cs) cs.style.display = 'none';
-  } else {
-    // iPad: aplica automaticamente a última proporção salva, se existir
-    if (!pendingCalibration && state.lastIpadRatio && state.lastIpadRatio > 0) {
-      pendingCalibration = {
-        pagesPhysical: null,
-        pagesIpad: null,
-        anchors: [],
-        rememberedRatio: state.lastIpadRatio, // marca como vinda da memória
-      };
-    }
-    updateCalibrationStatus();
-  }
-}
-
-function updateCalibrationStatus() {
-  const el = document.getElementById('calibrationStatus');
-  if (!el) return;
-  // Calcula ratio: ou da calibração explícita, ou da proporção lembrada
-  let ratio = null;
-  let isRemembered = false;
-  if (pendingCalibration) {
-    ratio = computeConversionRatio(pendingCalibration);
-    if (!ratio && pendingCalibration.rememberedRatio) {
-      ratio = pendingCalibration.rememberedRatio;
-      isRemembered = true;
-    }
-  }
-  if (ratio) {
-    el.style.display = 'block';
-    if (isRemembered) {
-      el.innerHTML = `✦ Usando proporção lembrada do último livro: <strong>1 pág. iPad ≈ ${ratio.toFixed(2)} pág. físico</strong>`;
-    } else {
-      el.innerHTML = `✦ Calibrado — proporção <strong>1 pág. iPad ≈ ${ratio.toFixed(2)} pág. físico</strong>`;
-    }
-  } else {
-    el.style.display = 'none';
-  }
-}
-
-// Calcula a proporção (págs físicas por págs iPad) usando os anchors + totais
-function computeConversionRatio(calib) {
-  if (!calib) return null;
-  const ratios = [];
-  if (Array.isArray(calib.anchors)) {
-    calib.anchors.forEach(a => {
-      if (a && a.ipad > 0 && a.fisico > 0) {
-        ratios.push(a.fisico / a.ipad);
-      }
-    });
-  }
-  if (calib.pagesPhysical > 0 && calib.pagesIpad > 0) {
-    ratios.push(calib.pagesPhysical / calib.pagesIpad);
-  }
-  if (!ratios.length) {
-    // Fallback: proporção lembrada de calibração anterior
-    if (calib.rememberedRatio && calib.rememberedRatio > 0) return calib.rememberedRatio;
-    return null;
-  }
-  // Média dos ratios — robusto contra outliers menores
-  const avg = ratios.reduce((s, r) => s + r, 0) / ratios.length;
-  return avg;
-}
-
-// Converte página: do formato lido (iPad) → equivalente no físico
-function pageToPhysical(book, pageInFormat) {
-  if (!book || !pageInFormat) return pageInFormat;
-  if (book.readingFormat !== 'ipad' || !book.conversion) return pageInFormat;
-  const r = computeConversionRatio(book.conversion);
-  if (!r) return pageInFormat;
-  return Math.round(pageInFormat * r);
-}
-
-// Estima total de páginas no formato sendo lido a partir do total físico
-function estimatePagesInFormat(pagesPhysical, conversion) {
-  if (!pagesPhysical) return null;
-  const r = computeConversionRatio(conversion);
-  if (!r || r === 0) return pagesPhysical;
-  return Math.round(pagesPhysical / r);
-}
-
-// ──────── MODAL DE CALIBRAÇÃO ────────
-function openCalibrateModal() {
-  // Pré-preenche com o que já existe no estado
-  const physicalPages = parseInt(document.getElementById('newPages').value) || '';
-  document.getElementById('calibPagesPhysical').value =
-    pendingCalibration?.pagesPhysical || physicalPages || '';
-  document.getElementById('calibPagesIpad').value =
-    pendingCalibration?.pagesIpad || '';
-
-  const list = document.getElementById('calibAnchorsList');
-  list.innerHTML = '';
-  const anchors = pendingCalibration?.anchors?.length ? pendingCalibration.anchors : [{ ipad: '', fisico: '' }];
-  anchors.forEach(a => addCalibAnchor(a.ipad, a.fisico));
-
-  updateCalibPreview();
-
-  // Listeners para preview ao vivo
-  ['calibPagesPhysical', 'calibPagesIpad'].forEach(id => {
-    const el = document.getElementById(id);
-    el.oninput = updateCalibPreview;
-  });
-
-  document.getElementById('calibrateModal').classList.add('open');
-}
-
-function closeCalibrateModal() {
-  document.getElementById('calibrateModal').classList.remove('open');
-}
-
-function addCalibAnchor(ipadVal = '', fisicoVal = '') {
-  const list = document.getElementById('calibAnchorsList');
-  const row = document.createElement('div');
-  row.className = 'calib-anchor-row';
-  row.innerHTML = `
-    <input type="number" min="1" placeholder="ex: 39" class="calib-ipad" value="${ipadVal}">
-    <span class="calib-anchor-arrow">→</span>
-    <input type="number" min="1" placeholder="ex: 64" class="calib-fisico" value="${fisicoVal}">
-    <button type="button" class="calib-anchor-remove" onclick="this.parentElement.remove(); updateCalibPreview();">×</button>
-  `;
-  row.querySelectorAll('input').forEach(inp => {
-    inp.oninput = updateCalibPreview;
-  });
-  list.appendChild(row);
-  updateCalibPreview();
-}
-
-function readCalibrationFromModal() {
-  const pagesPhysical = parseInt(document.getElementById('calibPagesPhysical').value) || 0;
-  const pagesIpad = parseInt(document.getElementById('calibPagesIpad').value) || 0;
-  const anchors = [];
-  document.querySelectorAll('#calibAnchorsList .calib-anchor-row').forEach(row => {
-    const ipad = parseInt(row.querySelector('.calib-ipad').value) || 0;
-    const fisico = parseInt(row.querySelector('.calib-fisico').value) || 0;
-    if (ipad > 0 && fisico > 0) anchors.push({ ipad, fisico });
-  });
-  return { pagesPhysical, pagesIpad, anchors };
-}
-
-function updateCalibPreview() {
-  const calib = readCalibrationFromModal();
-  const previewEl = document.getElementById('calibPreview');
-  const ratio = computeConversionRatio(calib);
-  if (!ratio) {
-    previewEl.innerHTML = 'preencha pelo menos um par ou ambos os totais para ver a proporção ✦';
-    return;
-  }
-  let extra = '';
-  if (calib.pagesPhysical && !calib.pagesIpad) {
-    const est = Math.round(calib.pagesPhysical / ratio);
-    extra = ` <br>≈ <strong>${est}</strong> páginas no iPad`;
-  } else if (calib.pagesIpad && !calib.pagesPhysical) {
-    const est = Math.round(calib.pagesIpad * ratio);
-    extra = ` <br>≈ <strong>${est}</strong> páginas no físico`;
-  }
-  previewEl.innerHTML = `1 pág. no iPad ≈ <strong>${ratio.toFixed(2)}</strong> pág. no físico${extra}`;
-}
-
-function saveCalibration() {
-  const calib = readCalibrationFromModal();
-  const ratio = computeConversionRatio(calib);
-  if (!ratio) {
-    alert('Informe ao menos um par de páginas ou os dois totais ✦');
-    return;
-  }
-  pendingCalibration = calib;
-  // Lembra a proporção pra próximos livros iPad — evita ter que calibrar tudo de novo
-  state.lastIpadRatio = ratio;
-  saveState();
-  closeCalibrateModal();
-  updateCalibrationStatus();
-}
-
 
 
 // ============ BUSCA VIA LINK DA AMAZON ============
@@ -7998,7 +7450,6 @@ function parseAmazonUrl(url) {
     //    Esses não fazem parte nem do título nem do autor.
     let cleaned = decoded
       .replace(/-ebook(-kindle)?$/i, '')
-      .replace(/-(?:livro|book)(-(?:eletr[oô]nico|fisico|f[ií]sico))?$/i, '')
       .replace(/-(?:edi[cç][aã]o|edition)-(?:portugues|portuguesa|portugu[eê]s|brasileira)$/i, '')
       .replace(/-(?:portugu[eê]se?|portugu[eê]sa)$/i, '')
       .replace(/-vol(?:ume)?-?\d*$/i, '')
