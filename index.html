@@ -473,9 +473,9 @@
   /* Card de destaque - "Este ano" / ano selecionado */
   .stat-card.year-hero {
     grid-column: 1 / -1;
-    background: linear-gradient(135deg, #f5d5cf 0%, #e8b8b0 50%, #c97b72 100%);
+    background: linear-gradient(135deg, #f5d5cf 0%, #e8b8b0 60%, #d99088 100%);
     color: var(--ink);
-    padding: 22px 22px;
+    padding: 14px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -483,7 +483,7 @@
     border: none;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(201, 123, 114, 0.25);
+    box-shadow: 0 2px 8px rgba(201, 123, 114, 0.15);
   }
   
   /* Variante masculina - azul */
@@ -522,15 +522,15 @@
   .stat-hero-label {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    font-size: 16px;
+    font-size: 13px;
     color: var(--ink);
     opacity: 0.75;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
   }
   
   .stat-hero-number {
     font-family: 'Fraunces', serif;
-    font-size: 56px;
+    font-size: 38px;
     font-weight: 300;
     line-height: 1;
     color: var(--ink);
@@ -540,19 +540,19 @@
   .stat-hero-unit {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    font-size: 22px;
+    font-size: 18px;
     color: var(--ink);
     opacity: 0.7;
-    margin-left: 6px;
+    margin-left: 5px;
   }
   
   .stat-hero-sub {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
-    font-size: 14px;
+    font-size: 12px;
     color: var(--ink);
     opacity: 0.65;
-    margin-top: 6px;
+    margin-top: 3px;
   }
   
   /* Cards de outros anos - menores e coloridos diferentes */
@@ -2795,9 +2795,17 @@
     font-style: italic;
     font-size: 20px;
     color: var(--ink-soft);
-    margin: 20px 4px 22px;
     letter-spacing: 0.2px;
   }
+  .fav-gallery-header-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 4px 22px;
+    flex-wrap: wrap;
+  }
+  .fav-gallery-header-row .fav-gallery-sub { margin: 0; }
 
   /* ── Galeria Já Lidos ── */
   .lido-gallery-grid {
@@ -2849,6 +2857,217 @@
   }
   .lido-gallery-grid { padding-top: 10px; }
   .lido-gallery-grid + .lido-gallery-grid { margin-top: 0; }
+
+  /* ── Timeline mensal (aba Já Lidos) ──────────────────────────────── */
+  .lido-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 4px 0 12px;
+    min-width: 0;
+  }
+  /* Linha de mês: sem card, separador sutil entre meses */
+  .lido-month-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 8px 14px 4px;
+    border-bottom: 1px solid rgba(232, 221, 196, 0.6);
+  }
+  .lido-month-row:last-child { border-bottom: none; }
+  /* Rótulo lateral, rotacionado vertical no desktop */
+  .lido-month-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    padding: 6px 2px;
+    min-width: 32px;
+  }
+  .lido-month-name {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    letter-spacing: 0.4px;
+    text-transform: lowercase;
+    line-height: 1;
+  }
+  .lido-month-name em {
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .lido-month-year {
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 16px;
+    opacity: 0.75;
+  }
+  .lido-month-count {
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    background: var(--cream-dark);
+    padding: 2px 9px;
+    border-radius: 100px;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+    /* Compensa a rotação do container pra o número ficar legível "em pé" */
+    writing-mode: horizontal-tb;
+    transform: rotate(180deg);
+    line-height: 1.3;
+  }
+  /* Trilha de capas com scroll horizontal */
+  .lido-month-covers {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 2px 8px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ink-soft) transparent;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .lido-month-covers::-webkit-scrollbar { height: 4px; }
+  .lido-month-covers::-webkit-scrollbar-track { background: transparent; }
+  .lido-month-covers::-webkit-scrollbar-thumb {
+    background: var(--cream-dark);
+    border-radius: 100px;
+  }
+  .lido-timeline-item {
+    flex: 0 0 auto;
+    width: 86px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: transform 0.18s ease;
+    scroll-snap-align: start;
+  }
+  .lido-timeline-item:active { transform: scale(0.94); }
+  .lido-timeline-cover {
+    width: 86px;
+    height: 129px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--cream-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(42, 36, 32, 0.16);
+  }
+  .lido-timeline-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .lido-timeline-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 0 1px;
+  }
+  .lido-timeline-stars {
+    font-size: 9px;
+    color: #d4a853;
+    letter-spacing: 0.5px;
+    padding: 0 1px;
+    line-height: 1;
+  }
+  .lido-timeline-stars .empty-star { color: rgba(42, 36, 32, 0.18); }
+
+  /* ── Mobile: rótulo vai pra cima, capas quebram em wrap (rolagem vertical) ── */
+  @media (max-width: 600px) {
+    .lido-month-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 12px 4px 14px;
+    }
+    .lido-month-label {
+      writing-mode: horizontal-tb;
+      transform: none;
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: flex-start;
+      padding: 0 2px;
+      min-width: 0;
+      gap: 8px;
+    }
+    .lido-month-count {
+      writing-mode: horizontal-tb;
+      transform: none;
+    }
+    .lido-month-name { font-size: 20px; }
+    .lido-month-year { font-size: 16px; }
+    /* Mobile: sem scroll lateral — capas quebram em wrap */
+    .lido-month-covers {
+      flex-wrap: wrap;
+      overflow-x: visible;
+      overflow-y: visible;
+      padding: 2px 0 4px;
+      scroll-snap-type: none;
+    }
+    .lido-timeline-item { width: 78px; flex: 0 0 78px; }
+    .lido-timeline-cover { width: 78px; height: 117px; }
+  }
+  @media (max-width: 380px) {
+    .lido-timeline-item { width: 70px; flex: 0 0 70px; }
+    .lido-timeline-cover { width: 70px; height: 105px; }
+  }
+
+  /* Paginação */
+  .lido-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 0 4px;
+    flex-wrap: wrap;
+  }
+  .lido-page-btn {
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    color: var(--ink);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lido-page-btn.active { background: var(--ink); color: var(--cream); }
+  .lido-page-btn:hover:not(.active) { background: var(--cream-dark); }
+  .lido-page-btn:active { transform: scale(0.92); }
+  .lido-page-arrow {
+    font-size: 18px;
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 4px 6px;
+    transition: color 0.2s;
+    font-family: inherit;
+    line-height: 1;
+  }
+  .lido-page-arrow:disabled { opacity: 0.3; cursor: default; }
+  .lido-page-arrow:hover:not(:disabled) { color: var(--ink); }
 
   .fav-gallery-grid {
     display: grid;
@@ -3002,16 +3221,14 @@
     box-shadow: 0 0 0 3px var(--heart), 0 4px 14px rgba(42, 36, 32, 0.2);
   }
 
-  /* Hint sobre drag-and-drop, no topo da aba favoritos */
+  /* Hint sobre drag-and-drop, ao lado do título da aba favoritos */
   .fav-drag-hint {
     font-family: 'Instrument Serif', serif;
     font-style: italic;
     font-size: 13px;
     color: var(--ink-soft);
-    opacity: 0.7;
-    text-align: center;
-    margin-bottom: 10px;
-    padding: 0 12px;
+    opacity: 0.65;
+    white-space: nowrap;
   }
 
   /* Modal de swap (Top 10 cheio) */
@@ -5121,16 +5338,22 @@ function renderYearFilter() {
     bar.style.display = "none";
     return;
   }
-  
+
+  // Na aba favoritos, "Todos" não faz sentido — o conceito é Top 10 (a lista
+  // SEMPRE é uma só, só muda o recorte por ano). Então omitimos o chip "Todos".
+  const showAllChip = (state.filter !== "favoritos");
+
   const activeYear = resolveActiveYear(years);
   const totalCount = relevantBooks.length;
-  
+
   let html = '';
-  
-  // Chip "Todos"
-  const isAllActive = state.selectedYear === "todos";
-  html += `<button class="year-chip ${isAllActive ? 'active' : ''}" onclick="setYearFilter('todos')">Todos<span class="year-chip-count">${totalCount}</span></button>`;
-  
+
+  // Chip "Todos" (só na aba "Já lidos")
+  if (showAllChip) {
+    const isAllActive = state.selectedYear === "todos";
+    html += `<button class="year-chip ${isAllActive ? 'active' : ''}" onclick="setYearFilter('todos')">Todos<span class="year-chip-count">${totalCount}</span></button>`;
+  }
+
   // Chips por ano
   years.forEach(year => {
     const isActive = activeYear === year && state.selectedYear !== "todos" && state.selectedYear !== "sem-data";
@@ -5149,8 +5372,18 @@ function renderYearFilter() {
 
 function setYearFilter(year) {
   state.selectedYear = year;
+  state.lidoPage = 1;
   saveState();
   renderAll();
+}
+
+function setLidoPage(page) {
+  const allLidos = applyYearFilterToBooks(state.books.filter(b => b.status === "lido"));
+  const totalPages = Math.max(1, Math.ceil(allLidos.length / 15));
+  if (page < 1 || page > totalPages) return;
+  state.lidoPage = page;
+  renderGenres();
+  document.getElementById("genres").scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Helper: dado o filtro de ano ativo, retorna o conjunto de livros filtrado
@@ -5265,19 +5498,32 @@ function renderGenres() {
 
     const statusLabel = { reading: 'lendo', lido: 'lido', pendente: 'pendente', abandonado: 'abandonado' };
 
+    // Quando há filtro de ano ativo, o badge mostra a posição RELATIVA ao
+    // conjunto filtrado (1, 2, 3 no que aparece) — não o rank global. Faz mais
+    // sentido visualmente. Sem filtro (state "todos"), usa o rank global mesmo.
+    // O default `null` cai no ano atual via resolveActiveYear, então também
+    // conta como filtrado.
+    const isYearFiltered = (state.selectedYear !== "todos");
+    const displayRankFor = (book, idx) => {
+      if (isYearFiltered) return idx + 1;
+      return (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : (idx + 1);
+    };
+
     let html = `
-      <div class="fav-gallery-sub">seu top ${Math.min(favs.length, 10)} ${favs.length > 1 ? 'no coração' : 'no coração'}</div>
-      <div class="fav-drag-hint">arraste pra reordenar ✦</div>
+      <div class="fav-gallery-header-row">
+        <div class="fav-gallery-sub">seu top ${Math.min(favs.length, 10)} no coração</div>
+        <div class="fav-drag-hint">arraste pra reordenar ✦</div>
+      </div>
       <div class="fav-gallery-grid" id="favGalleryGrid">
     `;
 
-    favs.forEach(book => {
+    favs.forEach((book, idx) => {
       const coverId = `fav-cover-${book.id}`;
       const stars = book.rating
         ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
         : '';
-      const rank = (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : '';
-      const rankClass = (typeof book.favRank === 'number' && book.favRank >= 1 && book.favRank <= 3) ? 'top3' : '';
+      const rank = displayRankFor(book, idx);
+      const rankClass = (rank >= 1 && rank <= 3) ? 'top3' : '';
       const rankBadge = rank ? `<div class="fav-gallery-rank ${rankClass}">${rank}</div>` : '';
       html += `
         <div class="fav-gallery-item" data-book-id="${book.id}" draggable="true" onclick="openEditModal(${book.id})">
@@ -5303,10 +5549,10 @@ function renderGenres() {
     setupFavDragAndDrop();
 
     // Hidrata capas assincronamente — preserva o badge de rank ao trocar o HTML
-    favs.forEach(book => {
+    favs.forEach((book, idx) => {
       const coverId = `fav-cover-${book.id}`;
-      const rank = (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : '';
-      const rankClass = (typeof book.favRank === 'number' && book.favRank >= 1 && book.favRank <= 3) ? 'top3' : '';
+      const rank = displayRankFor(book, idx);
+      const rankClass = (rank >= 1 && rank <= 3) ? 'top3' : '';
       const rankBadge = rank ? `<div class="fav-gallery-rank ${rankClass}">${rank}</div>` : '';
       const key = coverKey(book.t, book.a);
       const cached = state.covers && state.covers[key];
@@ -5333,7 +5579,9 @@ function renderGenres() {
     return;
   }
   
-  // Aba "lido": galeria de capas agrupada por mês
+  // Aba "lido": timeline mensal compacta dentro do ano ativo (chips de ano
+  // já filtram o ano lá em cima, então aqui não duplicamos com accordions
+  // de ano).
   if (state.filter === "lido") {
     const allLidos = state.books.filter(b => b.status === "lido");
     if (allLidos.length === 0) {
@@ -5345,12 +5593,12 @@ function renderGenres() {
       `;
       return;
     }
-    
+
     // Aplica filtro de ano (chips)
     const lidos = applyYearFilterToBooks(allLidos);
     if (lidos.length === 0) {
-      const yearLabel = state.selectedYear === "sem-data" 
-        ? "sem data registrada" 
+      const yearLabel = state.selectedYear === "sem-data"
+        ? "sem data registrada"
         : (typeof state.selectedYear === 'number' ? `em ${state.selectedYear}` : '');
       container.innerHTML = `
         <div class="empty">
@@ -5366,75 +5614,70 @@ function renderGenres() {
     const comData = lidos.filter(b => b.endDate);
     const semData = lidos.filter(b => !b.endDate);
 
-    // Agrupa SÓ por ano (não dividimos mais por mês)
-    const grouped = {};
+    const showingAllYears = (state.selectedYear === "todos");
+
+    // Agrupa por ano-mês (chave "YYYY-MM")
+    const byMonth = {};
     comData.forEach(b => {
-      const [y] = b.endDate.split("-");
-      if (!grouped[y]) grouped[y] = [];
-      grouped[y].push(b);
+      const [y, m] = b.endDate.split("-");
+      const key = `${y}-${m}`;
+      if (!byMonth[key]) byMonth[key] = { year: parseInt(y), monthIdx: parseInt(m) - 1, books: [] };
+      byMonth[key].books.push(b);
     });
 
-    let html = '';
+    // Ordena chaves do mais recente pro mais antigo
+    const sortedKeys = Object.keys(byMonth).sort((a, b) => b.localeCompare(a));
 
-    // Helper: gera HTML do stack de mini-capas pra mostrar no header colapsado
-    const buildCoverStack = (books) => {
-      const max = 3;
-      const sample = books.slice(0, max);
-      let stackHtml = '<div class="month-group-covers">';
-      sample.forEach(b => {
-        const ck = coverKey(b.t, b.a);
-        const coverUrl = state.covers && state.covers[ck] && state.covers[ck] !== "NONE" ? state.covers[ck] : '';
-        if (coverUrl) {
-          stackHtml += `<div class="month-group-cover-mini" style="background-image:url('${coverUrl}')"></div>`;
-        } else {
-          // placeholder com letra inicial
-          const letter = (b.t || '?').charAt(0).toUpperCase();
-          stackHtml += `<div class="month-group-cover-mini placeholder">${letter}</div>`;
-        }
-      });
-      stackHtml += '</div>';
-      return stackHtml;
-    };
+    // Paginação: fatia os livros totais em páginas de 15
+    const PAGE_SIZE = 15;
+    const totalBooks = lidos.length;
+    const totalPages = Math.max(1, Math.ceil(totalBooks / PAGE_SIZE));
+    if (!state.lidoPage || state.lidoPage < 1 || state.lidoPage > totalPages) state.lidoPage = 1;
 
-    const years = Object.keys(grouped).map(Number).sort((a, b) => b - a);
-    years.forEach(year => {
-      const yearBooks = grouped[year];
-      // Ordena livros do ano pelo término mais recente primeiro
-      yearBooks.sort((a, b) => b.endDate.localeCompare(a.endDate));
+    // Determina quais livros aparecem nesta página (mantém ordem por mês)
+    const allSorted = [];
+    sortedKeys.forEach(key => {
+      const g = byMonth[key];
+      g.books.sort((a, b) => b.endDate.localeCompare(a.endDate));
+      g.books.forEach(b => allSorted.push(b));
+    });
+    semData.forEach(b => allSorted.push(b));
 
-      // O ano mais recente já abre expandido pra a leitura mais imediata ficar visível
-      const isFirstYear = (year === years[0]);
-      const collapsedClass = isFirstYear ? '' : 'collapsed';
+    const pageStart = (state.lidoPage - 1) * PAGE_SIZE;
+    const pageEnd = pageStart + PAGE_SIZE;
+    const pageBookIds = new Set(allSorted.slice(pageStart, pageEnd).map(b => b.id));
+
+    let html = '<div class="lido-timeline">';
+
+    sortedKeys.forEach(key => {
+      const group = byMonth[key];
+      const visibleBooks = group.books.filter(b => pageBookIds.has(b.id));
+      if (visibleBooks.length === 0) return;
+
+      const monthName = MONTH_NAMES[group.monthIdx];
+      const monthLabel = showingAllYears
+        ? `${monthName}<span class="lido-month-year"> · ${group.year}</span>`
+        : monthName;
 
       html += `
-        <div class="month-group ${collapsedClass}">
-          <div class="month-group-header" onclick="toggleMonthGroup(this)">
-            <div class="month-group-left">
-              <div class="month-group-textblock">
-                <span class="month-group-title"><em>${year}</em></span>
-                <span class="month-group-meta">${yearBooks.length} livro${yearBooks.length > 1 ? 's' : ''} concluído${yearBooks.length > 1 ? 's' : ''}</span>
-              </div>
-            </div>
-            ${buildCoverStack(yearBooks)}
-            <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="lido-month-row">
+          <div class="lido-month-label">
+            <span class="lido-month-name">${monthLabel}</span>
+            <span class="lido-month-count">${visibleBooks.length}</span>
           </div>
-          <div class="lido-gallery-grid month-group-content">
+          <div class="lido-month-covers">
       `;
 
-      yearBooks.forEach(book => {
+      visibleBooks.forEach(book => {
         const coverId = `lido-cover-${book.id}`;
         const stars = book.rating
           ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
           : '';
-        const dateRange = formatReadingRange(book.startDate, book.endDate);
         html += `
-          <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
-            <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
-            <div class="lido-gallery-info">
-              <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
-              ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
-              ${dateRange ? `<div class="lido-gallery-dates">${dateRange}</div>` : ''}
-            </div>
+          <div class="lido-timeline-item" onclick="openEditModal(${book.id})">
+            <div class="lido-timeline-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
+            <div class="lido-timeline-title">${escapeHtml(book.t)}</div>
+            ${stars ? `<div class="lido-timeline-stars">${stars}</div>` : ''}
           </div>
         `;
       });
@@ -5442,46 +5685,50 @@ function renderGenres() {
       html += `</div></div>`;
     });
 
-    if (semData.length > 0) {
+    // Livros sem data na página atual
+    const semDataPage = semData.filter(b => pageBookIds.has(b.id));
+    if (semDataPage.length > 0) {
       html += `
-        <div class="month-group collapsed">
-          <div class="month-group-header" onclick="toggleMonthGroup(this)">
-            <div class="month-group-left">
-              <span class="month-group-number" style="font-style:italic; opacity:0.5;">∼</span>
-              <div class="month-group-textblock">
-                <span class="month-group-title"><em>sem data registrada</em></span>
-                <span class="month-group-meta">${semData.length} livro${semData.length > 1 ? 's' : ''}</span>
-              </div>
-            </div>
-            ${buildCoverStack(semData)}
-            <span class="month-group-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="lido-month-row">
+          <div class="lido-month-label">
+            <span class="lido-month-name"><em>sem data</em></span>
+            <span class="lido-month-count">${semDataPage.length}</span>
           </div>
-          <div class="lido-gallery-grid month-group-content">
+          <div class="lido-month-covers">
       `;
-      semData.forEach(book => {
+      semDataPage.forEach(book => {
         const coverId = `lido-cover-${book.id}`;
         const stars = book.rating
           ? '★'.repeat(book.rating) + '<span class="empty-star">' + '☆'.repeat(5 - book.rating) + '</span>'
           : '';
-        const dateRange = formatReadingRange(book.startDate, book.endDate);
         html += `
-          <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
-            <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
-            <div class="lido-gallery-info">
-              <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
-              ${stars ? `<div class="lido-gallery-stars">${stars}</div>` : ''}
-              ${dateRange ? `<div class="lido-gallery-dates">${dateRange}</div>` : ''}
-            </div>
+          <div class="lido-timeline-item" onclick="openEditModal(${book.id})">
+            <div class="lido-timeline-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
+            <div class="lido-timeline-title">${escapeHtml(book.t)}</div>
+            ${stars ? `<div class="lido-timeline-stars">${stars}</div>` : ''}
           </div>
         `;
       });
       html += `</div></div>`;
     }
 
+    html += '</div>';
+
+    // Paginação
+    if (totalPages > 1) {
+      html += '<div class="lido-pagination">';
+      html += `<button class="lido-page-arrow" onclick="setLidoPage(${state.lidoPage - 1})" ${state.lidoPage === 1 ? 'disabled' : ''}>‹</button>`;
+      for (let p = 1; p <= totalPages; p++) {
+        html += `<button class="lido-page-btn ${p === state.lidoPage ? 'active' : ''}" onclick="setLidoPage(${p})">${p}</button>`;
+      }
+      html += `<button class="lido-page-arrow" onclick="setLidoPage(${state.lidoPage + 1})" ${state.lidoPage === totalPages ? 'disabled' : ''}>›</button>`;
+      html += '</div>';
+    }
+
     container.innerHTML = html;
 
-    // Hidrata capas
-    lidos.forEach(book => {
+    // Hidrata capas da página atual
+    allSorted.slice(pageStart, pageEnd).forEach(book => {
       const coverId = `lido-cover-${book.id}`;
       const key = coverKey(book.t, book.a);
       const cached = state.covers && state.covers[key];
@@ -7416,6 +7663,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     state.filter = tab.dataset.filter;
     state.selectedYear = null; // reset filtro de ano ao trocar de aba
+    state.lidoPage = 1; // reset paginação dos lidos
     updateHero(state.filter);
     saveState();
     renderAll();
