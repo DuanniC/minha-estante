@@ -4727,6 +4727,17 @@ function loadCoverWithValidation(url, onSuccess, onFailure) {
   tryLoad(url);
 }
 
+// Coloca capa salva na tela NA HORA, sem esperar busca online nem validação.
+// Se a URL falhar, volta para a capa padrão bonita do app.
+function setCoverInstant(coverId, url, book, fallbackGenreKey) {
+  const el = document.getElementById(coverId);
+  if (!el || !url || url === "NONE") return false;
+  el.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(book.t)}">`;
+  const img = el.querySelector("img");
+  if (img) img.onerror = () => { el.innerHTML = coverFallbackHTML(book, fallbackGenreKey); };
+  return true;
+}
+
 // Wrappers de compatibilidade — usam fetchBookMeta internamente
 async function fetchCover(title, author) {
   const meta = await fetchBookMeta(title, author);
@@ -5588,28 +5599,15 @@ function renderGenres() {
         `;
         container.appendChild(card);
         
-        // Aplica primeiro a capa salva manualmente, sem depender da busca automática.
-        // Isso corrige o caso em que a capa aparece em "Abandonados", mas não aparece em "Lendo".
+        // Mostra capa salva imediatamente, sem esperar internet.
         const savedCoverKey = coverKey(book.t, book.a);
         const savedCover = book.coverUrl || (state.covers && state.covers[savedCoverKey]);
-        if (savedCover && savedCover !== "NONE") {
-          const coverEl = document.getElementById(coverId);
-          if (coverEl) {
-            loadCoverWithValidation(savedCover, (validUrl) => {
-              coverEl.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}">`;
-            });
-          }
-        }
+        const alreadyShowedSavedCover = setCoverInstant(coverId, savedCover, book, key);
 
         // Depois busca apenas metadados faltantes. A busca automática não deve apagar capa manual.
         queueMeta(book.t, book.a).then(meta => {
-          if ((!savedCover || savedCover === "NONE") && meta.cover) {
-            const coverEl = document.getElementById(coverId);
-            if (coverEl) {
-              loadCoverWithValidation(meta.cover, (validUrl) => {
-                coverEl.innerHTML = `<img src="${validUrl}" alt="${escapeHtml(book.t)}">`;
-              });
-            }
+          if (!alreadyShowedSavedCover && meta.cover) {
+            setCoverInstant(coverId, meta.cover, book, key);
           }
           // Aplica páginas se não tinha
           if (meta.pages && !book.pagesTotal) {
