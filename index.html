@@ -4667,6 +4667,8 @@ const IS_IOS_SAFARI = (() => {
 
 const CORS_PROXIES = [
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
 ];
 
 function fetchWithTimeout(url, opts, timeoutMs) {
@@ -8354,6 +8356,9 @@ async function searchGoogleBooks(q, signal) {
     let score = 0;
     const qLower = q.toLowerCase();
     const titleLower = (v.title || '').toLowerCase();
+
+    // Descarta se o título não tem nenhuma relação com a busca
+    if (!titleLower.includes(qLower) && !qLower.includes(titleLower.substring(0, 5))) continue;
     
     // Match exato de título (mais importante)
     if (titleLower === qLower) score += 100;
@@ -8412,9 +8417,9 @@ async function searchGoogleBooks(q, signal) {
 async function searchOpenLibrary(q, signal) {
   const fields = "title,author_name,cover_i,number_of_pages_median,subject,isbn,language,edition_count";
   
-  // Busca dupla: primeiro só em português, depois geral (em paralelo)
-  const urlPt = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&language=por&limit=8&fields=${fields}`;
-  const urlAll = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=10&fields=${fields}`;
+  // Busca dupla: por título exato (title=) em português e geral
+  const urlPt  = `https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&language=por&limit=10&fields=${fields}`;
+  const urlAll = `https://openlibrary.org/search.json?title=${encodeURIComponent(q)}&limit=12&fields=${fields}`;
   
   try {
     const [ptResp, allResp] = await Promise.allSettled([
@@ -8434,6 +8439,8 @@ async function searchOpenLibrary(q, signal) {
       allDocs = (allData.docs || []).filter(d => d.title);
     }
     
+    const qLower = q.toLowerCase();
+
     // Merge: português primeiro, depois resto (dedup por título+autor)
     const seen = new Set();
     const merged = [];
@@ -8443,14 +8450,20 @@ async function searchOpenLibrary(q, signal) {
       if (seen.has(norm)) continue;
       seen.add(norm);
       
+      const titleLower = doc.title.toLowerCase();
+
+      // Descarta resultados que não têm nada a ver com a busca
+      if (!titleLower.includes(qLower) && !qLower.includes(titleLower.substring(0, 5))) continue;
+
       // Calcula score pra ordenação posterior
       let score = 0;
+      if (titleLower === qLower) score += 120;
+      else if (titleLower.startsWith(qLower)) score += 70;
+      else if (titleLower.includes(qLower)) score += 30;
       if ((doc.language || []).includes('por')) score += 40;
       if (doc.cover_i) score += 25;
       if (doc.number_of_pages_median) score += 8;
       score += Math.min(15, doc.edition_count || 0);
-      if (doc.title.toLowerCase() === q.toLowerCase()) score += 20;
-      if (doc.title.toLowerCase().startsWith(q.toLowerCase())) score += 8;
       
       merged.push({
         ...doc,
@@ -8961,24 +8974,33 @@ async function openCoverPicker(e) {
   // 2) Se Amazon não trouxer opção ou para complementar, busca Google/Open Library.
   grid.querySelector('.cover-picker-empty') && (grid.innerHTML = `<div class="cover-picker-empty">buscando outras opções ✦</div>`);
 
+  const extractGoogleCovers = (items) => {
+    (items || []).forEach(item => {
+      const info = item.volumeInfo || {};
+      if (info.imageLinks) {
+        const links = info.imageLinks;
+        let url = links.extraLarge || links.large || links.medium || links.thumbnail || links.smallThumbnail;
+        if (url) {
+          url = url.replace(/^http:/, 'https:').replace(/[?&]edge=curl/g, '').replace(/zoom=\d+/, 'zoom=0');
+          addCover(url, 'Google', { lang: info.language, title: info.title });
+        }
+      }
+    });
+  };
+
   const googleBooksPromise = (async () => {
     try {
-      const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
-      const resp = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=10&langRestrict=pt`);
-      if (resp.ok) {
-        const data = await resp.json();
-        (data.items || []).forEach(item => {
-          const info = item.volumeInfo || {};
-          if (info.imageLinks) {
-            const links = info.imageLinks;
-            let url = links.extraLarge || links.large || links.medium || links.thumbnail || links.smallThumbnail;
-            if (url) {
-              url = url.replace(/^http:/, 'https:').replace(/&edge=curl/, '').replace(/&zoom=\d+/, '');
-              addCover(url, 'Google', { lang: info.language, title: info.title });
-            }
-          }
-        });
-      }
+      const q1 = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
+      const r1 = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q1}&maxResults=10&langRestrict=pt`);
+      if (r1.ok) { const d = await r1.json(); extractGoogleCovers(d.items); showNow(); }
+
+      const r2 = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q1}&maxResults=10`);
+      if (r2.ok) { const d = await r2.json(); extractGoogleCovers(d.items); showNow(); }
+
+      const q3 = `intitle:${encodeURIComponent(title)}`;
+      const r3 = await apiFetch(`https://www.googleapis.com/books/v1/volumes?q=${q3}&maxResults=10`);
+      if (r3.ok) { const d = await r3.json(); extractGoogleCovers(d.items); showNow(); }
+
     } catch(e) { console.warn('[picker] Google Books falhou:', e); }
     showNow();
   })();
@@ -8986,18 +9008,25 @@ async function openCoverPicker(e) {
   const openLibraryPromise = (async () => {
     try {
       const fields = "cover_i,language,title,isbn";
-      const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=10&fields=${fields}`;
-      const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
-      if (resp.ok) {
-        const data = await resp.json();
+
+      const q1 = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=10&fields=${fields}`;
+      const r1 = await apiFetch(`https://openlibrary.org/search.json?${q1}`);
+      if (r1.ok) {
+        const data = await r1.json();
         (data.docs || []).forEach(doc => {
-          if (doc.cover_i) {
-            addCover(`https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`, 'Open Library', {
-              lang: (doc.language || [])[0],
-              title: doc.title,
-            });
-          }
+          if (doc.cover_i) addCover(`https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`, 'Open Library', { lang: (doc.language || [])[0], title: doc.title });
         });
+        showNow();
+      }
+
+      const q2 = `title=${encodeURIComponent(title)}&limit=12&fields=${fields}`;
+      const r2 = await apiFetch(`https://openlibrary.org/search.json?${q2}`);
+      if (r2.ok) {
+        const data = await r2.json();
+        (data.docs || []).forEach(doc => {
+          if (doc.cover_i) addCover(`https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`, 'Open Library', { lang: (doc.language || [])[0], title: doc.title });
+        });
+        showNow();
       }
     } catch(e) { console.warn('[picker] Open Library falhou:', e); }
     showNow();
