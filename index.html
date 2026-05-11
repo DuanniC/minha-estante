@@ -3496,6 +3496,7 @@ create policy "acesso total genres" on genres
     <button class="form-btn" id="startReadingBtn" onclick="startReadingFromEdit()" style="display:none;">Começar a ler ✦</button>
     <button class="form-btn" id="rereadBtn" onclick="rereadBookFromEdit()" style="display:none;">Reler ✦</button>
     <button class="form-btn secondary" id="saveEditBtn" onclick="saveEditOnly()" style="margin-top: 10px;">Salvar edição (continuar lendo)</button>
+    <button class="form-btn" id="backToPendingBtn" onclick="backToPending()" style="margin-top: 10px; display:none; background:var(--cream-dark); color:var(--ink);">↶ Voltar para Pendente</button>
     <button class="form-btn danger" id="abandonBtn" onclick="confirmAbandon()" style="margin-top: 10px;">Abandonar livro</button>
     <button class="form-btn danger" id="deleteBookBtn" onclick="confirmDeleteFromEdit()" style="margin-top: 10px; display:none;">Excluir livro</button>
   </div>
@@ -6836,6 +6837,7 @@ function updateMarkReadVisibility(book) {
   const saveBtn = document.getElementById("saveEditBtn");
   const abandonBtn = document.getElementById("abandonBtn");
   const deleteBtn = document.getElementById("deleteBookBtn");
+  const backBtn = document.getElementById("backToPendingBtn");
   if (!markBtn || !startBtn || !rereadBtn || !saveBtn || !book) return;
 
   // Pega valores atuais dos inputs (podem ter sido editados)
@@ -6884,6 +6886,15 @@ function updateMarkReadVisibility(book) {
 
   // Lendo (reading) ou abandonado
   if (book.status === "reading" || book.status === "abandoned") {
+    // Botão "Voltar para Pendente": só mostra se lendo E pagesCurrent = 0
+    if (backBtn) {
+      if (book.status === "reading" && current === 0) {
+        backBtn.style.display = "";
+      } else {
+        backBtn.style.display = "none";
+      }
+    }
+    
     if (!hasPages) {
       // Sem páginas registradas → esconde os principais (precisa registrar primeiro)
       return;
@@ -7372,6 +7383,23 @@ function confirmAbandon() {
   applyCommonEditFields(book);
   book.status = "abandoned";
   if (endDate) book.endDate = endDate;
+  saveState();
+  pushBook(book);
+  
+  closeEditModal();
+  if (currentGenre) { renderWheel(currentGenre); renderBookList(currentGenre); updateModalSub(); }
+  renderAll();
+}
+
+// Volta livro de "lendo" para "pendente" (só se pagesCurrent = 0)
+function backToPending() {
+  if (!editingBookId) return;
+  const book = getBookById(editingBookId);
+  if (!book) return;
+  if (!confirm(`Mover "${book.t}" de volta para Pendente?`)) return;
+  
+  book.status = "pendente";
+  book.pagesCurrent = 0;
   saveState();
   pushBook(book);
   
