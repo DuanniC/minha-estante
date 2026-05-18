@@ -3129,6 +3129,195 @@ textarea,
 .profile-line strong { font-weight: 600; }
 .manual-cover-btn { display:inline-flex; align-items:center; justify-content:center; margin-top: 12px; padding: 10px 14px; border-radius: 999px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 
+/* PERFIL DE LEITURA */
+.reading-profile-section {
+  background: var(--cream-dark);
+  border-radius: 20px;
+  padding: 24px;
+  margin: 0 16px 24px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.profile-header h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--ink);
+  margin: 0;
+}
+
+.year-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.year-filter label {
+  font-weight: 500;
+}
+
+.year-filter select {
+  padding: 8px 12px;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.year-filter select:hover {
+  border-color: var(--ink);
+}
+
+.year-filter select:focus {
+  outline: none;
+  border-color: var(--rose-deep);
+}
+
+.profile-loading {
+  text-align: center;
+  color: var(--ink-soft);
+  padding: 20px;
+  font-style: italic;
+}
+
+.profile-content {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.stat-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.stat-data {
+  flex: 1;
+}
+
+.stat-value {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.2;
+}
+
+.profile-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.detail-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.detail-card h3 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 14px;
+  color: var(--ink);
+  margin: 0 0 12px;
+  font-weight: 400;
+}
+
+.detail-card p {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.detail-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.detail-card li {
+  margin-bottom: 6px;
+}
+
+.detail-card li:last-child {
+  margin-bottom: 0;
+}
+
+.btn-toggle-section {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--rose-deep);
+  background: transparent;
+  color: var(--rose-deep);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-toggle-section:hover {
+  background: var(--rose-deep);
+  color: var(--cream);
+}
+
+.btn-toggle-section.active {
+  background: var(--rose-deep);
+  color: var(--cream);
+}
+
 </style>
 </head>
 <body>
@@ -3316,7 +3505,7 @@ create policy "acesso total genres" on genres
     </div>
     <div class="menu" id="menu">
       <button onclick="openAddBook()">✦ Adicionar livro</button>
-      <button onclick="openProfileModal()">☰ Perfil</button>
+      
       <button onclick="openGenresModal()">✿ Gerenciar gêneros</button>
       <button onclick="forceSync()">↻ Sincronizar agora</button>
       <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
@@ -3337,6 +3526,7 @@ create policy "acesso total genres" on genres
     <button class="tab" data-filter="lido">Já lidos</button>
     <button class="tab" data-filter="abandoned">Abandonados</button>
   </div>
+  
   
   <div class="stats-section" id="statsSection" style="display:none"></div>
   
@@ -3769,16 +3959,7 @@ create policy "acesso total genres" on genres
 </div>
 
 
-<div class="modal-backdrop" id="profileModal">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-head">
-      <h2 class="modal-title"><em>Perfil</em> de leitura</h2>
-      <button class="modal-close" onclick="closeProfileModal()">×</button>
-    </div>
-    <p class="modal-sub">Resumo geral das suas leituras</p>
-    <div id="profileSummaryContent"></div>
-  </div>
+
 </div>
 
 <script>
@@ -10202,56 +10383,93 @@ if (typeof renderCoverPicker === 'function') {
   };
 }
 
-function getProfileReadingStats() {
+function getProfileBookYear(book) {
+  const date = book.endDate || book.finish_date || book.df || book.date_finished || book.d || '';
+  if (!date) return null;
+  const y = String(date).slice(0, 4);
+  return /^\d{4}$/.test(y) ? y : null;
+}
+
+function getReadBooksOnly() {
+  return (state.books || []).filter(b => b.status === 'lido' || b.s === 'lido');
+}
+
+function getProfileReadingStats(yearFilter = '') {
   const books = state.books || [];
-  const readBooks = books.filter(b => b.status === 'lido');
-  const pagesRead = books.reduce((sum, b) => {
-    if (b.status === 'lido') return sum + (parseInt(b.pagesTotal) || parseInt(b.pagesCurrent) || 0);
-    if (b.status === 'reading') return sum + (parseInt(b.pagesCurrent) || 0);
-    return sum;
+  const allReadBooks = getReadBooksOnly();
+  const readBooks = yearFilter
+    ? allReadBooks.filter(b => getProfileBookYear(b) === String(yearFilter))
+    : allReadBooks;
+
+  const pagesRead = readBooks.reduce((sum, b) => {
+    return sum + (parseInt(b.pagesTotal) || parseInt(b.pagesCurrent) || parseInt(b.pages) || parseInt(b.p) || 0);
   }, 0);
-  const rated = books.filter(b => Number(b.rating) > 0);
-  const avgRating = rated.length ? (rated.reduce((s,b)=>s+Number(b.rating||0),0) / rated.length).toFixed(1) : '—';
+
+  const rated = readBooks.filter(b => Number(b.rating) > 0 || Number(b.n) > 0);
+  const avgRating = rated.length
+    ? (rated.reduce((s,b)=>s + Number(b.rating || b.n || 0),0) / rated.length).toFixed(1)
+    : '—';
+
   const byGenre = {};
-  readBooks.forEach(b => { byGenre[b.g] = (byGenre[b.g] || 0) + 1; });
+  readBooks.forEach(b => { const g = b.g || b.genre || 'sem-genero'; byGenre[g] = (byGenre[g] || 0) + 1; });
   const topGenres = Object.entries(byGenre).sort((a,b)=>b[1]-a[1]);
-  return { books, readBooks, pagesRead, rated, avgRating, topGenres };
+
+  const abandonedCount = books.filter(b => b.status === 'abandoned' || b.s === 'abandoned').length;
+  const readingCount = books.filter(b => b.status === 'reading' || b.s === 'reading').length;
+
+  return { books, allReadBooks, readBooks, pagesRead, rated, avgRating, topGenres, abandonedCount, readingCount };
+}
+
+function populateProfileYearFilter() {
+  const select = document.getElementById('profileYearSelect');
+  if (!select) return;
+  const current = select.value;
+  const years = [...new Set(getReadBooksOnly().map(getProfileBookYear).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+  select.innerHTML = '<option value="">Todos</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+  if (years.includes(current)) select.value = current;
 }
 
 function renderProfileSummary() {
   const box = document.getElementById('profileSummaryContent');
   if (!box) return;
-  const s = getProfileReadingStats();
+  const yearSelect = document.getElementById('profileYearSelect');
+  const selectedYear = yearSelect ? yearSelect.value : '';
+  const s = getProfileReadingStats(selectedYear);
+  const periodText = selectedYear ? `em ${selectedYear}` : 'no total';
+
   const favoriteGenre = s.topGenres[0];
   const genreName = favoriteGenre ? (GENRES[favoriteGenre[0]]?.name || favoriteGenre[0]) : '—';
-  const genreText = favoriteGenre ? `Você leu ${favoriteGenre[1]} livro${favoriteGenre[1] === 1 ? '' : 's'} de ${genreName}.` : 'Quando marcar livros como lidos, seu gênero mais lido aparece aqui.';
-  const lines = s.topGenres.slice(0, 5).map(([g, count]) => `<div class="profile-line"><span>${GENRES[g]?.emoji || '•'} ${escapeHtml(GENRES[g]?.name || g)}</span><strong>${count}</strong></div>`).join('') || '<div class="profile-line"><span>Nenhum gênero com leitura finalizada ainda</span><strong>—</strong></div>';
+  const genreText = favoriteGenre
+    ? `Você leu ${favoriteGenre[1]} livro${favoriteGenre[1] === 1 ? '' : 's'} de ${genreName} ${periodText}.`
+    : `Nenhum livro marcado como já lido ${selectedYear ? 'neste ano' : 'ainda'}.`;
+
+  const lines = s.topGenres.slice(0, 5).map(([g, count]) => `<div class="profile-line"><span>${GENRES[g]?.emoji || '•'} ${escapeHtml(GENRES[g]?.name || g)}</span><strong>${count}</strong></div>`).join('') || '<div class="profile-line"><span>Nenhum gênero com leitura finalizada no período</span><strong>—</strong></div>';
+
+  const avgPages = s.readBooks.length ? Math.round(s.pagesRead / s.readBooks.length) : 0;
+  const extraCuriosities = [
+    `<div class="profile-line"><span>${escapeHtml(genreText)}</span></div>`,
+    `<div class="profile-line"><span>Média de páginas por livro lido</span><strong>${avgPages || '—'}</strong></div>`,
+    `<div class="profile-line"><span>Leituras em andamento</span><strong>${s.readingCount}</strong></div>`,
+    `<div class="profile-line"><span>Livros abandonados</span><strong>${s.abandonedCount}</strong></div>`
+  ].join('');
+
   box.innerHTML = `
     <div class="profile-summary-grid">
       <div class="profile-summary-card"><div class="profile-summary-number">${s.readBooks.length}</div><div class="profile-summary-label">livros lidos</div></div>
-      <div class="profile-summary-card"><div class="profile-summary-number">${s.pagesRead}</div><div class="profile-summary-label">páginas lidas</div></div>
+      <div class="profile-summary-card"><div class="profile-summary-number">${s.pagesRead.toLocaleString('pt-BR')}</div><div class="profile-summary-label">páginas lidas</div></div>
       <div class="profile-summary-card"><div class="profile-summary-number">${s.avgRating}</div><div class="profile-summary-label">média das notas</div></div>
       <div class="profile-summary-card"><div class="profile-summary-number">${s.rated.length}</div><div class="profile-summary-label">livros avaliados</div></div>
     </div>
     <div class="profile-section-title">Resumo geral</div>
-    <div class="profile-line"><span>${escapeHtml(genreText)}</span></div>
-    <div class="profile-line"><span>Você tem ${s.books.filter(b=>b.status==='reading').length} leitura${s.books.filter(b=>b.status==='reading').length === 1 ? '' : 's'} em andamento.</span></div>
+    ${extraCuriosities}
     <div class="profile-section-title">Gêneros mais lidos</div>
     ${lines}
   `;
 }
 
-function openProfileModal() {
-  closeMenu();
-  renderProfileSummary();
-  document.getElementById('profileModal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
 
-function closeProfileModal() {
-  document.getElementById('profileModal').classList.remove('open');
-  document.body.style.overflow = '';
-}
+
+
 
 
 /* ==========================================================
@@ -10928,19 +11146,7 @@ function closeProfileModal() {
 
 </script>
 
-<script>
-/* Correção final: remove Google Books das funções antigas e força busca por Open Library. */
-(function(){
-  function empty(){ return Promise.resolve([]); }
-  window.searchGoogleBooks = empty;
-  window.searchGoogleBooksV5 = empty;
-  window.fetchGoogleBooksCovers = empty;
-  window.findGoogleBooksCover = empty;
-  window._fetchGoogleBooks = function(){
-    return Promise.resolve({ ok:true, status:200, json: async () => ({ totalItems:0, items:[] }) });
-  };
-})();
-</script>
+
 
 </body>
 </html>
