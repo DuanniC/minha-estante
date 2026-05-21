@@ -3895,7 +3895,6 @@ create policy "acesso total genres" on genres
     <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin: 18px 0 10px;">
       progresso
     </div>
-
     
     <div class="form-group" style="margin-top: 16px;">
       <label class="form-label">Data de início</label>
@@ -3907,6 +3906,17 @@ create policy "acesso total genres" on genres
       <input type="date" class="form-input" id="editEndDate">
     </div>
     
+    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div class="form-group">
+        <label class="form-label">Página atual</label>
+        <input type="number" class="form-input" id="editPagesCurrent" min="0" oninput="updateMarkReadVisibility(getBookById(editingBookId))">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total de páginas</label>
+        <input type="number" class="form-input" id="editPagesTotal" min="0" oninput="updateMarkReadVisibility(getBookById(editingBookId))">
+      </div>
+    </div>
+
     <div id="finishedOnlyFields" style="display:none;">
       <div class="form-group">
         <label class="form-label">Sua avaliação</label>
@@ -3923,17 +3933,6 @@ create policy "acesso total genres" on genres
         <span class="heart" id="favHeart">♡</span>
         <span id="favLabel">Favoritar</span>
       </button>
-    </div>
-    
-    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-      <div class="form-group">
-        <label class="form-label">Página atual</label>
-        <input type="number" class="form-input" id="editPagesCurrent" min="0" oninput="updateMarkReadVisibility(getBookById(editingBookId))">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Total de páginas</label>
-        <input type="number" class="form-input" id="editPagesTotal" min="0" oninput="updateMarkReadVisibility(getBookById(editingBookId))">
-      </div>
     </div>
     
     <div id="sessionsListContainer"></div>
@@ -7733,7 +7732,15 @@ function renderFavoriteToggle() {
 function updateFinishedOnlyFields(book) {
   const finishedFields = document.getElementById("finishedOnlyFields");
   if (!finishedFields || !book) return;
-  finishedFields.style.display = book.status === "lido" ? "" : "none";
+
+  const currentInput = parseInt(document.getElementById("editPagesCurrent").value);
+  const totalInput = parseInt(document.getElementById("editPagesTotal").value);
+  const current = isNaN(currentInput) ? 0 : currentInput;
+  const total = isNaN(totalInput) ? 0 : totalInput;
+  const progress = total > 0 ? current / total : 0;
+
+  const canFinishReading = book.status === "reading" && total > 0 && progress >= 0.85;
+  finishedFields.style.display = (book.status === "lido" || canFinishReading) ? "" : "none";
 }
 
 function toggleFavorite() {
