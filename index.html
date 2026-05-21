@@ -3901,7 +3901,7 @@ create policy "acesso total genres" on genres
     <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin: 18px 0 10px;">
       progresso
     </div>
-    <div class="reading-info" id="editDates"></div>
+
     
     <div class="form-group" style="margin-top: 16px;">
       <label class="form-label">Data de início</label>
@@ -5784,7 +5784,7 @@ function renderGenres() {
     // aparecem (com até 10 itens, o resto fica sem rank temporariamente).
     backfillFavRanks();
 
-    // Ordena: por favRank (1, 2, 3...). Sem rank vai pro fim por título.
+    // Ordena pelo ranking do ano selecionado.
     favs.sort((a, b) => {
       const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
       const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
@@ -5807,7 +5807,7 @@ function renderGenres() {
 
     let html = `
       <div class="fav-gallery-header-row">
-        <div class="fav-gallery-sub">seu top ${Math.min(favs.length, 10)} no coração</div>
+        <div class="fav-gallery-sub">seu top ${Math.min(favs.length, 10)} do ano</div>
         <div class="fav-drag-hint">arraste pra reordenar ✦</div>
       </div>
       <div class="fav-gallery-grid" id="favGalleryGrid">
@@ -6300,42 +6300,57 @@ function renderGenres() {
 
 // ============ FAVORITOS: TOP 10 ============
 
-// Retroativamente atribui favRank a favoritos antigos (que podem ter virado
-// favoritos antes do Top 10 existir) E compacta ranks pra eliminar gaps.
-// Mantém a ordem relativa dos que já têm rank.
+function favYearKey(book) {
+  const y = bookAnchorYear(book);
+  return y === null ? 'sem-data' : String(y);
+}
+
+function getFavoriteGroupBooks(bookOrYearKey, excludeId = null) {
+  const key = typeof bookOrYearKey === 'string' ? bookOrYearKey : favYearKey(bookOrYearKey);
+  return state.books.filter(b => b.favorite && favYearKey(b) === key && b.id !== excludeId);
+}
+
+function sortFavBooksForRank(books) {
+  return [...books].sort((a, b) => {
+    const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
+    const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
+    if (ra !== rb) return ra - rb;
+    return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+  });
+}
+
+// Top 10 anual: cada ano tem seu próprio ranking 1..10.
+// Livros sem data ficam em um grupo separado, sem misturar com os anos.
 function backfillFavRanks() {
   const favs = state.books.filter(b => b.favorite);
   if (favs.length === 0) return;
 
-  // Separa quem já tem rank de quem não tem
-  const withRank = favs
-    .filter(b => typeof b.favRank === 'number' && b.favRank > 0)
-    .sort((a, b) => a.favRank - b.favRank);
-  const withoutRank = favs
-    .filter(b => !(typeof b.favRank === 'number' && b.favRank > 0))
-    .sort((a, b) => a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' }));
+  const groups = {};
+  favs.forEach(book => {
+    const key = favYearKey(book);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(book);
+  });
 
-  // Junta na ordem final: primeiro os com rank (ordenados), depois os sem (alfabético)
-  const ordered = [...withRank, ...withoutRank];
-
-  // Reatribui 1..10. Acima de 10, deixa null (não faz parte do Top 10).
   let changed = false;
-  ordered.forEach((book, i) => {
-    if (i < 10) {
-      const desired = i + 1;
-      if (book.favRank !== desired) {
-        book.favRank = desired;
-        changed = true;
-        pushBook(book);
-      }
-    } else {
-      if (book.favRank != null) {
+  Object.values(groups).forEach(groupBooks => {
+    const ordered = sortFavBooksForRank(groupBooks);
+    ordered.forEach((book, i) => {
+      if (i < 10) {
+        const desired = i + 1;
+        if (book.favRank !== desired) {
+          book.favRank = desired;
+          changed = true;
+          pushBook(book);
+        }
+      } else if (book.favRank != null) {
         book.favRank = null;
         changed = true;
         pushBook(book);
       }
-    }
+    });
   });
+
   if (changed) saveState();
 }
 
@@ -6502,25 +6517,18 @@ function reorderFavorites(sourceId, targetId) {
   if (!source || !target) return;
   if (!source.favorite || !target.favorite) return;
 
-  // Pega lista ordenada por rank atual
-  const ordered = state.books
-    .filter(b => b.favorite)
-    .sort((a, b) => {
-      const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
-      const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
-      if (ra !== rb) return ra - rb;
-      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
-    });
+  // Só reordena dentro do mesmo ano do Top 10.
+  if (favYearKey(source) !== favYearKey(target)) return;
+
+  const ordered = sortFavBooksForRank(getFavoriteGroupBooks(source));
 
   const fromIdx = ordered.findIndex(b => b.id === sourceId);
   const toIdx = ordered.findIndex(b => b.id === targetId);
   if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
 
-  // Remove e re-insere na nova posição
   const [moved] = ordered.splice(fromIdx, 1);
   ordered.splice(toIdx, 0, moved);
 
-  // Reatribui ranks 1..N
   ordered.forEach((b, i) => {
     const desired = i + 1;
     if (b.favRank !== desired) {
@@ -7316,10 +7324,8 @@ function openEditModal(bookId) {
   if (editSeriesTypeEl) editSeriesTypeEl.value = book.seriesType || "unico";
   setupSeriesControls("edit", book);
   
-  const info = book.startDate 
-    ? `<strong>Começou em:</strong> ${formatDate(book.startDate)}` 
-    : `<em>Sem data de início registrada</em>`;
-  document.getElementById("editDates").innerHTML = info;
+  const editDatesEl = document.getElementById("editDates");
+  if (editDatesEl) editDatesEl.innerHTML = "";
   
   renderStars();
   renderFavoriteToggle();
@@ -7729,10 +7735,10 @@ function toggleFavorite() {
     return;
   }
 
-  // Quer favoritar — vê quantos favoritos já existem (excluindo o livro atual,
-  // pra caso ele esteja sendo reavaliado)
+  // Quer favoritar — vê quantos favoritos já existem no mesmo ano do livro.
   const currentId = editingBookId;
-  const otherFavs = state.books.filter(b => b.favorite && b.id !== currentId);
+  const currentBook = getBookById(currentId);
+  const otherFavs = currentBook ? getFavoriteGroupBooks(currentBook, currentId) : [];
 
   if (otherFavs.length >= 10) {
     // Estante de favoritos cheia — abre modal pra escolher quem sai
@@ -7753,16 +7759,9 @@ function toggleFavorite() {
 function openSwapFavoriteModal() {
   const list = document.getElementById("swapFavList");
   if (!list) return;
-  // Pega os favoritos atuais (excluindo o livro sendo editado, por garantia),
-  // ordenados pelo rank (1, 2, 3...) — sem rank vai pro fim
-  const favs = state.books
-    .filter(b => b.favorite && b.id !== editingBookId)
-    .sort((a, b) => {
-      const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
-      const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
-      if (ra !== rb) return ra - rb;
-      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
-    });
+  // Pega os favoritos atuais do mesmo ano do livro em edição.
+  const currentBook = getBookById(editingBookId);
+  const favs = currentBook ? sortFavBooksForRank(getFavoriteGroupBooks(currentBook, editingBookId)) : [];
 
   list.innerHTML = favs.map((b, i) => {
     const rank = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : (i + 1);
@@ -7806,7 +7805,8 @@ function confirmSwapFavorite(removedBookId) {
   if (freedRank) {
     editingFavRank = freedRank;
   } else {
-    const otherFavs = state.books.filter(b => b.favorite && b.id !== editingBookId);
+    const currentBook = getBookById(editingBookId);
+    const otherFavs = currentBook ? getFavoriteGroupBooks(currentBook, editingBookId) : [];
     const used = new Set(otherFavs.map(b => b.favRank).filter(r => typeof r === 'number'));
     let nextRank = 1;
     while (used.has(nextRank) && nextRank <= 10) nextRank++;
