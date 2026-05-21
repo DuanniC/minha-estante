@@ -3149,8 +3149,7 @@ textarea,
 
 
 
-/* Ajustes: Amazon removida da tela de adicionar livro */
-#amazonSection { display: none !important; }
+/* Ajustes: Amazon habilitada na tela de adicionar livro */
 .profile-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0 18px; }
 .profile-summary-card { background: var(--cream-dark); border-radius: 18px; padding: 14px; }
 .profile-summary-number { font-family: 'Fraunces', serif; font-size: 30px; line-height: 1; font-weight: 300; color: var(--ink); }
@@ -3809,7 +3808,7 @@ create policy "acesso total genres" on genres
     </div>
 
     <div class="amazon-divider" id="amazonSection">
-      <div class="amazon-divider-line"><span>ou cole um link da Amazon</span></div>
+      <div class="amazon-divider-line"><span>ou cole o link da Amazon</span></div>
       <div class="amazon-input-wrap">
         <input type="url" class="form-input" id="amazonUrl" placeholder="https://amazon.com.br/... ou https://a.co/d/..." autocomplete="off">
         <button class="amazon-fetch-btn" onclick="fetchFromAmazon()" id="amazonFetchBtn">Buscar ✦</button>
@@ -3849,11 +3848,6 @@ create policy "acesso total genres" on genres
       <button class="modal-close" onclick="closeEditModal()">×</button>
     </div>
     <p class="modal-sub" id="editModalBook"></p>
-    
-    <button class="favorite-toggle" id="favToggle" onclick="toggleFavorite()">
-      <span class="heart" id="favHeart">♡</span>
-      <span id="favLabel">Favoritar</span>
-    </button>
     
     <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin: 18px 0 10px;">
       sobre o livro
@@ -3901,7 +3895,7 @@ create policy "acesso total genres" on genres
     <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin: 18px 0 10px;">
       progresso
     </div>
-
+    <div class="reading-info" id="editDates"></div>
     
     <div class="form-group" style="margin-top: 16px;">
       <label class="form-label">Data de início</label>
@@ -3913,15 +3907,22 @@ create policy "acesso total genres" on genres
       <input type="date" class="form-input" id="editEndDate">
     </div>
     
-    <div class="form-group">
-      <label class="form-label">Sua avaliação</label>
-      <div class="stars-input" id="starsInput">
-        <span class="star" data-value="1">★</span>
-        <span class="star" data-value="2">★</span>
-        <span class="star" data-value="3">★</span>
-        <span class="star" data-value="4">★</span>
-        <span class="star" data-value="5">★</span>
+    <div id="finishedOnlyFields" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Sua avaliação</label>
+        <div class="stars-input" id="starsInput">
+          <span class="star" data-value="1">★</span>
+          <span class="star" data-value="2">★</span>
+          <span class="star" data-value="3">★</span>
+          <span class="star" data-value="4">★</span>
+          <span class="star" data-value="5">★</span>
+        </div>
       </div>
+
+      <button class="favorite-toggle" id="favToggle" onclick="toggleFavorite()">
+        <span class="heart" id="favHeart">♡</span>
+        <span id="favLabel">Favoritar</span>
+      </button>
     </div>
     
     <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -7365,6 +7366,8 @@ function updateMarkReadVisibility(book) {
   const backBtn = document.getElementById("backToPendingBtn");
   if (!markBtn || !startBtn || !rereadBtn || !saveBtn || !book) return;
 
+  updateFinishedOnlyFields(book);
+
   // Pega valores atuais dos inputs (podem ter sido editados)
   const currentInput = parseInt(document.getElementById("editPagesCurrent").value);
   const totalInput = parseInt(document.getElementById("editPagesTotal").value);
@@ -7721,9 +7724,16 @@ function renderFavoriteToggle() {
   const btn = document.getElementById("favToggle");
   const heart = document.getElementById("favHeart");
   const label = document.getElementById("favLabel");
+  if (!btn || !heart || !label) return;
   btn.classList.toggle("active", editingFavorite);
   heart.textContent = editingFavorite ? "♥" : "♡";
   label.textContent = editingFavorite ? "Favoritado" : "Favoritar";
+}
+
+function updateFinishedOnlyFields(book) {
+  const finishedFields = document.getElementById("finishedOnlyFields");
+  if (!finishedFields || !book) return;
+  finishedFields.style.display = book.status === "lido" ? "" : "none";
 }
 
 function toggleFavorite() {
@@ -8393,7 +8403,7 @@ async function fetchFromAmazon() {
   }
 
   btn.disabled = true;
-  statusEl.textContent = "Buscando capa";
+  statusEl.textContent = "Buscando dados do livro";
   statusEl.className = "amazon-status";
 
   // Se for shortener do app, resolve o redirect primeiro pra obter URL completa + ASIN
@@ -8425,7 +8435,7 @@ async function fetchFromAmazon() {
     return;
   }
 
-  statusEl.textContent = "Buscando capa";
+  statusEl.textContent = "Buscando título, autor, gênero e páginas";
 
   let best = null; // { title, authors, pageCount, imageLinks, categories }
 
