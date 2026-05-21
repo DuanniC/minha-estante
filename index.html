@@ -5678,9 +5678,26 @@ function renderYearFilter() {
 
 function setYearFilter(year) {
   state.selectedYear = year;
+  state.lidoPage = 1; // volta para a primeira página ao trocar o filtro de ano
   saveState();
   renderAll();
 }
+
+// Paginação da aba "Já lidos"
+// Precisa ficar no window porque os botões são criados com onclick no HTML.
+window.setLidoPage = function(page) {
+  const nextPage = parseInt(page, 10);
+  if (!Number.isFinite(nextPage) || nextPage < 1) return;
+
+  state.lidoPage = nextPage;
+  saveState();
+  renderAll();
+
+  const timeline = document.querySelector('.lido-timeline');
+  if (timeline) {
+    timeline.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
 
 // Helper: dado o filtro de ano ativo, retorna o conjunto de livros filtrado
 function applyYearFilterToBooks(books) {
@@ -8069,6 +8086,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     state.filter = tab.dataset.filter;
     state.selectedYear = null; // reset filtro de ano ao trocar de aba
+    state.lidoPage = 1; // reset paginação ao trocar de aba
     updateHero(state.filter);
     saveState();
     renderAll();
