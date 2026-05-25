@@ -2433,6 +2433,13 @@
     opacity: 0.75;
     font-style: italic;
   }
+  .session-item .sess-pages-range {
+    display: inline-block;
+    margin-left: 6px;
+    color: var(--ink-soft);
+    opacity: 0.85;
+    white-space: nowrap;
+  }
   .session-item .sess-actions { display: flex; gap: 4px; flex: 0 0 auto; }
   
   /* Item do dia agrupado (clicável quando tem mais de 1 sessão) */
@@ -3814,6 +3821,8 @@ textarea,
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id);
 -- UPDATE books SET user_id = auth.uid() WHERE user_id IS NULL;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS fav_rank int;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS top_general boolean DEFAULT false;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS top_general_rank int;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_type text;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_name text;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_volume int;
@@ -3833,6 +3842,8 @@ create table books (
   pages_total int,
   pages_current int default 0,
   fav_rank int,
+  top_general boolean default false,
+  top_general_rank int,
   series_type text,
   series_name text,
   series_volume int,
@@ -3867,6 +3878,13 @@ create table genres (
 alter table books enable row level security;
 alter table reading_sessions enable row level security;
 alter table genres enable row level security;
+
+-- Grants necessários para o app acessar as tabelas pela anon key/JWT
+grant usage on schema public to anon, authenticated;
+grant all on table books to authenticated;
+grant all on table reading_sessions to authenticated;
+grant select on table genres to anon, authenticated;
+grant usage, select on all sequences in schema public to authenticated;
 
 -- Política: cada usuário vê só seus livros
 create policy "usuario ve seus livros" on books
@@ -5080,6 +5098,8 @@ function bookToDb(book) {
     pages_current: book.pagesCurrent || 0,
     cover_url: coverForDb,
     fav_rank: (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : null,
+    top_general: !!book.topGeneral,
+    top_general_rank: (typeof book.topGeneralRank === 'number' && book.topGeneralRank > 0) ? book.topGeneralRank : null,
     series_type: book.seriesType && book.seriesType !== 'unico' ? book.seriesType : null,
     series_name: book.seriesName || null,
     series_volume: book.seriesVolume || null,
@@ -5105,6 +5125,8 @@ function bookFromDb(row) {
     coverLocked: !!row.cover_url,
     coverStatus: row.cover_url ? "saved" : undefined,
     favRank: (typeof row.fav_rank === 'number' && row.fav_rank > 0) ? row.fav_rank : undefined,
+    topGeneral: !!row.top_general,
+    topGeneralRank: (typeof row.top_general_rank === 'number' && row.top_general_rank > 0) ? row.top_general_rank : null,
     seriesType: row.series_type || 'unico',
     seriesName: row.series_name || undefined,
     seriesVolume: row.series_volume || undefined,
@@ -5175,12 +5197,14 @@ async function pushBook(book) {
       // Se o erro mencionar fav_rank, é coluna nova ainda não rodada no banco —
       // retira o campo e tenta de novo pra não quebrar o sync.
       const msg = String(innerErr && innerErr.message || '');
-      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume')) {
+      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank')) {
         const fallback = { ...data };
         delete fallback.fav_rank;
         delete fallback.series_type;
         delete fallback.series_name;
         delete fallback.series_volume;
+        delete fallback.top_general;
+        delete fallback.top_general_rank;
         await supabaseFetch("books", {
           method: 'POST',
           body: JSON.stringify(fallback),
@@ -5211,12 +5235,14 @@ async function pushNewBook(book) {
       });
     } catch (innerErr) {
       const msg = String(innerErr && innerErr.message || '');
-      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume')) {
+      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank')) {
         const fallback = { ...data };
         delete fallback.fav_rank;
         delete fallback.series_type;
         delete fallback.series_name;
         delete fallback.series_volume;
+        delete fallback.top_general;
+        delete fallback.top_general_rank;
         result = await supabaseFetch("books", {
           method: 'POST',
           body: JSON.stringify(fallback),
@@ -6321,7 +6347,6 @@ function renderGenres() {
             <div class="lido-timeline-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
             <div class="lido-timeline-title">${escapeHtml(book.t)}</div>
             ${seriesLabel ? `<div class="lido-timeline-series">${seriesLabel}</div>` : ''}
-            ${formatReadingRange(book.startDate, book.endDate) ? `<div class="lido-timeline-dates">${formatReadingRange(book.startDate, book.endDate)}</div>` : ''}
             ${stars ? `<div class="lido-timeline-stars">${stars}</div>` : ''}
           </div>
         `;
@@ -6350,7 +6375,6 @@ function renderGenres() {
             <div class="lido-timeline-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
             <div class="lido-timeline-title">${escapeHtml(book.t)}</div>
             ${seriesLabel ? `<div class="lido-timeline-series">${seriesLabel}</div>` : ''}
-            ${formatReadingRange(book.startDate, book.endDate) ? `<div class="lido-timeline-dates">${formatReadingRange(book.startDate, book.endDate)}</div>` : ''}
             ${stars ? `<div class="lido-timeline-stars">${stars}</div>` : ''}
           </div>
         `;
@@ -7833,14 +7857,16 @@ function openBookViewModal(bookId) {
       <button class="form-btn secondary" onclick="editBookFromView()">Editar livro</button>
     `;
   } else if (book.status === 'lido') {
+    const favoriteInfo = book.favorite ? bookViewInfo('Favoritado', book.favRank ? `Sim · posição ${book.favRank}` : 'Sim') : '';
+    const topGeneralInfo = book.topGeneral ? bookViewInfo('Top 10 geral', book.topGeneralRank ? `Sim · posição ${book.topGeneralRank}` : 'Sim') : '';
     infoRows = `
       ${bookViewInfo('Gênero', genreText)}
       ${bookViewInfo('Sequência', seriesText)}
       ${bookViewInfo('Data de começo e fim', `${startText} → ${endText}`)}
       ${bookViewInfo('Total de páginas', totalPagesText)}
       ${bookViewInfo('Avaliação', bookRatingText(book))}
-      ${bookViewInfo('Favoritado', favoriteText)}
-      ${bookViewInfo('Top 10 geral', book.topGeneral ? `Sim · posição ${book.topGeneralRank || ''}` : 'Não')}
+      ${favoriteInfo}
+      ${topGeneralInfo}
     `;
     const topGeneralAction = book.favorite
       ? `<button class="form-btn secondary" onclick="toggleTopGeneralFromView()">${book.topGeneral ? 'Remover do Top 10 geral' : 'Adicionar ao Top 10 geral'}</button>`
@@ -8267,10 +8293,10 @@ async function renderSessionsList(bookId, containerId = "sessionsListContainer",
         : '';
       
       if (readOnly) {
-        html += `<div class="session-item">
+        html += `<div class="session-item day-row">
           <span class="sess-date">
-            <span class="sess-date-main">${dateStr}${pagesStr ? ` · ${pagesStr}` : ''}${count > 1 ? `<span class="sess-count">${count} sessões</span>` : ''}</span>
-            ${pagesReadStr ? `<span class="sess-date-meta">${pagesReadStr}</span>` : ''}
+            <span class="sess-date-main">${dateStr}${count > 1 ? `<span class="sess-count">${count} sessões</span>` : ''}</span>
+            ${pagesStr || pagesReadStr ? `<span class="sess-date-meta">${pagesStr ? `<span class="sess-pages-range">pág. ${pagesStr}</span>` : ''}${pagesReadStr ? ` · ${pagesReadStr}` : ''}</span>` : ''}
           </span>
           <span class="sess-time">${timeStr}</span>
         </div>`;
