@@ -4983,6 +4983,8 @@ function loadState() {
         ...b,
         status: b.status || (b.read ? "lido" : "pendente"),
         favorite: b.favorite || false,
+        topGeneral: !!b.topGeneral,
+        topGeneralRank: (typeof b.topGeneralRank === 'number' && b.topGeneralRank > 0) ? b.topGeneralRank : null,
       }));
       if (!parsed.nextId) parsed.nextId = Math.max(0, ...parsed.books.map(b => b.id || 0)) + 1;
       if (!parsed.covers) parsed.covers = {};
@@ -5977,6 +5979,13 @@ function renderYearFilter() {
 
   let html = '';
 
+  // Chip "Geral" na aba Favoritos: Top 10 geral escolhido manualmente
+  if (state.filter === "favoritos") {
+    const generalCount = state.books.filter(b => b.topGeneral).length;
+    const isGeneralActive = state.selectedYear === "geral";
+    html += `<button class="year-chip ${isGeneralActive ? 'active' : ''}" onclick="setYearFilter('geral')">Geral<span class="year-chip-count">${generalCount}</span></button>`;
+  }
+
   // Chip "Todos" (só na aba "Já lidos")
   if (showAllChip) {
     const isAllActive = state.selectedYear === "todos";
@@ -6024,6 +6033,7 @@ window.setLidoPage = function(page) {
 
 // Helper: dado o filtro de ano ativo, retorna o conjunto de livros filtrado
 function applyYearFilterToBooks(books) {
+  if (state.selectedYear === "geral") return books.filter(b => b.topGeneral);
   if (state.selectedYear === "todos") return books;
   if (state.selectedYear === "sem-data") {
     return books.filter(b => bookAnchorYear(b) === null);
@@ -6092,8 +6102,10 @@ function renderGenres() {
   
   // Aba favoritos: galeria com capas, estilo shelf
   if (state.filter === "favoritos") {
+    const isGeneralTop = state.selectedYear === "geral";
     const allFavs = state.books.filter(b => b.favorite);
-    if (allFavs.length === 0) {
+    const allGeneral = state.books.filter(b => b.topGeneral);
+    if (allFavs.length === 0 && allGeneral.length === 0) {
       container.innerHTML = `
         <div class="empty">
           <div class="empty-icon">♡</div>
@@ -6103,12 +6115,12 @@ function renderGenres() {
       return;
     }
     
-    // Aplica filtro de ano (chips)
-    const favs = applyYearFilterToBooks(allFavs);
+    // Aplica filtro: Geral usa lista manual; anos usam favoritos daquele ano.
+    let favs = isGeneralTop ? sortGeneralTopBooks(allGeneral) : applyYearFilterToBooks(allFavs);
     if (favs.length === 0) {
-      const yearLabel = state.selectedYear === "sem-data" 
-        ? "sem data registrada" 
-        : (typeof state.selectedYear === 'number' ? `em ${state.selectedYear}` : '');
+      const yearLabel = isGeneralTop
+        ? "no Top 10 geral"
+        : (state.selectedYear === "sem-data" ? "sem data registrada" : (typeof state.selectedYear === 'number' ? `em ${state.selectedYear}` : ''));
       container.innerHTML = `
         <div class="empty">
           <div class="empty-icon">♡</div>
@@ -6119,18 +6131,20 @@ function renderGenres() {
     }
     container.style.gridTemplateColumns = "1fr";
 
-    // Garante que todo favorito tenha um rank — pra livros legados que viraram
-    // favoritos antes do sistema Top 10 existir, atribui ranks na ordem em que
-    // aparecem (com até 10 itens, o resto fica sem rank temporariamente).
     backfillFavRanks();
+    backfillTopGeneralRanks();
 
-    // Ordena pelo ranking do ano selecionado.
-    favs.sort((a, b) => {
-      const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
-      const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
-      if (ra !== rb) return ra - rb;
-      return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
-    });
+    if (isGeneralTop) {
+      favs = sortGeneralTopBooks(favs);
+    } else {
+      // Ordena pelo ranking do ano selecionado.
+      favs.sort((a, b) => {
+        const ra = (typeof a.favRank === 'number' && a.favRank > 0) ? a.favRank : 999;
+        const rb = (typeof b.favRank === 'number' && b.favRank > 0) ? b.favRank : 999;
+        if (ra !== rb) return ra - rb;
+        return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+      });
+    }
 
     const statusLabel = { reading: 'lendo', lido: 'lido', pendente: 'pendente', abandonado: 'abandonado' };
 
@@ -6141,13 +6155,14 @@ function renderGenres() {
     // conta como filtrado.
     const isYearFiltered = (state.selectedYear !== "todos");
     const displayRankFor = (book, idx) => {
+      if (isGeneralTop) return (typeof book.topGeneralRank === 'number' && book.topGeneralRank > 0) ? book.topGeneralRank : (idx + 1);
       if (isYearFiltered) return idx + 1;
       return (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : (idx + 1);
     };
 
     let html = `
       <div class="fav-gallery-header-row">
-        <div class="fav-gallery-sub">seu top ${Math.min(favs.length, 10)} do ano</div>
+        <div class="fav-gallery-sub">${isGeneralTop ? 'seu top geral' : `seu top ${Math.min(favs.length, 10)} do ano`}</div>
         <div class="fav-drag-hint">arraste pra reordenar ✦</div>
       </div>
       <div class="fav-gallery-grid" id="favGalleryGrid">
@@ -6647,6 +6662,105 @@ function favYearKey(book) {
   return y === null ? 'sem-data' : String(y);
 }
 
+function getGeneralTopBooks(excludeId = null) {
+  return state.books.filter(b => b.topGeneral && b.id !== excludeId);
+}
+
+function sortGeneralTopBooks(books) {
+  return [...books].sort((a, b) => {
+    const ra = (typeof a.topGeneralRank === 'number' && a.topGeneralRank > 0) ? a.topGeneralRank : 999;
+    const rb = (typeof b.topGeneralRank === 'number' && b.topGeneralRank > 0) ? b.topGeneralRank : 999;
+    if (ra !== rb) return ra - rb;
+    return a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+  });
+}
+
+function backfillTopGeneralRanks() {
+  const tops = sortGeneralTopBooks(state.books.filter(b => b.topGeneral));
+  let changed = false;
+  tops.forEach((book, i) => {
+    if (i < 10) {
+      const desired = i + 1;
+      if (book.topGeneralRank !== desired) {
+        book.topGeneralRank = desired;
+        changed = true;
+        pushBook(book);
+      }
+    } else if (book.topGeneralRank != null || book.topGeneral) {
+      book.topGeneral = false;
+      book.topGeneralRank = null;
+      changed = true;
+      pushBook(book);
+    }
+  });
+  if (changed) saveState();
+}
+
+function reorderTopGeneral(sourceId, targetId) {
+  const ordered = sortGeneralTopBooks(getGeneralTopBooks());
+  const fromIdx = ordered.findIndex(b => b.id === sourceId);
+  const toIdx = ordered.findIndex(b => b.id === targetId);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+  const [moved] = ordered.splice(fromIdx, 1);
+  ordered.splice(toIdx, 0, moved);
+  ordered.forEach((b, i) => {
+    const desired = i + 1;
+    if (b.topGeneralRank !== desired) {
+      b.topGeneralRank = desired;
+      pushBook(b);
+    }
+  });
+  saveState();
+  renderAll();
+}
+
+function toggleTopGeneralFromView() {
+  const book = getBookById(viewingBookId);
+  if (!book || book.status !== 'lido') return;
+
+  if (book.topGeneral) {
+    book.topGeneral = false;
+    book.topGeneralRank = null;
+    backfillTopGeneralRanks();
+    saveState();
+    pushBook(book);
+    openBookViewModal(book.id);
+    renderAll();
+    return;
+  }
+
+  if (!book.favorite) {
+    alert('Para entrar no Top 10 geral, o livro precisa estar favoritado primeiro.');
+    return;
+  }
+
+  const currentTop = sortGeneralTopBooks(getGeneralTopBooks(book.id));
+  if (currentTop.length >= 10) {
+    const options = currentTop.map((b, i) => `${i + 1}. ${b.t}`).join('\n');
+    const choice = prompt(`Seu Top 10 geral já está cheio. Digite o número do livro que deve sair:\n\n${options}`);
+    const idx = parseInt(choice, 10) - 1;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= currentTop.length) return;
+    const removed = currentTop[idx];
+    const freedRank = removed.topGeneralRank || (idx + 1);
+    removed.topGeneral = false;
+    removed.topGeneralRank = null;
+    pushBook(removed);
+    book.topGeneral = true;
+    book.topGeneralRank = freedRank;
+  } else {
+    const used = new Set(currentTop.map(b => b.topGeneralRank).filter(r => typeof r === 'number'));
+    let nextRank = 1;
+    while (used.has(nextRank) && nextRank <= 10) nextRank++;
+    book.topGeneral = true;
+    book.topGeneralRank = nextRank;
+  }
+
+  saveState();
+  pushBook(book);
+  openBookViewModal(book.id);
+  renderAll();
+}
+
 function getFavoriteGroupBooks(bookOrYearKey, excludeId = null) {
   const key = typeof bookOrYearKey === 'string' ? bookOrYearKey : favYearKey(bookOrYearKey);
   return state.books.filter(b => b.favorite && favYearKey(b) === key && b.id !== excludeId);
@@ -6854,6 +6968,10 @@ function onFavTouchEnd(e) {
 
 // Move o livro `sourceId` pra posição do `targetId` e desloca o resto
 function reorderFavorites(sourceId, targetId) {
+  if (state.filter === "favoritos" && state.selectedYear === "geral") {
+    reorderTopGeneral(sourceId, targetId);
+    return;
+  }
   const source = getBookById(sourceId);
   const target = getBookById(targetId);
   if (!source || !target) return;
@@ -7722,8 +7840,13 @@ function openBookViewModal(bookId) {
       ${bookViewInfo('Total de páginas', totalPagesText)}
       ${bookViewInfo('Avaliação', bookRatingText(book))}
       ${bookViewInfo('Favoritado', favoriteText)}
+      ${bookViewInfo('Top 10 geral', book.topGeneral ? `Sim · posição ${book.topGeneralRank || ''}` : 'Não')}
     `;
+    const topGeneralAction = book.favorite
+      ? `<button class="form-btn secondary" onclick="toggleTopGeneralFromView()">${book.topGeneral ? 'Remover do Top 10 geral' : 'Adicionar ao Top 10 geral'}</button>`
+      : '';
     actions = `
+      ${topGeneralAction}
       <button class="form-btn" onclick="rereadBookFromView()">Reler ✦</button>
       <button class="form-btn secondary" onclick="editBookFromView()">Editar livro</button>
     `;
