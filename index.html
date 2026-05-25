@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Estante">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Minha Estante ✦</title>
+<!-- v12: capa do modal nítida + fundo colorido desfocado pela capa -->
 <script>
 /* BLOQUEIO ANTI-429: impede qualquer chamada antiga ao Google Books.
    O Google Books estava retornando 429 por excesso de requisições.
@@ -74,6 +75,22 @@
     -webkit-font-smoothing: antialiased;
   }
   
+
+
+  body.modal-open {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    left: 0;
+    right: 0;
+    touch-action: none;
+  }
+
+  html.modal-open {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
   body::before {
     content: '';
     position: fixed;
@@ -1086,6 +1103,227 @@
     .fab { right: calc(50% - 536px); }
   }
   
+
+
+  /* VISUALIZAÇÃO DO LIVRO — sem campos editáveis fora do botão Editar */
+  .book-view-card {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 16px;
+    align-items: start;
+    margin: 18px 0;
+  }
+  .book-view-cover {
+    width: 92px;
+    aspect-ratio: 2/3;
+    border-radius: 6px;
+    overflow: hidden;
+    filter: drop-shadow(0 4px 14px rgba(42, 36, 32, 0.18));
+    background: var(--cream-dark);
+  }
+  .book-view-cover img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; filter: none !important; }
+  .book-view-main { min-width: 0; }
+  .book-view-title {
+    font-family: 'Fraunces', serif;
+    font-size: 25px;
+    line-height: 1.05;
+    letter-spacing: -0.4px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .book-view-author {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .book-view-grid {
+    display: grid;
+    gap: 10px;
+    margin: 16px 0 20px;
+  }
+  .book-view-info {
+    background: var(--cream-dark);
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+  .book-view-label {
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .book-view-value {
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+  .book-view-actions {
+    display: grid;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .book-view-rating-card {
+    border: 1px solid rgba(42, 36, 32, 0.08);
+    box-shadow: 0 8px 20px rgba(42, 36, 32, 0.06);
+  }
+
+  .lido-timeline-dates {
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-top: 3px;
+    line-height: 1.2;
+  }
+
+  .book-view-progress-edit {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: end;
+    margin-top: 8px;
+  }
+
+  /* Visualização mais elegante do livro */
+  .book-view-card {
+    grid-template-columns: 118px 1fr;
+    gap: 18px;
+    align-items: center;
+    margin: 18px 0 20px;
+    padding: 18px;
+    border-radius: 24px;
+    background:
+      radial-gradient(circle at 18% 12%, rgba(255,255,255,0.60) 0%, transparent 32%),
+      linear-gradient(135deg, rgba(232,169,160,0.34), rgba(232,221,196,0.72));
+    box-shadow: 0 12px 32px rgba(42, 36, 32, 0.10);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  body.user-masc .book-view-card {
+    background:
+      radial-gradient(circle at 18% 12%, rgba(255,255,255,0.58) 0%, transparent 32%),
+      linear-gradient(135deg, rgba(159,190,209,0.38), rgba(232,221,196,0.72));
+  }
+  .book-view-card.has-cover-bg::before {
+    content: '';
+    position: absolute;
+    inset: -42px;
+    background-image: var(--book-cover-bg);
+    background-size: cover;
+    background-position: center;
+    filter: blur(30px) saturate(1.65) contrast(1.08);
+    opacity: 0.70;
+    transform: scale(1.12);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .book-view-card.has-cover-bg .book-view-main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(244,236,216,0.10), rgba(244,236,216,0.54)),
+      radial-gradient(circle at 72% 30%, rgba(255,255,255,0.22), transparent 36%);
+    z-index: -1;
+    pointer-events: none;
+  }
+  .book-view-card::after {
+    content: '✦';
+    position: absolute;
+    right: 20px;
+    bottom: 8px;
+    font-family: 'Instrument Serif', serif;
+    font-size: 42px;
+    color: rgba(255,255,255,0.45);
+    pointer-events: none;
+  }
+  .book-view-cover {
+    width: 118px;
+    aspect-ratio: 2/3;
+    border-radius: 10px;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: 0 12px 26px rgba(42,36,32,0.24);
+    filter: none !important;
+    z-index: 2;
+  }
+  .book-view-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    border-radius: 8px;
+    filter: none !important;
+    transform: translateZ(0);
+    image-rendering: auto;
+  }
+  .book-view-main { z-index: 1; }
+  .book-view-title {
+    font-size: 30px;
+    line-height: 0.98;
+    margin-bottom: 8px;
+  }
+  .book-view-author {
+    font-size: 17px;
+    margin-bottom: 12px;
+  }
+  .book-view-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(42,36,32,0.88);
+    color: var(--cream);
+    border-radius: 100px;
+    padding: 7px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+  }
+  .book-view-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 10px 0 20px;
+  }
+  .book-view-info {
+    background: rgba(232,221,196,0.82);
+    border: 1px solid rgba(42,36,32,0.04);
+    border-radius: 18px;
+    padding: 13px 15px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .book-view-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .book-view-value {
+    font-size: 14px;
+  }
+  .book-view-actions {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(42,36,32,0.10);
+  }
+  #bookViewSessionsContainer {
+    margin-top: 12px;
+    padding-top: 4px;
+  }
+  @media (min-width: 560px) {
+    .book-view-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .book-view-info:nth-child(odd):last-child { grid-column: 1 / -1; }
+  }
+  @media (max-width: 420px) {
+    .book-view-card { grid-template-columns: 96px 1fr; padding: 14px; gap: 14px; }
+    .book-view-cover { width: 96px; }
+    .book-view-title { font-size: 24px; }
+    .book-view-author { font-size: 15px; }
+  }
+
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -1103,7 +1341,7 @@
     .modal-backdrop { align-items: center; padding: 20px; }
   }
   
-  .modal-backdrop.open { display: flex; }
+  .modal-backdrop.open { display: flex; touch-action: none; overscroll-behavior: contain; }
   
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   
@@ -1114,6 +1352,9 @@
     max-width: 520px;
     max-height: 92vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     padding: 20px 24px 40px;
     position: relative;
     animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.3, 1);
@@ -1630,6 +1871,11 @@
   
   .star.filled { color: var(--butter-deep); }
   .star:active { transform: scale(1.3); }
+
+  /* Estrelas dentro do card de visualização: não somem no fundo bege */
+  #viewStarsInput .star { color: rgba(42, 36, 32, 0.22); }
+  #viewStarsInput .star.filled { color: var(--butter-deep); }
+
   
   .favorite-toggle {
     display: flex;
@@ -3839,6 +4085,20 @@ create policy "acesso total genres" on genres
   </div>
 </div>
 
+
+
+<!-- Modal de visualização do livro: somente informações e ações principais -->
+<div class="modal-backdrop" id="bookViewModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2 class="modal-title"><em>Detalhes</em> do livro</h2>
+      <button class="modal-close" onclick="closeBookViewModal()">×</button>
+    </div>
+    <div id="bookViewContent"></div>
+  </div>
+</div>
+
 <!-- Modal de edição de livro (tanto pra "lendo" quanto pra "finalizar") -->
 <div class="modal-backdrop" id="editModal">
   <div class="modal">
@@ -3937,7 +4197,7 @@ create policy "acesso total genres" on genres
     
     <div id="sessionsListContainer"></div>
     
-    <button class="form-btn" id="markReadBtn" onclick="confirmFinishReading()">Marcar como lido ✦</button>
+    <button class="form-btn" id="markReadBtn" onclick="confirmFinishReading()">MARCAR COMO LIDO</button>
     <button class="form-btn" id="startReadingBtn" onclick="startReadingFromEdit()" style="display:none;">Começar a ler ✦</button>
     <button class="form-btn" id="rereadBtn" onclick="rereadBookFromEdit()" style="display:none;">Reler ✦</button>
     <button class="form-btn secondary" id="saveEditBtn" onclick="saveEditOnly()" style="margin-top: 10px;">Salvar edição (continuar lendo)</button>
@@ -4348,6 +4608,69 @@ let _loginTab = "entrar"; // "entrar" | "cadastro"
 let _selectedGender = null;
 let _selectedProfileGender = null;
 
+
+// Trava a página de trás enquanto qualquer modal estiver aberto.
+// Isso evita que, ao rolar/tocar no card aberto, a lista de livros por baixo também se mexa.
+let __pageLockScrollY = 0;
+let __pageLockActive = false;
+
+function hasOpenOverlay() {
+  const hasModal = !!document.querySelector('.modal-backdrop.open');
+  const login = document.getElementById('loginOverlay');
+  const hasLogin = !!login && login.style.display === 'flex';
+  return hasModal || hasLogin;
+}
+
+function lockPageBehindModal() {
+  if (__pageLockActive) return;
+  __pageLockScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.documentElement.classList.add('modal-open');
+  document.body.classList.add('modal-open');
+  document.body.style.top = `-${__pageLockScrollY}px`;
+  document.body.style.position = 'fixed';
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+  document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
+  __pageLockActive = true;
+}
+
+function unlockPageBehindModal() {
+  setTimeout(() => {
+    if (hasOpenOverlay()) return;
+    const y = __pageLockScrollY || Math.abs(parseInt(document.body.style.top || '0', 10)) || 0;
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    __pageLockActive = false;
+    window.scrollTo(0, y);
+  }, 0);
+}
+
+function setupModalScrollProtection() {
+  document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('touchmove', (e) => {
+      if (e.target === backdrop) e.preventDefault();
+    }, { passive: false });
+    backdrop.addEventListener('wheel', (e) => {
+      if (e.target === backdrop) e.preventDefault();
+    }, { passive: false });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupModalScrollProtection);
+} else {
+  setupModalScrollProtection();
+}
+
 function selectGender(g) {
   _selectedGender = g;
   window._selectedGender = g;
@@ -4397,7 +4720,7 @@ function switchLoginTab(tab) {
 
 function showLogin() {
   document.getElementById("loginOverlay").style.display = "flex";
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
   switchLoginTab("entrar");
   document.getElementById("loginEmail").value    = "";
   document.getElementById("loginPassword").value = "";
@@ -4405,7 +4728,7 @@ function showLogin() {
 
 function hideLogin() {
   document.getElementById("loginOverlay").style.display = "none";
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
 }
 
 function setLoginError(msg) {
@@ -5758,7 +6081,7 @@ function filterByMonth(year, month) {
   
   currentGenre = null;
   document.getElementById("modal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
 }
 
 function renderGenres() {
@@ -5839,7 +6162,7 @@ function renderGenres() {
       const rankClass = (rank >= 1 && rank <= 3) ? 'top3' : '';
       const rankBadge = rank ? `<div class="fav-gallery-rank ${rankClass}">${rank}</div>` : '';
       html += `
-        <div class="fav-gallery-item" data-book-id="${book.id}" draggable="true" onclick="openEditModal(${book.id})">
+        <div class="fav-gallery-item" data-book-id="${book.id}" draggable="true" onclick="openBookViewModal(${book.id})">
           <div class="fav-gallery-cover" id="${coverId}">
             ${rankBadge}
             ${coverFallbackHTML(book, book.g)}
@@ -5979,10 +6302,11 @@ function renderGenres() {
           : '';
         const seriesLabel = getManualSeriesLabel(book);
         html += `
-          <div class="lido-timeline-item" onclick="openEditModal(${book.id})">
+          <div class="lido-timeline-item" onclick="openBookViewModal(${book.id})">
             <div class="lido-timeline-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
             <div class="lido-timeline-title">${escapeHtml(book.t)}</div>
             ${seriesLabel ? `<div class="lido-timeline-series">${seriesLabel}</div>` : ''}
+            ${formatReadingRange(book.startDate, book.endDate) ? `<div class="lido-timeline-dates">${formatReadingRange(book.startDate, book.endDate)}</div>` : ''}
             ${stars ? `<div class="lido-timeline-stars">${stars}</div>` : ''}
           </div>
         `;
@@ -6007,10 +6331,11 @@ function renderGenres() {
           : '';
         const seriesLabel = getManualSeriesLabel(book);
         html += `
-          <div class="lido-timeline-item" onclick="openEditModal(${book.id})">
+          <div class="lido-timeline-item" onclick="openBookViewModal(${book.id})">
             <div class="lido-timeline-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
             <div class="lido-timeline-title">${escapeHtml(book.t)}</div>
             ${seriesLabel ? `<div class="lido-timeline-series">${seriesLabel}</div>` : ''}
+            ${formatReadingRange(book.startDate, book.endDate) ? `<div class="lido-timeline-dates">${formatReadingRange(book.startDate, book.endDate)}</div>` : ''}
             ${stars ? `<div class="lido-timeline-stars">${stars}</div>` : ''}
           </div>
         `;
@@ -6096,7 +6421,7 @@ function renderGenres() {
         ? `parou em ${formatDate(book.endDate)}`
         : (book.startDate ? `começou em ${formatDate(book.startDate)}` : '');
       html += `
-        <div class="lido-gallery-item" onclick="openEditModal(${book.id})">
+        <div class="lido-gallery-item" onclick="openBookViewModal(${book.id})">
           <div class="lido-gallery-cover" id="${coverId}">${coverFallbackHTML(book, book.g)}</div>
           <div class="lido-gallery-info">
             <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
@@ -6214,7 +6539,7 @@ function renderGenres() {
         const card = document.createElement("div");
         card.className = `reading-card ${g.color}`;
         card.dataset.bookId = book.id;
-        card.onclick = () => openEditModal(book.id);
+        card.onclick = () => openBookViewModal(book.id);
         
         const dateText = book.startDate ? `desde ${formatDate(book.startDate)}` : "leitura em andamento";
         const coverId = `cover-${book.id}`;
@@ -6245,7 +6570,7 @@ function renderGenres() {
             </div>
             <div class="reading-actions">
               <button class="reading-btn primary" onclick="event.stopPropagation(); startSession(${book.id})">Iniciar sessão ✦</button>
-              <button class="reading-btn secondary" onclick="event.stopPropagation(); openEditModal(${book.id})">Editar</button>
+              <button class="reading-btn secondary" onclick="event.stopPropagation(); openBookViewModal(${book.id})">Ver</button>
             </div>
           </div>
         `;
@@ -6577,14 +6902,14 @@ function renderBookItemHTML(book, showGenre) {
   if (book.status === "pendente") {
     statusBtn = `<button class="book-status" onclick="quickStart(${book.id})">pendente</button>`;
   } else if (book.status === "reading") {
-    statusBtn = `<button class="book-status reading" onclick="openEditModal(${book.id})">lendo ✦</button>`;
+    statusBtn = `<button class="book-status reading" onclick="openBookViewModal(${book.id})">lendo ✦</button>`;
     if (book.startDate) meta = `<div class="book-meta">📖 desde ${formatDate(book.startDate)}</div>`;
   } else if (book.status === "lido") {
-    statusBtn = `<button class="book-status read" onclick="openEditModal(${book.id})">✓ lido</button>`;
+    statusBtn = `<button class="book-status read" onclick="openBookViewModal(${book.id})">✓ lido</button>`;
     const stars = book.rating ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : '';
     meta = `<div class="book-meta">${book.startDate ? `${formatDate(book.startDate)} →` : ''} ${book.endDate ? formatDate(book.endDate) : ''}${stars ? ` <span class="stars">${stars}</span>` : ''}</div>`;
   } else if (book.status === "abandoned") {
-    statusBtn = `<button class="book-status abandoned" onclick="openEditModal(${book.id})">abandonado</button>`;
+    statusBtn = `<button class="book-status abandoned" onclick="openBookViewModal(${book.id})">abandonado</button>`;
     if (book.endDate) meta = `<div class="book-meta">parou em ${formatDate(book.endDate)}</div>`;
   }
   
@@ -6594,7 +6919,7 @@ function renderBookItemHTML(book, showGenre) {
   const genreLabel = showGenre && g ? `<div class="book-meta"><span>${g.emoji} ${g.name}</span></div>` : '';
   // Mostra botão de editar (lápis) nas abas onde editar título/gênero faz sentido
   const editBtn = (state.filter === "todos" || state.filter === "pendente")
-    ? `<button class="book-edit-btn" onclick="openEditModal(${book.id})" aria-label="Editar">✎</button>`
+    ? `<button class="book-edit-btn" onclick="openBookViewModal(${book.id})" aria-label="Visualizar">✎</button>`
     : '';
   
   return `
@@ -6646,7 +6971,7 @@ function openModal(genreKey) {
   document.getElementById("spinBtn").disabled = false;
   
   document.getElementById("modal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
 }
 
 function updateModalSub() {
@@ -6657,7 +6982,7 @@ function updateModalSub() {
 
 function closeModal() {
   document.getElementById("modal").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
 }
 
 document.getElementById("modal").addEventListener("click", (e) => {
@@ -6902,7 +7227,7 @@ function openTimer() {
   updatePauseButton();
   
   document.getElementById("timerOverlay").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
   
   // Inicia update visual
   if (!timerInterval) {
@@ -6914,7 +7239,7 @@ function openTimer() {
 function minimizeTimer() {
   // Esconde mas mantém rodando
   document.getElementById("timerOverlay").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
 }
 
 function getElapsedSeconds() {
@@ -6977,7 +7302,7 @@ function cancelTimer() {
   timerState = null;
   saveTimerState();
   document.getElementById("timerOverlay").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   renderAll();
 }
 
@@ -6994,7 +7319,7 @@ function stopTimer() {
   if (totalSecs < 5) {
     if (!confirm("Menos de 5 segundos registrados. Salvar mesmo assim?")) {
       document.getElementById("timerOverlay").classList.remove("open");
-      document.body.style.overflow = "";
+      unlockPageBehindModal();
       return;
     }
   }
@@ -7098,7 +7423,7 @@ function discardSession() {
   pendingSession = null;
   closeSaveSession();
   document.getElementById("timerOverlay").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   renderAll();
 }
 
@@ -7239,12 +7564,12 @@ function showSessionResult(book, session) {
   }
   
   document.getElementById("sessionResultModal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
 }
 
 function closeSessionResult() {
   document.getElementById("sessionResultModal").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
 }
 
 document.getElementById("saveSessionModal").addEventListener("click", (e) => {
@@ -7304,8 +7629,307 @@ function confirmStartReading() {
 
   const modalEl = document.getElementById("modal");
   if (modalEl) modalEl.classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   currentGenre = null;
+  refreshAfterBookChange();
+}
+
+
+
+// ============ VISUALIZAÇÃO DO LIVRO (sem edição direta) ============
+let viewingBookId = null;
+let selectedViewStars = 0;
+let selectedViewFavorite = false;
+let selectedViewFavRank = null;
+
+function decodeHtmlEntities(value) {
+  const txt = document.createElement('textarea');
+  txt.innerHTML = String(value ?? '');
+  return txt.value;
+}
+
+function bookViewValue(value, fallback = "Não informado") {
+  return (value !== undefined && value !== null && String(value).trim() !== "") ? decodeHtmlEntities(value) : fallback;
+}
+
+function bookRatingText(book) {
+  return book.rating ? '★'.repeat(book.rating) + '☆'.repeat(5 - book.rating) : 'Sem avaliação';
+}
+
+function bookProgressText(book) {
+  const current = book.pagesCurrent || 0;
+  const total = book.pagesTotal || 0;
+  if (!total) return current ? `Página ${current}` : 'Não informado';
+  const pct = Math.min(100, Math.round((current / total) * 100));
+  return `${current} de ${total} páginas · ${pct}%`;
+}
+
+function renderBookViewCover(book) {
+  const cover = getBookCover(book);
+  if (cover) return `<img src="${escapeHtml(cover)}" alt="Capa de ${escapeHtml(book.t || '')}">`;
+  return coverFallbackHTML(book, book.g);
+}
+
+function bookViewCardStyle(book) {
+  const cover = getBookCover(book);
+  if (!cover) return { className: '', style: '' };
+  const safeCover = escapeHtml(String(cover)).replace(/'/g, '&#39;');
+  return {
+    className: ' has-cover-bg',
+    style: ` style="--book-cover-bg: url('${safeCover}')"`
+  };
+}
+
+function openBookViewModal(bookId) {
+  const book = getBookById(bookId);
+  if (!book) return;
+  viewingBookId = bookId;
+  selectedViewStars = book.rating || 0;
+  selectedViewFavorite = !!book.favorite;
+  selectedViewFavRank = (typeof book.favRank === 'number' && book.favRank > 0) ? book.favRank : null;
+
+  const g = GENRES[book.g];
+  const genreText = g ? `${g.emoji} ${g.name}` : 'Não informado';
+  const seriesText = getManualSeriesLabel(book) || 'Livro único';
+  const startText = book.startDate ? formatDate(book.startDate) : 'Não informado';
+  const endText = book.endDate ? formatDate(book.endDate) : 'Não informado';
+  const totalPagesText = book.pagesTotal ? `${book.pagesTotal} páginas` : 'Não informado';
+  const favoriteText = book.favorite ? 'Sim' : 'Não';
+  const statusText = book.status === 'lido' ? 'Já lido' : (book.status === 'pendente' ? 'Pendente' : 'Lendo agora');
+  const title = escapeHtml(book.t || 'Livro sem título');
+  const author = escapeHtml(book.a || 'Autor não informado');
+  const viewCardBg = bookViewCardStyle(book);
+
+  let infoRows = '';
+  let actions = '';
+  let progressEditable = '';
+  let finishReadingCard = '';
+
+  if (book.status === 'pendente') {
+    infoRows = `
+      ${bookViewInfo('Gênero', genreText)}
+      ${bookViewInfo('Sequência', seriesText)}
+    `;
+    actions = `
+      <button class="form-btn" onclick="startReadingFromView()">Começar a ler ✦</button>
+      <button class="form-btn secondary" onclick="editBookFromView()">Editar livro</button>
+    `;
+  } else if (book.status === 'lido') {
+    infoRows = `
+      ${bookViewInfo('Gênero', genreText)}
+      ${bookViewInfo('Sequência', seriesText)}
+      ${bookViewInfo('Data de começo e fim', `${startText} → ${endText}`)}
+      ${bookViewInfo('Total de páginas', totalPagesText)}
+      ${bookViewInfo('Avaliação', bookRatingText(book))}
+      ${bookViewInfo('Favoritado', favoriteText)}
+    `;
+    actions = `
+      <button class="form-btn" onclick="rereadBookFromView()">Reler ✦</button>
+      <button class="form-btn secondary" onclick="editBookFromView()">Editar livro</button>
+    `;
+  } else {
+    const viewProgress = book.pagesTotal ? ((book.pagesCurrent || 0) / book.pagesTotal) : 0;
+    progressEditable = `
+      <div class="book-view-info">
+        <div class="book-view-label">Progresso</div>
+        <div class="book-view-progress-edit">
+          <input type="number" class="form-input" id="viewPagesCurrent" min="0" value="${book.pagesCurrent || 0}" aria-label="Página atual" oninput="updateViewFinishVisibility()">
+          <button class="form-btn secondary" onclick="saveProgressFromView()" style="margin:0; width:auto; padding:0 16px; height:48px;">Salvar</button>
+        </div>
+        <div class="book-view-value" style="margin-top:8px; color:var(--ink-soft);">${book.pagesTotal ? `de ${book.pagesTotal} páginas` : 'Total de páginas não informado'}</div>
+      </div>
+    `;
+    finishReadingCard = `
+      <div class="book-view-info book-view-rating-card" id="viewFinishFields" style="display:${viewProgress >= 0.9 ? '' : 'none'};">
+        <div class="book-view-label" style="margin-bottom:8px;">Sua avaliação</div>
+        <div class="book-view-value" style="margin-bottom:12px; color:var(--ink-soft);">Avalie antes de marcar o livro como lido.</div>
+        <div class="stars-input" id="viewStarsInput">
+          <span class="star" data-value="1">★</span>
+          <span class="star" data-value="2">★</span>
+          <span class="star" data-value="3">★</span>
+          <span class="star" data-value="4">★</span>
+          <span class="star" data-value="5">★</span>
+        </div>
+        <button class="favorite-toggle" id="viewFavToggle" onclick="toggleViewFavorite()" type="button">
+          <span class="heart" id="viewFavHeart">♡</span>
+          <span id="viewFavLabel">Favoritar</span>
+        </button>
+        <button class="form-btn" onclick="finishReadingFromView()" style="margin-top:12px;">MARCAR COMO LIDO</button>
+      </div>
+    `;
+    infoRows = `
+      ${bookViewInfo('Gênero', genreText)}
+      ${bookViewInfo('Sequência', seriesText)}
+      ${bookViewInfo('Data de início', startText)}
+      ${progressEditable}
+      ${finishReadingCard}
+    `;
+    actions = `<button class="form-btn secondary" onclick="editBookFromView()">Editar livro</button>`;
+  }
+
+  document.getElementById('bookViewContent').innerHTML = `
+    <div class="book-view-card${viewCardBg.className}"${viewCardBg.style}>
+      <div class="book-view-cover">${renderBookViewCover(book)}</div>
+      <div class="book-view-main">
+        <div class="book-view-title">${title}</div>
+        <div class="book-view-author">${author}</div>
+        <div class="book-view-status">${escapeHtml(statusText)}</div>
+      </div>
+    </div>
+    <div class="book-view-grid">${infoRows}</div>
+    ${(book.status === 'lido' || book.status === 'reading') ? '<div id="bookViewSessionsContainer"></div>' : ''}
+    <div class="book-view-actions">${actions}</div>
+  `;
+  document.getElementById('bookViewModal').classList.add('open');
+  lockPageBehindModal();
+
+  // Na visualização, mostra as últimas sessões para livros lidos e livros em leitura, sem ações de edição.
+  if (book.status === 'lido' || book.status === 'reading') {
+    renderSessionsList(book.id, 'bookViewSessionsContainer', true);
+  }
+  setupViewStars();
+  renderViewFavoriteToggle();
+  updateViewFinishVisibility();
+}
+
+function renderViewStars() {
+  document.querySelectorAll("#viewStarsInput .star").forEach(star => {
+    const v = parseInt(star.dataset.value);
+    star.classList.toggle("filled", v <= selectedViewStars);
+  });
+}
+
+function setupViewStars() {
+  document.querySelectorAll("#viewStarsInput .star").forEach(star => {
+    star.addEventListener("click", () => {
+      const v = parseInt(star.dataset.value);
+      selectedViewStars = (selectedViewStars === v) ? 0 : v;
+      renderViewStars();
+    });
+  });
+  renderViewStars();
+}
+
+
+function renderViewFavoriteToggle() {
+  const btn = document.getElementById("viewFavToggle");
+  const heart = document.getElementById("viewFavHeart");
+  const label = document.getElementById("viewFavLabel");
+  if (!btn || !heart || !label) return;
+  btn.classList.toggle("active", selectedViewFavorite);
+  heart.textContent = selectedViewFavorite ? "♥" : "♡";
+  label.textContent = selectedViewFavorite ? "Favoritado" : "Favoritar";
+}
+
+function toggleViewFavorite() {
+  if (selectedViewFavorite) {
+    selectedViewFavorite = false;
+    selectedViewFavRank = null;
+    renderViewFavoriteToggle();
+    return;
+  }
+
+  const currentId = viewingBookId;
+  const currentBook = getBookById(currentId);
+  const otherFavs = currentBook ? getFavoriteGroupBooks(currentBook, currentId) : [];
+
+  if (otherFavs.length >= 10) {
+    // Usa a mesma regra do app para não ultrapassar o Top 10.
+    editingBookId = currentId;
+    editingFavorite = selectedViewFavorite;
+    editingFavRank = selectedViewFavRank;
+    openSwapFavoriteModal();
+    return;
+  }
+
+  const usedRanks = new Set(otherFavs.map(b => b.favRank).filter(r => typeof r === 'number'));
+  let nextRank = 1;
+  while (usedRanks.has(nextRank) && nextRank <= 10) nextRank++;
+  selectedViewFavorite = true;
+  selectedViewFavRank = nextRank <= 10 ? nextRank : (otherFavs.length + 1);
+  renderViewFavoriteToggle();
+}
+
+function updateViewFinishVisibility() {
+  const fields = document.getElementById("viewFinishFields");
+  const book = getBookById(viewingBookId);
+  if (!fields || !book || book.status !== "reading") return;
+  const input = document.getElementById("viewPagesCurrent");
+  const current = parseInt(input && input.value);
+  const total = book.pagesTotal || 0;
+  const progress = total > 0 && !isNaN(current) ? current / total : 0;
+  fields.style.display = progress >= 0.9 ? "" : "none";
+}
+
+function finishReadingFromView() {
+  const book = getBookById(viewingBookId);
+  if (!book) return;
+  const input = document.getElementById('viewPagesCurrent');
+  const value = parseInt(input && input.value);
+  if (!isNaN(value) && value >= 0) book.pagesCurrent = value;
+  if (book.pagesTotal && (!book.pagesCurrent || book.pagesCurrent < book.pagesTotal)) {
+    book.pagesCurrent = book.pagesTotal;
+  }
+  book.rating = selectedViewStars || null;
+  book.favorite = selectedViewFavorite;
+  book.favRank = selectedViewFavorite ? selectedViewFavRank : null;
+  book.status = "lido";
+  book.endDate = todayISO();
+  if (!book.startDate) book.startDate = todayISO();
+  saveState();
+  pushBook(book);
+  closeBookViewModal();
+  refreshAfterBookChange();
+}
+
+function bookViewInfo(label, value) {
+  return `<div class="book-view-info"><div class="book-view-label">${escapeHtml(label)}</div><div class="book-view-value">${escapeHtml(bookViewValue(value))}</div></div>`;
+}
+
+function closeBookViewModal() {
+  document.getElementById('bookViewModal').classList.remove('open');
+  unlockPageBehindModal();
+  viewingBookId = null;
+  selectedViewStars = 0;
+  selectedViewFavorite = false;
+  selectedViewFavRank = null;
+}
+
+function editBookFromView() {
+  const id = viewingBookId;
+  closeBookViewModal();
+  if (id) setTimeout(() => openEditModal(id), 120);
+}
+
+function startReadingFromView() {
+  const id = viewingBookId;
+  closeBookViewModal();
+  if (id) setTimeout(() => quickStart(id), 120);
+}
+
+function rereadBookFromView() {
+  const id = viewingBookId;
+  const book = getBookById(id);
+  if (!book) return;
+  if (!confirm(`Marcar "${book.t}" como pendente para reler? O histórico de leitura anterior é mantido.`)) return;
+  book.status = "pendente";
+  book.pagesCurrent = 0;
+  saveState();
+  pushBook(book);
+  closeBookViewModal();
+  renderAll();
+}
+
+function saveProgressFromView() {
+  const book = getBookById(viewingBookId);
+  if (!book) return;
+  const input = document.getElementById('viewPagesCurrent');
+  const value = parseInt(input && input.value);
+  if (isNaN(value) || value < 0) { alert('Informe uma página válida.'); return; }
+  book.pagesCurrent = value;
+  saveState();
+  pushBook(book);
+  openBookViewModal(book.id);
   refreshAfterBookChange();
 }
 
@@ -7350,7 +7974,7 @@ function openEditModal(bookId) {
   updateCurrentCoverPreview(book);
   updateMarkReadVisibility(book);
   document.getElementById("editModal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
   
   // Busca páginas se não tiver
   if (!book.pagesTotal) {
@@ -7369,7 +7993,7 @@ function openEditModal(bookId) {
 // - Se livro já é "lido" → mostra "Reler" (volta pra pendente, permite reler)
 // - Se status é "pendente" → mostra "Começar a ler"
 // - Se status é "reading" SEM páginas → esconde os principais (precisa registrar páginas)
-// - Se status é "reading" COM páginas e progresso >= 85% → mostra "Marcar como lido"
+// - Se status é "reading" COM páginas e progresso >= 90% → mostra "Marcar como lido"
 // - Se status é "reading" COM páginas e progresso < 85% → esconde os principais
 // - Texto do "Salvar edição" muda conforme status
 function updateMarkReadVisibility(book) {
@@ -7396,18 +8020,10 @@ function updateMarkReadVisibility(book) {
   startBtn.style.display = "none";
   rereadBtn.style.display = "none";
 
-  // Botões "perigosos" no rodapé do modal:
-  // - "lido": só faz sentido "Excluir" (já leu, não tem o que abandonar)
-  // - resto: "Abandonar livro" como antes
-  if (abandonBtn && deleteBtn) {
-    if (book.status === "lido") {
-      abandonBtn.style.display = "none";
-      deleteBtn.style.display = "";
-    } else {
-      abandonBtn.style.display = "";
-      deleteBtn.style.display = "none";
-    }
-  }
+  // No modal de edição, as ações principais ficam centralizadas em salvar ou excluir.
+  if (abandonBtn) abandonBtn.style.display = "none";
+  if (deleteBtn) deleteBtn.style.display = "";
+  if (backBtn) backBtn.style.display = "none";
 
   // Texto do botão "Salvar edição" — só faz sentido "(continuar lendo)" se está lendo
   if (book.status === "reading") {
@@ -7416,36 +8032,20 @@ function updateMarkReadVisibility(book) {
     saveBtn.textContent = "Salvar edição";
   }
 
-  // Já é lido → mostra "Reler"
-  if (book.status === "lido") {
-    rereadBtn.style.display = "";
-    return;
-  }
-
-  // Pendente → começar a ler
-  if (book.status === "pendente") {
-    startBtn.style.display = "";
+  // Reler e Começar a ler ficam apenas na visualização do livro.
+  if (book.status === "lido" || book.status === "pendente") {
     return;
   }
 
   // Lendo (reading) ou abandonado
   if (book.status === "reading" || book.status === "abandoned") {
-    // Botão "Voltar para Pendente": só mostra se lendo E pagesCurrent = 0
-    if (backBtn) {
-      if (book.status === "reading" && current === 0) {
-        backBtn.style.display = "";
-      } else {
-        backBtn.style.display = "none";
-      }
-    }
-    
     if (!hasPages) {
       // Sem páginas registradas → esconde os principais (precisa registrar primeiro)
       return;
     }
-    // Com páginas → aplica regra dos 85%
+    // Com páginas → aplica regra dos 90%
     const pct = current / total;
-    if (pct >= 0.85) {
+    if (pct >= 0.9) {
       markBtn.style.display = "";
     }
     return;
@@ -7482,8 +8082,9 @@ function rereadBookFromEdit() {
 // (chave: bookId, valor: array de sessões raw do supabase ordenadas desc por started_at)
 let sessionsCache = {};
 
-async function renderSessionsList(bookId) {
-  const container = document.getElementById("sessionsListContainer");
+async function renderSessionsList(bookId, containerId = "sessionsListContainer", readOnly = false) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
   container.innerHTML = '';
   
   if (!config.setupDone || config.skipSync) return;
@@ -7542,15 +8143,25 @@ async function renderSessionsList(bookId) {
         ? `${totalPagesDay} pág${totalPagesDay > 1 ? 's' : ''} lida${totalPagesDay > 1 ? 's' : ''}` 
         : '';
       
-      // Sempre clicável (mesmo com 1 sessão, pra editar/excluir)
-      html += `<div class="session-item day-row" onclick="openSessionsDayModal(${bookId}, '${dayKey}')">
-        <span class="sess-date">
-          <span class="sess-date-main">${dateStr}${pagesStr ? ` · ${pagesStr}` : ''}${count > 1 ? `<span class="sess-count">${count} sessões</span>` : ''}</span>
-          ${pagesReadStr ? `<span class="sess-date-meta">${pagesReadStr}</span>` : ''}
-        </span>
-        <span class="sess-time">${timeStr}</span>
-        <span class="sess-chevron">›</span>
-      </div>`;
+      if (readOnly) {
+        html += `<div class="session-item">
+          <span class="sess-date">
+            <span class="sess-date-main">${dateStr}${pagesStr ? ` · ${pagesStr}` : ''}${count > 1 ? `<span class="sess-count">${count} sessões</span>` : ''}</span>
+            ${pagesReadStr ? `<span class="sess-date-meta">${pagesReadStr}</span>` : ''}
+          </span>
+          <span class="sess-time">${timeStr}</span>
+        </div>`;
+      } else {
+        // Sempre clicável (mesmo com 1 sessão, pra editar/excluir)
+        html += `<div class="session-item day-row" onclick="openSessionsDayModal(${bookId}, '${dayKey}')">
+          <span class="sess-date">
+            <span class="sess-date-main">${dateStr}${pagesStr ? ` · ${pagesStr}` : ''}${count > 1 ? `<span class="sess-count">${count} sessões</span>` : ''}</span>
+            ${pagesReadStr ? `<span class="sess-date-meta">${pagesReadStr}</span>` : ''}
+          </span>
+          <span class="sess-time">${timeStr}</span>
+          <span class="sess-chevron">›</span>
+        </div>`;
+      }
     });
     html += `</div>`;
     container.innerHTML = html;
@@ -7599,14 +8210,14 @@ function openSessionsDayModal(bookId, dayKey) {
   document.getElementById("sessionsDayContainer").innerHTML = html;
   
   document.getElementById("sessionsDayModal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
 }
 
 function closeSessionsDayModal() {
   document.getElementById("sessionsDayModal").classList.remove("open");
   // Não tira overflow do body se editModal estiver aberto
   if (!document.getElementById("editModal").classList.contains("open")) {
-    document.body.style.overflow = "";
+    unlockPageBehindModal();
   }
 }
 
@@ -7724,7 +8335,7 @@ async function confirmEditSession() {
 function closeEditModal() {
   document.getElementById("editModal").classList.remove("open");
   document.getElementById("sessionsDayModal").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   editingBookId = null;
   selectedStars = 0;
 }
@@ -7756,7 +8367,7 @@ function updateFinishedOnlyFields(book) {
   const total = isNaN(totalInput) ? 0 : totalInput;
   const progress = total > 0 ? current / total : 0;
 
-  const canFinishReading = book.status === "reading" && total > 0 && progress >= 0.85;
+  const canFinishReading = book.status === "reading" && total > 0 && progress >= 0.9;
   finishedFields.style.display = (book.status === "lido" || canFinishReading) ? "" : "none";
 }
 
@@ -8207,13 +8818,13 @@ function openAddBook() {
   setupAutocomplete();
   
   document.getElementById("addModal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
   setTimeout(() => document.getElementById("newTitle").focus(), 300);
 }
 
 function closeAddBook() {
   document.getElementById("addModal").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   // Limpa campo Amazon ao fechar
   const amzUrl = document.getElementById("amazonUrl");
   if (amzUrl) amzUrl.value = "";
@@ -9299,12 +9910,12 @@ function openGenresModal() {
     selectProfileGender(currentUser.gender);
   }
   document.getElementById("genresModal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
 }
 
 function closeGenresModal() {
   document.getElementById("genresModal").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   renderAll();
 }
 
@@ -9564,7 +10175,7 @@ async function openCoverPicker(e) {
   document.getElementById("coverPickerBook").textContent = `"${book.t}" — ${book.a}`;
   document.getElementById("customCoverUrl").value = "";
   document.getElementById("coverPickerModal").classList.add("open");
-  document.body.style.overflow = "hidden";
+  lockPageBehindModal();
 
   const grid = document.getElementById("coverPickerGrid");
   grid.innerHTML = `<div class="cover-picker-empty">Buscando capa ✦</div>`;
@@ -9752,7 +10363,7 @@ function applyCustomCover(e) {
 
 function closeCoverPicker() {
   document.getElementById("coverPickerModal").classList.remove("open");
-  document.body.style.overflow = "";
+  unlockPageBehindModal();
   coverPickerCurrentBook = null;
 }
 
@@ -11102,7 +11713,7 @@ function renderProfileSummary() {
     document.getElementById('coverPickerBook').textContent = `"${book.t}" — ${book.a}`;
     document.getElementById('customCoverUrl').value = '';
     document.getElementById('coverPickerModal').classList.add('open');
-    document.body.style.overflow = 'hidden';
+    lockPageBehindModal();
     const grid = document.getElementById('coverPickerGrid');
     grid.innerHTML = `<div class="cover-picker-empty">Buscando capa...</div>`;
     const covers = [];
@@ -11331,7 +11942,7 @@ function renderProfileSummary() {
     if (bookLabel) bookLabel.textContent = `"${book.t || ''}" — ${book.a || ''}`;
     if (customInput) customInput.value = '';
     if (modal) modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    lockPageBehindModal();
     if (grid) grid.innerHTML = `<div class="cover-picker-empty">Buscando capas...</div>`;
 
     try {
@@ -11512,7 +12123,7 @@ function renderProfileSummary() {
     if (bookLabel) bookLabel.textContent = `"${book.t || ''}" — ${book.a || ''}`;
     if (customInput) customInput.value = '';
     if (modal) modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    lockPageBehindModal();
     if (grid) grid.innerHTML = `<div class="cover-picker-empty">Buscando capas...</div>`;
 
     try {
@@ -11599,13 +12210,13 @@ function renderProfileSummary() {
     populateProfileYearSelectModal();
     renderProfileSummaryModal();
     modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    lockPageBehindModal();
   };
 
   window.closeProfileModal = function() {
     const modal = document.getElementById('profileModal');
     if (modal) modal.classList.remove('open');
-    document.body.style.overflow = '';
+    unlockPageBehindModal();
   };
 
   function populateProfileYearSelectModal() {
