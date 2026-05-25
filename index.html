@@ -3890,6 +3890,23 @@ textarea,
     opacity: 0.72 !important;
   }
 
+
+  /* Histórico compacto: remove o card rosa anual e mantém só o resumo em texto */
+  .stats-section {
+    padding-bottom: 10px !important;
+  }
+
+  .stats-header.stats-header-compact {
+    margin-bottom: 10px !important;
+    color: var(--ink-soft) !important;
+    line-height: 1.35 !important;
+  }
+
+  .stats-header.stats-header-compact span {
+    color: var(--ink) !important;
+    white-space: nowrap;
+  }
+
 </style>
 </head>
 <body>
@@ -6055,76 +6072,25 @@ function renderStats() {
   const currentYear = new Date().getFullYear();
   const activeYear = resolveActiveYear(years);
   
-  // Determina qual ano vai no card de destaque:
-  // - Se selectedYear é número específico → esse ano
-  // - Se "todos" → mostrar total agregado
-  // - Se null → ano atual
-  let heroYear, heroCount, heroLabel, heroSub;
+  let summaryCount = readBooks.length;
+  let summaryPeriod = 'no total';
   
   if (state.selectedYear === "todos") {
-    // Total geral
-    heroCount = readBooks.length;
-    heroLabel = 'no total';
-    heroSub = `${years.length} ano${years.length === 1 ? '' : 's'} de leitura ✦`;
-    heroYear = null;
+    summaryCount = readBooks.length;
+    summaryPeriod = 'no total';
   } else if (typeof activeYear === 'number') {
-    heroYear = activeYear;
-    heroCount = byYear[heroYear] || 0;
-    heroLabel = heroYear === currentYear ? 'este ano' : `em ${heroYear}`;
-    if (heroCount === 0) {
-      heroSub = heroYear === currentYear ? 'comece o ano lendo ✦' : 'nenhum livro registrado';
-    } else {
-      heroSub = heroYear === currentYear ? 'continue assim ✦' : 'que ano de leitura ✦';
-    }
-  } else {
-    heroYear = years.includes(currentYear) ? currentYear : years[0];
-    heroCount = byYear[heroYear] || 0;
-    heroLabel = heroYear === currentYear ? 'este ano' : `em ${heroYear}`;
-    if (heroCount === 0) {
-      heroSub = heroYear === currentYear ? 'comece o ano lendo ✦' : 'nenhum livro registrado';
-    } else {
-      heroSub = heroYear === currentYear ? 'continue assim ✦' : 'que ano de leitura ✦';
-    }
+    summaryCount = byYear[activeYear] || 0;
+    summaryPeriod = activeYear === currentYear ? 'este ano' : `em ${activeYear}`;
+  } else if (state.selectedYear === "sem-data") {
+    summaryCount = state.books.filter(b => b.status === "lido" && !bookAnchorYear(b)).length;
+    summaryPeriod = 'sem data registrada';
   }
   
-  let html = `<div class="stats-header">seu histórico de leitura ✦</div>`;
-  html += `<div class="stats-grid">`;
-  
-  // Card de destaque do ano "ativo"
-  const heroOnclick = heroYear !== null 
-    ? `setYearFilter(${heroYear})` 
-    : `setYearFilter('todos')`;
-  const heroMascClass = (currentUser && currentUser.gender === "masculino") ? ' masc' : '';
-  html += `
-    <div class="stat-card year-hero${heroMascClass}" onclick="${heroOnclick}">
-      <div class="stat-hero-left">
-        <div class="stat-hero-label">${heroLabel}</div>
-        <div>
-          <span class="stat-hero-number">${heroCount}</span><span class="stat-hero-unit">livro${heroCount === 1 ? '' : 's'}</span>
-        </div>
-        <div class="stat-hero-sub">${heroSub}</div>
-      </div>
+  section.innerHTML = `
+    <div class="stats-header stats-header-compact">
+      seu histórico de leitura ✦ <span>${summaryCount} livro${summaryCount === 1 ? '' : 's'} ${summaryPeriod}</span>
     </div>
   `;
-  
-  // Cards menores para os outros anos — APENAS quando filtro é "Todos"
-  // (quando filtra um ano específico ou está no padrão, só o hero card aparece)
-  if (state.selectedYear === "todos") {
-    years.forEach((year, idx) => {
-      const count = byYear[year];
-      const colorClass = YEAR_CARD_COLORS[idx % YEAR_CARD_COLORS.length];
-      const isActive = state.selectedYear === year;
-      html += `
-        <div class="stat-card year-other ${colorClass}${isActive ? ' active' : ''}" onclick="setYearFilter(${year})">
-          <div class="stat-other-year">${year}</div>
-          <div class="stat-other-count">${count} livro${count === 1 ? '' : 's'}</div>
-        </div>
-      `;
-    });
-  }
-  
-  html += `</div>`;
-  section.innerHTML = html;
   section.style.display = "block";
 }
 
@@ -13036,4 +13002,21 @@ function renderProfileSummary() {
     font-size: 22px !important;
   }
 }
+
+  /* Histórico compacto: remove o card rosa anual e mantém só o resumo em texto */
+  .stats-section {
+    padding-bottom: 10px !important;
+  }
+
+  .stats-header.stats-header-compact {
+    margin-bottom: 10px !important;
+    color: var(--ink-soft) !important;
+    line-height: 1.35 !important;
+  }
+
+  .stats-header.stats-header-compact span {
+    color: var(--ink) !important;
+    white-space: nowrap;
+  }
+
 </style>
