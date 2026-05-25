@@ -707,7 +707,7 @@
     flex-shrink: 0;
     padding: 8px 16px;
     border-radius: 999px;
-    background: transparent !important;
+    background: var(--cream-dark);
     color: var(--ink-soft);
     font-family: 'Inter', sans-serif;
     font-size: 13px;
@@ -723,9 +723,15 @@
   }
   
   .year-chip.active {
-    background: var(--ink);
-    color: var(--cream);
-    border-color: var(--ink);
+    background: var(--cream-dark);
+    color: var(--ink);
+    border-color: var(--rose-deep);
+    box-shadow: 0 0 0 1px var(--rose-deep);
+  }
+
+  body.user-masc .year-chip.active {
+    border-color: var(--sky-deep);
+    box-shadow: 0 0 0 1px var(--sky-deep);
   }
   
   .year-chip-count {
@@ -800,10 +806,9 @@
 
   /* Quando existir capa, o card Lendo usa a própria capa desfocada como fundo */
   .reading-card.has-cover-bg {
-    background:
-      linear-gradient(90deg, rgba(244,236,216,0.42), rgba(244,236,216,0.72)),
-      var(--cream-dark);
+    background: var(--cream-dark);
     isolation: isolate;
+    color: var(--ink);
   }
 
   .reading-card.has-cover-bg::after {
@@ -813,11 +818,28 @@
     background-image: var(--reading-cover-bg);
     background-size: cover;
     background-position: center;
-    filter: blur(30px) saturate(1.65) contrast(1.08);
-    opacity: 0.78;
+    filter: blur(30px) saturate(1.55) contrast(1.04);
+    opacity: 0.72;
     transform: scale(1.12);
     z-index: 0;
     pointer-events: none;
+  }
+
+  .reading-card.has-cover-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(244,236,216,0.64), rgba(244,236,216,0.76));
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .reading-card.has-cover-bg.cover-is-dark {
+    color: var(--cream);
+  }
+
+  .reading-card.has-cover-bg.cover-is-dark::before {
+    background: linear-gradient(90deg, rgba(42,36,32,0.52), rgba(42,36,32,0.34));
   }
 
   .reading-card.has-cover-bg .cover,
@@ -829,7 +851,19 @@
   .reading-card.has-cover-bg .reading-info-side {
     border-radius: 20px;
     padding: 8px 12px 0 2px;
-    text-shadow: 0 1px 10px rgba(244,236,216,0.72);
+    text-shadow: none;
+  }
+
+  .reading-card.has-cover-bg .reading-book-title,
+  .reading-card.has-cover-bg .reading-book-author,
+  .reading-card.has-cover-bg .reading-meta,
+  .reading-card.has-cover-bg .reading-progress-text {
+    color: currentColor;
+  }
+
+  .reading-card.has-cover-bg.cover-is-dark .reading-btn.secondary {
+    color: var(--cream);
+    border-color: var(--cream);
   }
   .cover {
     width: 110px;
@@ -3812,6 +3846,50 @@ textarea,
     filter: none !important;
   }
 
+
+
+  /* Ajuste do card anual: menos lavado e com melhor contraste */
+  .stat-card.year-hero {
+    background: linear-gradient(135deg, #f5d5cf 0%, #f0c7bf 42%, #e7afa6 100%) !important;
+    border: 1.5px solid rgba(201, 123, 114, 0.34) !important;
+    box-shadow: 0 6px 18px rgba(201, 123, 114, 0.18) !important;
+    overflow: hidden !important;
+  }
+
+  .stat-card.year-hero.masc {
+    background: linear-gradient(135deg, #cde0ea 0%, #aecaDB 46%, #8fb0c4 100%) !important;
+    border-color: rgba(90, 126, 148, 0.36) !important;
+    box-shadow: 0 6px 18px rgba(90, 126, 148, 0.18) !important;
+  }
+
+  .stat-card.year-hero::before {
+    color: rgba(255, 255, 255, 0.42) !important;
+    text-shadow: none !important;
+  }
+
+  .stat-card.year-hero::after {
+    width: 92px !important;
+    height: 92px !important;
+    right: -22px !important;
+    bottom: -24px !important;
+    background: radial-gradient(circle, rgba(255,255,255,0.20) 0%, transparent 68%) !important;
+    filter: none !important;
+  }
+
+  .stat-card.year-hero .stat-hero-label,
+  .stat-card.year-hero .stat-hero-number,
+  .stat-card.year-hero .stat-hero-unit,
+  .stat-card.year-hero .stat-hero-sub {
+    color: var(--ink) !important;
+    text-shadow: none !important;
+    filter: none !important;
+  }
+
+  .stat-card.year-hero .stat-hero-label,
+  .stat-card.year-hero .stat-hero-sub {
+    opacity: 0.72 !important;
+  }
+
 </style>
 </head>
 <body>
@@ -5518,6 +5596,33 @@ function setCoverInstant(coverId, url, book, fallbackGenreKey) {
   return true;
 }
 
+function applyReadingCardTheme(card, coverUrl) {
+  if (!card || !coverUrl) return;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    try {
+      const canvas = document.createElement("canvas");
+      const size = 24;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      let total = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        total += (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]);
+      }
+      const luminance = total / (data.length / 4);
+      card.classList.toggle("cover-is-dark", luminance < 112);
+    } catch (err) {
+      card.classList.remove("cover-is-dark");
+    }
+  };
+  img.onerror = () => card.classList.remove("cover-is-dark");
+  img.src = coverUrl;
+}
+
 function migrateBookData() {
   if (!state.books) state.books = [];
   if (!state.covers) state.covers = {};
@@ -6651,6 +6756,7 @@ function renderGenres() {
         if (readingCover) {
           card.classList.add("has-cover-bg");
           card.style.setProperty("--reading-cover-bg", `url("${String(readingCover).replace(/"/g, '%22')}")`);
+          applyReadingCardTheme(card, readingCover);
         }
         card.dataset.bookId = book.id;
         card.onclick = () => openBookViewModal(book.id);
@@ -6702,6 +6808,7 @@ function renderGenres() {
               setCoverInstant(coverId, meta.cover, book, key);
               card.classList.add("has-cover-bg");
               card.style.setProperty("--reading-cover-bg", `url("${String(meta.cover).replace(/"/g, '%22')}")`);
+              applyReadingCardTheme(card, meta.cover);
             }
             // Aplica páginas se não tinha
             if (meta.pages && !book.pagesTotal) {
