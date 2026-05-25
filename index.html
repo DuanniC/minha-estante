@@ -797,22 +797,40 @@
   .reading-card.c-peach { background: linear-gradient(135deg, #f0d5bc 0%, #d8a880 100%); }
   .reading-card.c-mint { background: linear-gradient(135deg, #d4e5da 0%, #a0bcae 100%); }
   .reading-card.c-blush { background: linear-gradient(135deg, #f0dde0 0%, #d8a8ae 100%); }
-  
-  .reading-card::before {
-    content: 'LENDO AGORA';
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    font-size: 9px;
-    letter-spacing: 2px;
-    font-weight: 700;
-    color: var(--ink);
-    background: var(--cream);
-    padding: 4px 9px;
-    border-radius: 100px;
-    z-index: 3;
+
+  /* Quando existir capa, o card Lendo usa a própria capa desfocada como fundo */
+  .reading-card.has-cover-bg {
+    background:
+      linear-gradient(90deg, rgba(244,236,216,0.42), rgba(244,236,216,0.72)),
+      var(--cream-dark);
+    isolation: isolate;
   }
-  
+
+  .reading-card.has-cover-bg::after {
+    content: '';
+    position: absolute;
+    inset: -44px;
+    background-image: var(--reading-cover-bg);
+    background-size: cover;
+    background-position: center;
+    filter: blur(30px) saturate(1.65) contrast(1.08);
+    opacity: 0.78;
+    transform: scale(1.12);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .reading-card.has-cover-bg .cover,
+  .reading-card.has-cover-bg .reading-info-side {
+    position: relative;
+    z-index: 2;
+  }
+
+  .reading-card.has-cover-bg .reading-info-side {
+    border-radius: 20px;
+    padding: 8px 12px 0 2px;
+    text-shadow: 0 1px 10px rgba(244,236,216,0.72);
+  }
   .cover {
     width: 110px;
     min-width: 110px;
@@ -926,18 +944,8 @@
     flex-direction: column;
     justify-content: space-between;
     min-width: 0;
-    padding-top: 26px;
+    padding-top: 0;
   }
-  
-  .reading-genre-tag {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-  
   .reading-book-title {
     font-family: 'Fraunces', serif;
     font-weight: 500;
@@ -6577,6 +6585,11 @@ function renderGenres() {
       reading.forEach(book => {
         const card = document.createElement("div");
         card.className = `reading-card ${g.color}`;
+        const readingCover = getBookCover(book);
+        if (readingCover) {
+          card.classList.add("has-cover-bg");
+          card.style.setProperty("--reading-cover-bg", `url("${String(readingCover).replace(/"/g, '%22')}")`);
+        }
         card.dataset.bookId = book.id;
         card.onclick = () => openBookViewModal(book.id);
         
@@ -6601,7 +6614,6 @@ function renderGenres() {
           </div>
           <div class="reading-info-side">
             <div>
-              <div class="reading-genre-tag">${g.emoji} ${g.name}</div>
               <div class="reading-book-title">${escapeHtml(book.t)}${favMark}</div>
               <div class="reading-book-author">${escapeHtml(book.a)}</div>
               <div class="reading-meta">📖 ${dateText}</div>
@@ -6609,7 +6621,6 @@ function renderGenres() {
             </div>
             <div class="reading-actions">
               <button class="reading-btn primary" onclick="event.stopPropagation(); startSession(${book.id})">Iniciar sessão ✦</button>
-              <button class="reading-btn secondary" onclick="event.stopPropagation(); openBookViewModal(${book.id})">Ver</button>
             </div>
           </div>
         `;
@@ -6627,6 +6638,8 @@ function renderGenres() {
             if (!alreadyShowedSavedCover && meta.cover) {
               setBookCover(book, meta.cover);
               setCoverInstant(coverId, meta.cover, book, key);
+              card.classList.add("has-cover-bg");
+              card.style.setProperty("--reading-cover-bg", `url("${String(meta.cover).replace(/"/g, '%22')}")`);
             }
             // Aplica páginas se não tinha
             if (meta.pages && !book.pagesTotal) {
