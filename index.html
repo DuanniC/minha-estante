@@ -177,7 +177,7 @@
     color: var(--ink-soft);
     padding: 5px 8px;
     border-radius: 100px;
-    background: var(--cream-dark);
+    background: transparent !important;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -197,7 +197,7 @@
   .sync-indicator.syncing { background: var(--rose); color: var(--ink); }
   .sync-indicator.synced { background: #d4dfc4; color: var(--ink); }
   .sync-indicator.error { background: #e8b8a0; color: var(--ink); }
-  .sync-indicator.offline { background: var(--cream-dark); opacity: 0.6; }
+  .sync-indicator.offline { background: transparent !important; opacity: 0.6; }
 
   /* ========= LOGIN OVERLAY ========= */
   .login-overlay {
@@ -340,7 +340,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 100px;
     padding: 5px 10px;
     cursor: pointer;
@@ -503,7 +503,7 @@
   }
   
   .stat-card {
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 18px;
     padding: 14px 16px;
     cursor: pointer;
@@ -707,7 +707,7 @@
     flex-shrink: 0;
     padding: 8px 16px;
     border-radius: 999px;
-    background: var(--cream-dark);
+    background: transparent !important;
     color: var(--ink-soft);
     font-family: 'Inter', sans-serif;
     font-size: 13px;
@@ -1125,11 +1125,11 @@
     width: 92px;
     aspect-ratio: 2/3;
     border-radius: 6px;
-    overflow: hidden;
+    overflow: visible;
     filter: drop-shadow(0 4px 14px rgba(42, 36, 32, 0.18));
-    background: var(--cream-dark);
+    background: transparent !important;
   }
-  .book-view-cover img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; filter: none !important; }
+  .book-view-cover img { width: auto !important; height: auto !important; max-width: 100% !important; max-height: 100% !important; object-fit: unset !important; object-position: center; display: block; filter: none !important; background: transparent !important; }
   .book-view-main { min-width: 0; }
   .book-view-title {
     font-family: 'Fraunces', serif;
@@ -1151,7 +1151,7 @@
     margin: 16px 0 20px;
   }
   .book-view-info {
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 16px;
     padding: 12px 14px;
   }
@@ -1252,22 +1252,25 @@
     width: 118px;
     aspect-ratio: 2/3;
     border-radius: 10px;
-    overflow: hidden;
-    background: transparent;
+    overflow: visible;
+    background: transparent !important;
     box-shadow: 0 12px 26px rgba(42,36,32,0.24);
     filter: none !important;
     z-index: 2;
   }
   .book-view-cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: unset !important;
     object-position: center;
     display: block;
     border-radius: 8px;
     filter: none !important;
     transform: translateZ(0);
     image-rendering: auto;
+    background: transparent !important;
   }
   .book-view-main { z-index: 1; }
   .book-view-title {
@@ -1824,7 +1827,7 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--cream-dark);
+    background: transparent !important;
   }
   .amazon-input-wrap {
     display: flex;
@@ -1919,7 +1922,7 @@
   .favorite-toggle.active .heart { transform: scale(1.2); }
   
   .reading-info {
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 14px;
     padding: 12px 14px;
     margin-top: 12px;
@@ -1964,7 +1967,7 @@
     font-weight: 500;
   }
   
-  .menu button:active { background: var(--cream-dark); }
+  .menu button:active { background: transparent !important; }
   
   .footer-note {
     text-align: center;
@@ -2027,7 +2030,7 @@
   
   .setup-box .form-label code {
     font-family: ui-monospace, 'SF Mono', monospace;
-    background: var(--cream-dark);
+    background: transparent !important;
     padding: 1px 6px;
     border-radius: 4px;
     font-size: 11px;
@@ -2036,7 +2039,7 @@
   }
   
   .setup-steps {
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 14px;
     padding: 14px 16px;
     font-size: 12px;
@@ -2086,7 +2089,7 @@
     align-items: center;
     margin-bottom: 16px;
     padding: 12px;
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 14px;
   }
   
@@ -2146,7 +2149,7 @@
     aspect-ratio: 2/3;
     box-shadow: 0 2px 8px rgba(42, 36, 32, 0.15);
     transition: transform 0.2s;
-    background: var(--cream-dark);
+    background: transparent !important;
     border: 2px solid transparent;
   }
   
@@ -2406,7 +2409,7 @@
   /* Session list no modal de edição */
   .sessions-list {
     margin-top: 16px;
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 14px;
     padding: 12px 14px;
   }
@@ -2500,7 +2503,7 @@
     padding: 12px 14px;
     border-radius: 14px;
     margin-bottom: 8px;
-    background: var(--cream-dark);
+    background: transparent !important;
   }
   
   .genre-list-emoji { font-size: 22px; }
@@ -2575,14 +2578,14 @@
   }
   
   .autocomplete-item:last-child { border-bottom: none; }
-  .autocomplete-item:hover, .autocomplete-item.active { background: var(--cream-dark); }
+  .autocomplete-item:hover, .autocomplete-item.active { background: transparent !important; }
   
   .autocomplete-cover {
     width: 36px;
     height: 52px;
     object-fit: cover;
     border-radius: 3px;
-    background: var(--cream-dark);
+    background: transparent !important;
     flex-shrink: 0;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
   }
@@ -2893,7 +2896,7 @@
     aspect-ratio: 2/3;
     border-radius: 8px;
     overflow: hidden;
-    background: var(--cream-dark);
+    background: transparent !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2970,7 +2973,7 @@
   .lido-month-count {
     font-size: 10.5px;
     color: var(--ink-soft);
-    background: var(--cream-dark);
+    background: transparent !important;
     padding: 2px 9px;
     border-radius: 100px;
     letter-spacing: 0.3px;
@@ -2995,7 +2998,7 @@
   }
   .lido-month-covers::-webkit-scrollbar { height: 4px; }
   .lido-month-covers::-webkit-scrollbar-track { background: transparent; }
-  .lido-month-covers::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 100px; }
+  .lido-month-covers::-webkit-scrollbar-thumb { background: transparent !important; border-radius: 100px; }
   .lido-timeline-item {
     flex: 0 0 auto;
     width: 86px;
@@ -3012,7 +3015,7 @@
     height: 129px;
     border-radius: 6px;
     overflow: hidden;
-    background: var(--cream-dark);
+    background: transparent !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3116,7 +3119,7 @@
     justify-content: center;
   }
   .lido-page-btn.active { background: var(--ink); color: var(--cream); }
-  .lido-page-btn:hover:not(.active) { background: var(--cream-dark); }
+  .lido-page-btn:hover:not(.active) { background: transparent !important; }
   .lido-page-btn:active { transform: scale(0.92); }
   .lido-page-arrow {
     font-size: 18px;
@@ -3160,7 +3163,7 @@
     aspect-ratio: 2 / 3;
     border-radius: 8px;
     overflow: hidden;
-    background: var(--cream-dark);
+    background: transparent !important;
     box-shadow: 0 2px 8px rgba(42, 36, 32, 0.13);
     position: relative;
   }
@@ -3232,7 +3235,7 @@
     padding: 2px 6px;
     border-radius: 100px;
     margin-top: 4px;
-    background: var(--cream-dark);
+    background: transparent !important;
     color: var(--ink-soft);
   }
   .fav-gallery-status.lido { background: #d4dfc4; color: #3a4a2e; }
@@ -3308,7 +3311,7 @@
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--cream-dark);
+    background: transparent !important;
     border-radius: 12px;
     cursor: pointer;
     transition: transform 0.18s ease, background 0.18s ease;
@@ -3412,7 +3415,7 @@ textarea,
 
 /* Ajustes: Amazon habilitada na tela de adicionar livro */
 .profile-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0 18px; }
-.profile-summary-card { background: var(--cream-dark); border-radius: 18px; padding: 14px; }
+.profile-summary-card { background: transparent !important; border-radius: 18px; padding: 14px; }
 .profile-summary-number { font-family: 'Fraunces', serif; font-size: 30px; line-height: 1; font-weight: 300; color: var(--ink); }
 .profile-summary-label { font-size: 11px; color: var(--ink-soft); margin-top: 5px; letter-spacing: .3px; }
 .profile-section-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; color: var(--ink-soft); margin: 18px 0 10px; }
@@ -3422,7 +3425,7 @@ textarea,
 
 /* PERFIL DE LEITURA */
 .reading-profile-section {
-  background: var(--cream-dark);
+  background: transparent !important;
   border-radius: 20px;
   padding: 24px;
   margin: 0 16px 24px;
@@ -3641,7 +3644,7 @@ textarea,
   flex-shrink: 0;
 }
 .profile-year-select {
-  background: var(--cream-dark);
+  background: transparent !important;
   border: 1.5px solid transparent;
   border-radius: 10px;
   padding: 7px 12px;
@@ -3661,7 +3664,7 @@ textarea,
   margin-bottom: 16px;
 }
 .profile-stat-card {
-  background: var(--cream-dark);
+  background: transparent !important;
   border-radius: 16px;
   padding: 14px 12px;
   text-align: center;
@@ -3746,6 +3749,68 @@ textarea,
   color: var(--ink-soft);
   margin-top: 3px;
 }
+
+
+
+  /* Ajuste Duanni 25/05/2026: título manual e capa sem base/fundo atrás */
+  #titleAutocomplete, .autocomplete-results { display: none !important; }
+  .cover, .book-view-cover {
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .cover img, .book-view-cover img {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: unset !important;
+    background: transparent !important;
+  }
+  .book-view-cover {
+    height: auto !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+  .book-view-cover img {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: unset !important;
+    background: transparent !important;
+  }
+
+
+  /* Ajuste 25/05/2026: remover sobra/fundo do box por trás da capa nos detalhes */
+  .book-view-cover {
+    width: 118px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    background: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    overflow: visible !important;
+    display: inline-flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+  }
+
+  .book-view-cover img {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    object-fit: initial !important;
+    object-position: center !important;
+    display: block !important;
+    border-radius: 8px !important;
+    background: none !important;
+    box-shadow: 0 12px 26px rgba(42,36,32,0.24) !important;
+    filter: none !important;
+  }
 
 </style>
 </head>
@@ -4042,10 +4107,7 @@ create policy "acesso total genres" on genres
     
     <div class="form-group">
       <label class="form-label">Título</label>
-      <div class="autocomplete-wrap">
-        <input type="text" class="form-input" id="newTitle" placeholder="Ex: O Nome do Vento" autocomplete="off">
-        <div class="autocomplete-results" id="titleAutocomplete"></div>
-      </div>
+      <input type="text" class="form-input" id="newTitle" placeholder="Digite o título manualmente" autocomplete="off">
     </div>
     <div class="form-group">
       <label class="form-label">Autor(a)</label>
@@ -8182,7 +8244,7 @@ function updateMarkReadVisibility(book) {
   startBtn.style.display = "none";
   rereadBtn.style.display = "none";
 
-  // No modal de edição, as ações principais ficam centralizadas em salvar ou excluir.
+  // No modal de edição, manter três ações: salvar, excluir e voltar/abandonar conforme progresso.
   if (abandonBtn) abandonBtn.style.display = "none";
   if (deleteBtn) deleteBtn.style.display = "";
   if (backBtn) backBtn.style.display = "none";
@@ -8190,6 +8252,13 @@ function updateMarkReadVisibility(book) {
   // Texto do botão "Salvar edição" — só faz sentido "(continuar lendo)" se está lendo
   if (book.status === "reading") {
     saveBtn.textContent = "Salvar edição (continuar lendo)";
+    if (current <= 0) {
+      if (backBtn) backBtn.style.display = "";
+      if (abandonBtn) abandonBtn.style.display = "none";
+    } else {
+      if (backBtn) backBtn.style.display = "none";
+      if (abandonBtn) abandonBtn.style.display = "";
+    }
   } else {
     saveBtn.textContent = "Salvar edição";
   }
@@ -9637,17 +9706,8 @@ async function addBook() {
   renderAll();
   if (currentGenre === genre) { renderWheel(genre); renderBookList(genre); updateModalSub(); }
   
-  // Se o usuário não deu páginas, busca automático em background
-  if (!newBook.pagesTotal) {
-    fetchPages(title, author).then(pages => {
-      if (pages) {
-        newBook.pagesTotal = pages;
-        saveState();
-        pushBook(newBook);
-        renderAll();
-      }
-    });
-  }
+  // Busca automática por título removida: páginas/capa devem ser preenchidas manualmente
+  // ou pela busca exclusiva via link da Amazon.
 }
 
 // ============ AUTOCOMPLETE DE TÍTULO ============
@@ -12790,5 +12850,21 @@ function renderProfileSummary() {
 
 
 
+
+<script>
+/* Ajuste Duanni 25/05/2026: remove busca automática por título.
+   A única busca automática mantida na tela de adicionar livro é via link da Amazon. */
+(function(){
+  window.setupAutocomplete = function(){
+    const results = document.getElementById('titleAutocomplete');
+    if (results) { results.innerHTML = ''; results.classList.remove('open'); }
+  };
+  window.searchTitles = async function(){ return []; };
+  window.renderAutocomplete = function(){
+    const results = document.getElementById('titleAutocomplete');
+    if (results) { results.innerHTML = ''; results.classList.remove('open'); }
+  };
+})();
+</script>
 </body>
 </html>
