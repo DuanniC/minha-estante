@@ -12868,3 +12868,65 @@ function renderProfileSummary() {
 </script>
 </body>
 </html>
+
+<style>
+/* Ajuste 25/05/2026: responsivo do card de detalhes no mobile
+   Evita que a capa invada o espaço do título/autor em telas pequenas. */
+@media (max-width: 520px) {
+  .book-view-card {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+    gap: 16px !important;
+    align-items: center !important;
+    padding: 14px !important;
+  }
+
+  .book-view-cover {
+    width: 92px !important;
+    max-width: 92px !important;
+    min-width: 92px !important;
+    justify-self: start !important;
+    align-self: center !important;
+  }
+
+  .book-view-cover img {
+    width: 92px !important;
+    max-width: 92px !important;
+    height: auto !important;
+  }
+
+  .book-view-main {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    padding-left: 2px !important;
+  }
+
+  .book-view-title {
+    font-size: 24px !important;
+    line-height: 1.02 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .book-view-author {
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .book-view-card {
+    grid-template-columns: 82px minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .book-view-cover,
+  .book-view-cover img {
+    width: 82px !important;
+    max-width: 82px !important;
+    min-width: 82px !important;
+  }
+
+  .book-view-title {
+    font-size: 22px !important;
+  }
+}
+</style>
