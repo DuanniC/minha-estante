@@ -4587,7 +4587,7 @@ create policy "acesso total genres" on genres
     <div class="modal-handle"></div>
     <div class="modal-head">
       <h2 class="modal-title"><em>Salvar</em> sessão</h2>
-      <button class="modal-close" onclick="closeSaveSession()">×</button>
+      <button class="modal-close" onclick="discardSession()">×</button>
     </div>
     <p class="modal-sub" id="saveSessionBook"></p>
     
@@ -4602,7 +4602,7 @@ create policy "acesso total genres" on genres
     </div>
     
     <button class="form-btn" onclick="saveSession(false)">Salvar sessão ✦</button>
-    <button class="form-btn danger" onclick="discardSession()" style="margin-top: 10px;">Desistir (não salvar)</button>
+    <button class="form-btn danger" onclick="closeSaveSession()" style="margin-top: 10px;">Voltar à sessão</button>
   </div>
 </div>
 
@@ -7657,6 +7657,22 @@ function openSaveSession() {
 
 function closeSaveSession() {
   document.getElementById("saveSessionModal").classList.remove("open");
+  // Se ainda há sessão pendente (usuário clicou "Voltar à sessão"), reabre o timer
+  if (pendingSession && timerState) {
+    // Retoma o timer: desconta o tempo que ficou parado no modal
+    if (timerState.pausedAt) {
+      timerState.startedAt = Date.now();
+      timerState.pausedAt = null;
+      saveTimerState();
+    }
+    updatePauseButton();
+    if (!timerInterval) {
+      timerInterval = setInterval(updateTimerDisplay, 500);
+    }
+    updateTimerDisplay();
+    document.getElementById("timerOverlay").classList.add("open");
+    lockPageBehindModal();
+  }
 }
 
 async function saveSession(markAsRead) {
@@ -7862,9 +7878,7 @@ function closeSessionResult() {
   unlockPageBehindModal();
 }
 
-document.getElementById("saveSessionModal").addEventListener("click", (e) => {
-  if (e.target.id === "saveSessionModal") closeSaveSession();
-});
+// saveSessionModal: clique no backdrop NÃO fecha — só o ✕ ou "Salvar sessão"
 document.getElementById("sessionResultModal").addEventListener("click", (e) => {
   if (e.target.id === "sessionResultModal") closeSessionResult();
 });
