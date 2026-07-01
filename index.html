@@ -8930,6 +8930,7 @@ function confirmDeleteFromEdit() {
   deleteBookFromDb(idToDelete);
 
   closeEditModal();
+  closeBookViewModal(); // garante que nenhum modal fique mostrando o livro removido
   if (currentGenre) { renderWheel(currentGenre); renderBookList(currentGenre); updateModalSub(); }
   renderAll();
 }
@@ -8977,12 +8978,24 @@ function deleteBook(id) {
   const book = getBookById(id);
   if (!book) return;
   if (!confirm(`Remover "${book.t}" da estante? Essa ação não tem volta.`)) return;
-  state.books = state.books.filter(b => b.id !== id);
+
+  // 1) Remove instantaneamente da tela todos os cards/itens desse livro
+  //    (aba Todos, modal de gênero, favoritos, etc). Comparação frouxa para
+  //    cobrir id number vs string.
+  document.querySelectorAll(`[data-book-id="${id}"]`).forEach(el => el.remove());
+
+  // 2) Atualiza o estado local (comparação frouxa por segurança de tipo)
+  state.books = state.books.filter(b => b.id != id);
   saveState();
+
+  // 3) Fecha qualquer modal que ainda esteja mostrando o livro
+  closeBookViewModal();
+
+  // 4) Persiste no banco (sem bloquear a UI)
   deleteBookFromDb(id);
-  
-  if (currentGenre) { renderWheel(currentGenre); renderBookList(currentGenre); updateModalSub(); }
-  renderAll();
+
+  // 5) Re-renderiza tudo (aba Todos, modal de gênero se aberto, stats, filtros)
+  refreshAfterBookChange();
 }
 
 // ============ HERO TEXT POR ABA ============
@@ -9789,7 +9802,25 @@ async function addBook() {
   
   if (!title) { alert("Coloca o título ✦"); return; }
   if (!author) { alert("Coloca o autor ✦"); return; }
-  
+
+  // Aviso de duplicado: compara título + autor normalizados (sem acento,
+  // sem case, sem espaços extras) contra os livros já existentes.
+  const normalize = (s) => s
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim().replace(/\s+/g, " ");
+  const normTitle = normalize(title);
+  const normAuthor = normalize(author);
+  const duplicate = state.books.find(b =>
+    normalize(b.t) === normTitle && normalize(b.a) === normAuthor
+  );
+  if (duplicate) {
+    const statusLabel = { pendente: "pendente", reading: "lendo", lido: "lido", abandoned: "abandonado" };
+    const ok = confirm(
+      `Você já tem "${duplicate.t}" de ${duplicate.a} na estante (${statusLabel[duplicate.status] || duplicate.status}).\n\nAdicionar mesmo assim?`
+    );
+    if (!ok) return;
+  }
+
   if (!state.nextId) state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
   
   const newBook = {
