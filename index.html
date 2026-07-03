@@ -5692,6 +5692,19 @@ const CORS_PROXIES = [
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
+
+// Proxies especializados em páginas com anti-bot (Amazon, etc).
+// r.jina.ai devolve markdown limpo em vez de HTML — muito mais confiável pra
+// extrair ASIN/título/autor/páginas de páginas Amazon que bloqueiam scraping.
+// Ordem: jina primeiro (best-in-class pra Amazon), depois os genéricos.
+const AMAZON_PROXIES = [
+  url => `https://r.jina.ai/${url}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
 ];
 
 function fetchWithTimeout(url, opts, timeoutMs) {
@@ -9193,33 +9206,38 @@ async function resolveAmazonShortLink(shortUrl) {
   // Garante https://
   if (!/^https?:\/\//i.test(shortUrl)) shortUrl = 'https://' + shortUrl;
 
-  let html = '';
-  for (const makeProxyUrl of CORS_PROXIES) {
+  let content = '';
+  for (const makeProxyUrl of AMAZON_PROXIES) {
     try {
-      const resp = await fetchWithTimeout(makeProxyUrl(shortUrl), {}, 10000);
+      const resp = await fetchWithTimeout(makeProxyUrl(shortUrl), {}, 12000);
       if (resp.ok) {
-        html = await resp.text();
-        if (html && html.length > 500) break;
+        content = await resp.text();
+        if (content && content.length > 300) break;
       }
     } catch(e) { /* tenta próximo proxy */ }
   }
-  if (!html) return { url: null, asin: null };
+  if (!content) return { url: null, asin: null };
 
-  // 1. Tenta extrair URL canônica (presente em <link rel="canonical">, og:url, etc.)
+  // 1. URL canônica em <link rel="canonical"> ou og:url (HTML) OU
+  //    em qualquer URL amazon.* dentro do markdown do jina.
   const canonicalPatterns = [
     /<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i,
     /<meta\s+property=["']og:url["']\s+content=["']([^"']+)["']/i,
     /<meta\s+name=["']url["']\s+content=["']([^"']+)["']/i,
+    // Jina retorna "URL Source: https://www.amazon.com.br/..." no topo do markdown
+    /URL Source:\s*(https?:\/\/[^\s]*amazon\.[^\s]+)/i,
+    // Qualquer link Amazon com /dp/ASIN
+    /(https?:\/\/[^\s"'<>]*amazon\.[a-z.]+\/[^\s"'<>]*\/dp\/[A-Z0-9]{10}[^\s"'<>]*)/i,
   ];
   for (const pat of canonicalPatterns) {
-    const m = html.match(pat);
+    const m = content.match(pat);
     if (m && m[1] && /amazon\./i.test(m[1])) {
-      return { url: m[1], asin: extractAsinFromAny(m[1]) || extractAsinFromAny(html) };
+      return { url: m[1], asin: extractAsinFromAny(m[1]) || extractAsinFromAny(content) };
     }
   }
 
-  // 2. Tenta extrair só o ASIN diretamente do HTML como fallback
-  const asin = extractAsinFromAny(html);
+  // 2. Fallback: só o ASIN
+  const asin = extractAsinFromAny(content);
   if (asin) return { url: null, asin };
 
   return { url: null, asin: null };
@@ -9244,9 +9262,20 @@ function extractAsinFromAny(text) {
 
 // Extrai ASIN (pode ser ISBN-10), título e autor da URL da Amazon
 function parseAmazonUrl(url) {
-  // ASIN: /dp/XXXXXXXXXX ou /gp/product/XXXXXXXXXX
-  const asinMatch = url.match(/(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
-  const asin = asinMatch ? asinMatch[1] : null;
+  // ASIN: cobre TODOS os formatos que a Amazon usa:
+  //  /dp/ASIN, /gp/product/ASIN, /gp/aw/d/ASIN (mobile), /gp/aw/product/ASIN,
+  //  /exec/obidos/asin/ASIN, /product/ASIN, ?asin=ASIN, /o/ASIN
+  const asinPatterns = [
+    /(?:\/dp\/|\/gp\/product\/|\/gp\/aw\/d\/|\/gp\/aw\/product\/|\/exec\/obidos\/asin\/|\/product\/|\/o\/)([A-Z0-9]{10})(?:[\/?#]|$)/i,
+    /[?&]asin=([A-Z0-9]{10})/i,
+    // Último recurso: qualquer segmento /XXXXXXXXXX/ que "cheire a ASIN" (10 chars, começa com dígito ou letra B)
+    /\/([B0-9][A-Z0-9]{9})(?:[\/?#]|$)/,
+  ];
+  let asin = null;
+  for (const pat of asinPatterns) {
+    const m = url.match(pat);
+    if (m) { asin = m[1].toUpperCase(); break; }
+  }
 
   // Slug do título: aceita 3 formatos de URL da Amazon:
   //   .../titulo-do-livro/dp/ASIN/...    (formato clássico)
@@ -9396,7 +9425,7 @@ async function fetchFromAmazon() {
 
   // Se for shortener do app, resolve o redirect primeiro pra obter URL completa + ASIN
   if (isShortLink) {
-    statusEl.textContent = "Verificando link...";
+    statusEl.textContent = "Resolvendo link curto...";
     const resolved = await resolveAmazonShortLink(url);
     if (resolved.url) {
       url = resolved.url;
@@ -9407,7 +9436,7 @@ async function fetchFromAmazon() {
       url = `https://www.amazon.com.br/dp/${resolved.asin}`;
       urlInput.value = url;
     } else {
-      statusEl.textContent = "Não consegui resolver esse link curto. Cola o link completo ✦";
+      statusEl.textContent = "Link curto não resolveu — tenta colar o link completo (amazon.com.br/...) ✦";
       statusEl.className = "amazon-status err";
       btn.disabled = false;
       return;
@@ -9417,13 +9446,13 @@ async function fetchFromAmazon() {
   const { asin, titleFromSlug, authorFromSlug } = parseAmazonUrl(url);
 
   if (!asin && !titleFromSlug) {
-    statusEl.textContent = "Não consegui identificar o livro nessa URL ✦";
+    statusEl.textContent = "URL sem ASIN válido. Copie a URL da página do livro na Amazon ✦";
     statusEl.className = "amazon-status err";
     btn.disabled = false;
     return;
   }
 
-  statusEl.textContent = "Buscando título, autor, gênero e páginas";
+  statusEl.textContent = "Buscando dados nas fontes (pode levar alguns segundos)...";
 
   let best = null; // { title, authors, pageCount, imageLinks, categories }
 
@@ -9603,7 +9632,7 @@ async function fetchFromAmazon() {
       }
       statusEl.className = "amazon-status ok";
     } else {
-      statusEl.textContent = "Não encontrei dados. Preenche manualmente ✦";
+      statusEl.textContent = "Não achei os dados — preenche manualmente ✦";
       statusEl.className = "amazon-status err";
     }
   }
@@ -9633,18 +9662,77 @@ function setFieldNoAutocomplete(id, value) {
 // Faz scraping da página da Amazon via proxy CORS pra extrair páginas/gênero
 async function scrapeAmazonPage(url) {
   let html = '';
-  for (const makeProxyUrl of CORS_PROXIES) {
+  let isMarkdown = false;
+  for (const makeProxyUrl of AMAZON_PROXIES) {
     try {
-      const resp = await fetchWithTimeout(makeProxyUrl(url), {}, 9000);
+      const proxyUrl = makeProxyUrl(url);
+      const resp = await fetchWithTimeout(proxyUrl, {}, 12000);
       if (resp.ok) {
         html = await resp.text();
-        if (html && html.length > 1000) break;
+        if (html && html.length > 500) {
+          isMarkdown = proxyUrl.includes('r.jina.ai');
+          break;
+        }
       }
     } catch(e) { /* tenta próximo */ }
   }
   if (!html) return null;
 
   const result = { _source: 'amazon-scrape' };
+
+  // Se veio markdown do jina, extrai título/autor/páginas com padrões dedicados
+  if (isMarkdown) {
+    // Título: primeira linha "# ..." ou "Title: ..." no cabeçalho do jina
+    const mdTitle = html.match(/^Title:\s*(.+)$/mi) || html.match(/^#\s+(.+)$/m);
+    if (mdTitle) {
+      let t = mdTitle[1].trim();
+      t = t.split(/\s*[:|]\s*Amazon/i)[0].trim();
+      // Remove sufixos comuns em títulos de produto Amazon
+      t = t.replace(/\s*[-–]\s*eBook\s*Kindle.*$/i, '')
+           .replace(/\s*\(?Edi[cç][aã]o em (?:Portugu[eê]s|Ingl[eê]s)\)?.*$/i, '')
+           .replace(/\s*[-–]\s*(?:Capa comum|Capa dura).*$/i, '');
+      if (t) result.title = t;
+    }
+    // Autor: em markdown, jina normalmente devolve "por [Nome do Autor](link) (Autor)"
+    // ou linha "por Nome do Autor (Autor)". Tentamos várias formas e SEMPRE
+    // removemos "por"/"by" e "(Autor)" na sanitização final.
+    let authorRaw = '';
+    let am;
+    if ((am = html.match(/\bpor\s+\[([^\]]+)\]/i))) authorRaw = am[1];
+    else if ((am = html.match(/\bby\s+\[([^\]]+)\]/i))) authorRaw = am[1];
+    else if ((am = html.match(/(?:^|\n)\s*(?:por|by)\s+([^\n(\[]{2,80}?)\s*(?:\(Autor|\(Author|\n|$)/i))) authorRaw = am[1];
+    else if ((am = html.match(/\[([^\]]{3,60})\]\([^)]*\)\s*\(Autor\)/i))) authorRaw = am[1];
+    if (authorRaw) {
+      const cleaned = cleanAuthorString(authorRaw);
+      if (cleaned) result.authors = [cleaned];
+    }
+    // Páginas — EXIGE o número (não pode ser só o label "Número de páginas")
+    // A ordem importa: primeiro os padrões mais específicos.
+    let mdPages = html.match(/N[úu]mero de p[áa]ginas[\s\S]{0,120}?\b(\d{2,4})\b/i)
+      || html.match(/Print length[\s\S]{0,80}?\b(\d{2,4})\s*pages/i)
+      || html.match(/\b(\d{2,4})\s*p[áa]ginas\b/i)
+      || html.match(/"numberOfPages"\s*:\s*"?(\d{2,4})"?/i);
+    if (mdPages) {
+      const n = parseInt(mdPages[1], 10);
+      if (Number.isFinite(n) && n >= 20 && n <= 5000) result.pageCount = n;
+    }
+    // Categorias — extrai TODAS as ocorrências de "Nº X em NOME" no bloco
+    // "Ranking dos mais vendidos" / "Best Sellers Rank". Cada match é uma categoria.
+    const cats = [];
+    const rankRe = /N[ºo°]?\s*\d+\s+em\s+([A-Za-zÀ-ú][^\n(<]{2,80}?)(?=\s*(?:\(|\n|$|N[ºo°]))/gi;
+    let cm;
+    while ((cm = rankRe.exec(html)) !== null) {
+      const c = cm[1].trim().replace(/[.,;]+$/, '');
+      // Descarta "Livros" (categoria raiz, muito genérica)
+      if (c && !/^livros$/i.test(c) && c.length < 80) cats.push(c);
+    }
+    if (cats.length) result.categories = cats;
+    // Capa: primeira imagem amazon que apareça no markdown
+    const mdImg = html.match(/https?:\/\/[^\s)\]"']*images[-\w.]*amazon[^\s)\]"']*\.(?:jpg|png|jpeg)/i);
+    if (mdImg) result.imageLinks = { thumbnail: mdImg[0] };
+    if (result.title || result.pageCount || result.categories?.length) return result;
+    // Se não achou nada útil no markdown, cai pro parser de HTML abaixo (às vezes jina devolve HTML)
+  }
 
   // Título — meta og:title é confiável
   const titleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i)
@@ -9749,6 +9837,27 @@ async function scrapeAmazonPage(url) {
   return null;
 }
 
+// Remove ruído comum em nomes de autor extraídos de páginas Amazon:
+// prefixos "por "/"by ", sufixos "(Autor)"/"(Author)", markdown [Nome](link),
+// bylines com múltiplos autores, papéis (Tradutor, Ilustrador) etc.
+function cleanAuthorString(raw) {
+  if (!raw) return '';
+  let a = String(raw).trim();
+  // Remove markdown de link: [Nome](url) → Nome
+  a = a.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+  // Remove prefixos "por " / "by "
+  a = a.replace(/^\s*(?:por|by)\s+/i, '');
+  // Remove sufixos "(Autor)" / "(Author)" / "(Autora)" e qualquer coisa depois
+  a = a.replace(/\s*\((?:Autor|Autora|Author)[^)]*\).*$/i, '');
+  // Remove ", (Tradutor)" / ", (Ilustrador)" etc — mantém só o primeiro nome
+  a = a.split(/\s*,\s*/)[0];
+  // Remove sobras: aspas, colchetes, ponto final
+  a = a.replace(/^["'\[\(\s]+|["'\]\)\s.]+$/g, '');
+  // Colapsa espaços
+  a = a.replace(/\s+/g, ' ').trim();
+  return a;
+}
+
 function applyAmazonResult(info, asin) {
   const titleEl = document.getElementById("newTitle");
   const authorEl = document.getElementById("newAuthor");
@@ -9758,11 +9867,18 @@ function applyAmazonResult(info, asin) {
     setFieldNoAutocomplete("newTitle", info.title);
   }
   const authors = info.authors || [];
-  if (authors.length > 0) authorEl.value = authors[0];
-  // Páginas: valida intervalo plausível para um livro (>= 20, <= 5000)
-  // Evita salvar valores ruins (1, 0, 9999) que algumas APIs/scrapers retornam
-  if (info.pageCount && info.pageCount >= 20 && info.pageCount <= 5000) {
-    pagesEl.value = info.pageCount;
+  if (authors.length > 0) {
+    // Sanitiza defensivamente — remove "por"/"by"/"(Autor)" mesmo que
+    // a fonte já tenha limpado, pra garantir dados consistentes
+    const clean = cleanAuthorString(authors[0]);
+    if (clean) authorEl.value = clean;
+  }
+  // Páginas: aceita só inteiro no intervalo plausível de um livro
+  const pagesNum = typeof info.pageCount === 'number'
+    ? info.pageCount
+    : parseInt(String(info.pageCount || '').match(/\d+/)?.[0] || '', 10);
+  if (Number.isFinite(pagesNum) && pagesNum >= 20 && pagesNum <= 5000) {
+    pagesEl.value = pagesNum;
   }
 
   guessGenreFromSubjects(info.categories || []);
