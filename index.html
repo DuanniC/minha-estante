@@ -8496,13 +8496,24 @@ async function renderSessionsList(bookId, containerId = "sessionsListContainer",
         : '';
       
       if (readOnly) {
-        html += `<div class="session-item day-row">
-          <span class="sess-date">
-            <span class="sess-date-main">${dateStr}${count > 1 ? `<span class="sess-count">${count} sessões</span>` : ''}</span>
-            ${pagesStr || pagesReadStr ? `<span class="sess-date-meta">${pagesStr ? `<span class="sess-pages-range">pág. ${pagesStr}</span>` : ''}${pagesReadStr ? ` · ${pagesReadStr}` : ''}</span>` : ''}
-          </span>
-          <span class="sess-time">${timeStr}</span>
-        </div>`;
+        if (count > 1) {
+          html += `<div class="session-item day-row" onclick="openSessionsDayModal(${bookId}, '${dayKey}', true)">
+            <span class="sess-date">
+              <span class="sess-date-main">${dateStr}<span class="sess-count">${count} sessões</span></span>
+              ${pagesStr || pagesReadStr ? `<span class="sess-date-meta">${pagesStr ? `<span class="sess-pages-range">pág. ${pagesStr}</span>` : ''}${pagesReadStr ? ` · ${pagesReadStr}` : ''}</span>` : ''}
+            </span>
+            <span class="sess-time">${timeStr}</span>
+            <span class="sess-chevron">›</span>
+          </div>`;
+        } else {
+          html += `<div class="session-item day-row">
+            <span class="sess-date">
+              <span class="sess-date-main">${dateStr}</span>
+              ${pagesStr || pagesReadStr ? `<span class="sess-date-meta">${pagesStr ? `<span class="sess-pages-range">pág. ${pagesStr}</span>` : ''}${pagesReadStr ? ` · ${pagesReadStr}` : ''}</span>` : ''}
+            </span>
+            <span class="sess-time">${timeStr}</span>
+          </div>`;
+        }
       } else {
         // Sempre clicável (mesmo com 1 sessão, pra editar/excluir)
         html += `<div class="session-item day-row" onclick="openSessionsDayModal(${bookId}, '${dayKey}')">
@@ -8520,7 +8531,7 @@ async function renderSessionsList(bookId, containerId = "sessionsListContainer",
   } catch(e) { console.error(e); }
 }
 
-function openSessionsDayModal(bookId, dayKey) {
+function openSessionsDayModal(bookId, dayKey, readOnly = false) {
   const sessions = (sessionsCache[bookId] || []).filter(s => {
     const d = new Date(s.started_at);
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -8552,10 +8563,10 @@ function openSessionsDayModal(bookId, dayKey) {
     html += `<div class="session-item">
       <span class="sess-date">${timeOfDay}${pagesStr ? ` · ${pagesStr}` : ''}</span>
       <span class="sess-time">${duration}</span>
-      <div class="sess-actions">
+      ${readOnly ? '' : `<div class="sess-actions">
         <button class="sess-btn" onclick="editSessionFromDay(${s.id}, ${s.duration_seconds}, ${s.page_start ?? 'null'}, ${s.page_end ?? 'null'}, ${bookId}, '${dayKey}')" aria-label="Editar">✎</button>
         <button class="sess-btn del" onclick="deleteSessionFromDay(${s.id}, ${bookId}, '${dayKey}')" aria-label="Excluir">✕</button>
-      </div>
+      </div>`}
     </div>`;
   });
   html += '</div>';
