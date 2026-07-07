@@ -4117,7 +4117,7 @@ create policy "acesso total genres" on genres
       <button onclick="openAddBook()">✦ Adicionar livro</button>
       
       <button onclick="openProfileModal()">☺ Meu Perfil</button>
-      <button onclick="openGenresModal()">✿ Gerenciar gêneros</button>
+      <button onclick="openGenresModal()">⚙ Configurações</button>
       <button onclick="forceSync()">↻ Sincronizar agora</button>
       <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
       <button class="logout-btn-masc" onclick="doLogout()" style="color:#c97b72;">⏻ Sair da conta</button>
@@ -4526,17 +4526,22 @@ create policy "acesso total genres" on genres
   </div>
 </div>
 
-<!-- MODAL GERENCIAR GÊNEROS -->
+<!-- MODAL CONFIGURAÇÕES -->
 <div class="modal-backdrop" id="genresModal">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-head">
-      <h2 class="modal-title"><em>Gerenciar</em> gêneros</h2>
+      <h2 class="modal-title"><em>Configu</em>rações</h2>
       <button class="modal-close" onclick="closeGenresModal()">×</button>
     </div>
-    <p class="modal-sub">Perfil, gêneros literários e mais ✦</p>
+    <p class="modal-sub">Perfil, gêneros, sequências e mais ✦</p>
     
     <div id="genresList"></div>
+
+    <div style="border-top: 1px solid var(--cream-dark); padding-top: 20px; margin-top: 20px;">
+      <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">suas sequências</div>
+      <div id="sequencesList"></div>
+    </div>
     
     <div class="profile-section">
       <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">meu perfil</div>
@@ -10388,6 +10393,7 @@ async function loadGenresFromDb() {
 function openGenresModal() {
   closeMenu();
   renderGenresList();
+  renderSequencesList();
   renderColorPicker();
   document.getElementById("newGenreEmoji").value = "";
   document.getElementById("newGenreName").value = "";
@@ -10485,6 +10491,121 @@ async function saveEditGenre(id) {
   
   renderGenresList();
   renderAll();
+}
+
+// ============ GERENCIAR SEQUÊNCIAS (dentro de Configurações) ============
+const SEQUENCE_TYPE_LABELS = { duologia: 'Duologia', trilogia: 'Trilogia', saga: 'Saga' };
+const SEQUENCE_TYPE_EMOJI = { duologia: '📖', trilogia: '📚', saga: '✦' };
+
+function getAllSequenceGroups() {
+  const groups = {};
+  (state.books || []).forEach(book => {
+    const type = String(book.seriesType || 'unico').toLowerCase();
+    if (!type || type === 'unico') return;
+    const name = (book.seriesName || book.t || '').trim();
+    if (!name) return;
+    const key = `${type}::${name.toLowerCase()}`;
+    if (!groups[key]) groups[key] = { type, name, count: 0 };
+    groups[key].count++;
+  });
+  return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+function renderSequencesList() {
+  const container = document.getElementById("sequencesList");
+  if (!container) return;
+
+  const list = getAllSequenceGroups();
+  window._seqGroupsCache = list;
+
+  if (list.length === 0) {
+    container.innerHTML = `<p style="font-size:13px; color:var(--ink-soft); margin-bottom:4px;">Você ainda não criou nenhuma sequência ✦</p>`;
+    return;
+  }
+
+  let html = "";
+  list.forEach((s, i) => {
+    html += `<div class="genre-list-item" id="sqli-${i}">
+      <div class="genre-list-emoji">${SEQUENCE_TYPE_EMOJI[s.type] || '📖'}</div>
+      <div class="genre-list-info">
+        <div class="genre-list-name">${escapeHtml(s.name)}</div>
+        <div class="genre-list-meta">${SEQUENCE_TYPE_LABELS[s.type] || s.type} · ${s.count} livro${s.count !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="genre-list-actions">
+        <button class="sess-btn" onclick="openEditSequence(${i})" aria-label="Editar" title="Editar">✏</button>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function openEditSequence(i) {
+  const s = window._seqGroupsCache && window._seqGroupsCache[i];
+  if (!s) { alert("Não achei essa sequência (tenta fechar e abrir Configurações de novo) ✦"); return; }
+  const item = document.getElementById(`sqli-${i}`);
+  if (!item) { alert("Erro interno: item da lista não encontrado ✦"); return; }
+
+  item.innerHTML = `
+    <div style="display:flex; gap:8px; flex:1; flex-wrap:wrap; align-items:flex-end;">
+      <div style="flex:1; min-width:140px;">
+        <div style="font-size:11px; color:var(--ink-soft); margin-bottom:3px;">Nome da sequência (${SEQUENCE_TYPE_LABELS[s.type] || s.type})</div>
+        <input type="text" value="${escapeHtml(s.name).replace(/"/g, '&quot;')}" id="sqi-name-${i}"
+          style="width:100%; padding:6px 10px; border:1.5px solid var(--cream-dark); border-radius:8px; background:var(--cream); font-family:inherit; font-size:14px;">
+      </div>
+      <div style="display:flex; gap:6px; margin-top:4px;">
+        <button class="sess-btn" onclick="saveEditSequence(${i})" style="background:var(--ink);color:var(--cream);">✓</button>
+        <button class="sess-btn" onclick="renderSequencesList()">✕</button>
+      </div>
+    </div>
+  `;
+  const input = document.getElementById(`sqi-name-${i}`);
+  if (input) {
+    input.focus();
+    input.select();
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") { ev.preventDefault(); saveEditSequence(i); }
+      if (ev.key === "Escape") { ev.preventDefault(); renderSequencesList(); }
+    });
+  }
+}
+
+async function saveEditSequence(i) {
+  try {
+    const s = window._seqGroupsCache && window._seqGroupsCache[i];
+    if (!s) { alert("Não achei essa sequência (tenta fechar e abrir Configurações de novo) ✦"); return; }
+    const input = document.getElementById(`sqi-name-${i}`);
+    if (!input) { alert("Erro interno: campo de nome não encontrado ✦"); return; }
+    const newName = input.value.trim();
+
+    if (!newName) { alert("O nome não pode ficar vazio ✦"); return; }
+    if (newName === s.name) { renderSequencesList(); return; }
+
+    // Encontra todos os livros dessa sequência (mesmo tipo + mesmo nome) e renomeia
+    const affected = (state.books || []).filter(book => {
+      const type = String(book.seriesType || 'unico').toLowerCase();
+      const name = (book.seriesName || book.t || '').trim();
+      return type === s.type && name.toLowerCase() === s.name.toLowerCase();
+    });
+
+    if (affected.length === 0) {
+      alert("Não encontrei nenhum livro nessa sequência pra atualizar ✦");
+      renderSequencesList();
+      return;
+    }
+
+    affected.forEach(book => { book.seriesName = newName; });
+
+    saveState();
+    renderSequencesList();
+    renderAll();
+
+    for (const book of affected) {
+      try { await pushBook(book); } catch (e) { console.error("Erro ao sincronizar livro", book.id, e); }
+    }
+  } catch (err) {
+    console.error("Erro ao salvar sequência:", err);
+    alert("Deu erro ao salvar: " + (err && err.message ? err.message : err));
+  }
 }
 
 let selectedColor = null;
