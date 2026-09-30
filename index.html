@@ -13356,8 +13356,8 @@ create policy "usuario ve sua wishlist" on wishlist
   }
   async function push(w) {
     if (!syncOn()) return;
-    try { await supabaseFetch('wishlist', { method: 'POST', body: JSON.stringify(toDb(w)), headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' } }); wlMissing = false; }
-    catch (e) { onErr(e); }
+    try { await supabaseFetch('wishlist', { method: 'POST', body: JSON.stringify(toDb(w)), headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' } }); wlMissing = false; return true; }
+    catch (e) { onErr(e); try { setSyncStatus('error', '⚠ erro ao salvar wishlist'); } catch (_) {} return false; }
   }
   async function remove(id) {
     if (!syncOn()) return;
@@ -13367,7 +13367,22 @@ create policy "usuario ve sua wishlist" on wishlist
     if (!syncOn() || !navigator.onLine) return;
     try {
       const rows = await supabaseFetch(`wishlist?user_id=eq.${encodeURIComponent(currentUser.id)}&select=*&order=id`);
-      if (Array.isArray(rows)) { state.wishlist = rows.map(fromDb); wlMissing = false; saveState(); }
+      if (Array.isArray(rows)) {
+        const server = rows.map(fromDb);
+        wlMissing = false;
+        if (!state.wishlistSynced) {
+          // 1ª vez: o que já estava salvo só neste aparelho sobe pro banco em vez de ser apagado
+          const ids = new Set(server.map(w => w.id));
+          const localOnly = list().filter(w => !ids.has(w.id));
+          state.wishlist = server.concat(localOnly);
+          let ok = true;
+          for (const w of localOnly) { if (!(await push(w))) ok = false; }
+          if (ok) state.wishlistSynced = true;
+        } else {
+          state.wishlist = server;
+        }
+        saveState();
+      }
     } catch (e) { onErr(e); }
     if (state.filter === 'wishlist') renderWishlist();
   }
@@ -13458,7 +13473,7 @@ create policy "usuario ve sua wishlist" on wishlist
     if (total && released > total) { alert('Os lançados não podem passar do total ✦'); return; }
     let w, wasDone = false;
     if (window.wlEditId) { w = find(window.wlEditId); wasDone = isDone(w); Object.assign(w, { t, a, g, total, released }); }
-    else { w = { id: Math.max(0, ...list().map(x => x.id || 0)) + 1, t, a, g, total, released }; list().push(w); }
+    else { w = { id: Date.now(), t, a, g, total, released }; list().push(w); }
     closeWl();
     afterChange(w, wasDone);
   };
