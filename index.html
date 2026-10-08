@@ -14,6 +14,36 @@
       document.head.appendChild(m);
     } catch (e) {}
   };
+
+  // ===== Temas de cor (8 paletas: 4 femininas, 4 masculinas; 2 pastéis + 2 quentes cada) =====
+  window.ESTANTE_THEMES = {
+    rosa     : {n:"Rosa",     g:"feminino",  rose:"#f7bfd2", deep:"#e0709b", dark:"#c4578a", rgb:"224,112,155", bgTop:"#f6e2f6", bgMid:"#fbf1fb", glowA:"rgba(247,191,210,.7)",  glowB:"rgba(207,190,245,.6)",  hdr:"246,226,246", card:"rgba(247,191,210,.55)", tmTop:"#403878", tmBot:"#2a2457", tmA:"rgba(224,112,155,.38)", tmB:"rgba(150,130,230,.28)", ink:true},
+    azul     : {n:"Azul",     g:"masculino", rose:"#b4cdf5", deep:"#5b80d4", dark:"#4560b8", rgb:"91,128,212",  bgTop:"#dfe8fa", bgMid:"#eef3fc", glowA:"rgba(160,196,245,.6)",  glowB:"rgba(196,210,250,.55)", hdr:"223,232,250", card:"rgba(180,205,245,.6)",  tmTop:"#2f4585", tmBot:"#1b2a5c", tmA:"rgba(106,143,224,.45)", tmB:"rgba(120,160,240,.25)"},
+    lavanda  : {n:"Lavanda",  g:"feminino",  rose:"#dccbf5", deep:"#9170d0", dark:"#7352b5", rgb:"145,112,208", bgTop:"#ebe2f8", bgMid:"#f6f1fc", glowA:"rgba(210,190,245,.7)",  glowB:"rgba(240,200,230,.5)",  hdr:"235,226,248", card:"rgba(220,203,245,.6)",  tmTop:"#3d3478", tmBot:"#262058", tmA:"rgba(145,112,208,.42)", tmB:"rgba(224,112,155,.22)"},
+    menta    : {n:"Menta",    g:"masculino", rose:"#bfe3cf", deep:"#4aa077", dark:"#338060", rgb:"74,160,119",  bgTop:"#dff1e7", bgMid:"#eff8f3", glowA:"rgba(170,222,196,.65)", glowB:"rgba(200,230,240,.5)",  hdr:"223,241,231", card:"rgba(191,227,207,.6)",  tmTop:"#1f4a3e", tmBot:"#123228", tmA:"rgba(74,160,119,.42)",  tmB:"rgba(110,190,200,.22)"},
+    orquidea : {n:"Orquídea", g:"feminino",  rose:"#e8c4ee", deep:"#b866c4", dark:"#9a48a8", rgb:"184,102,196", bgTop:"#f3e0f6", bgMid:"#faf1fc", glowA:"rgba(232,190,240,.7)",  glowB:"rgba(250,200,225,.5)",  hdr:"243,224,246", card:"rgba(232,196,238,.6)",  tmTop:"#45286b", tmBot:"#2c1648", tmA:"rgba(184,102,196,.42)", tmB:"rgba(224,112,155,.22)"},
+    turquesa : {n:"Turquesa", g:"masculino", rose:"#b8e6e2", deep:"#339a93", dark:"#247a74", rgb:"51,154,147",  bgTop:"#dcf2f0", bgMid:"#eefaf9", glowA:"rgba(170,226,222,.65)", glowB:"rgba(190,225,245,.5)",  hdr:"220,242,240", card:"rgba(184,230,226,.6)",  tmTop:"#1c4a52", tmBot:"#10303a", tmA:"rgba(51,154,147,.42)",  tmB:"rgba(100,170,230,.22)"},
+    nevoa    : {n:"Névoa",    g:"masculino", rose:"#cbd6e8", deep:"#6d82a8", dark:"#566a8f", rgb:"109,130,168", bgTop:"#e4eaf4", bgMid:"#f3f6fa", glowA:"rgba(190,205,230,.7)",  glowB:"rgba(215,210,240,.5)",  hdr:"228,234,244", card:"rgba(203,214,232,.6)",  tmTop:"#2c3a58", tmBot:"#1a2540", tmA:"rgba(109,130,168,.45)", tmB:"rgba(150,160,230,.22)"},
+    vinho    : {n:"Vinho",    g:"masculino", rose:"#e8b4bf", deep:"#b0455c", dark:"#8e3045", rgb:"176,69,92",   bgTop:"#f3dde2", bgMid:"#faf0f2", glowA:"rgba(225,170,185,.65)", glowB:"rgba(235,195,200,.5)",  hdr:"243,221,226", card:"rgba(232,180,191,.6)",  tmTop:"#4a2234", tmBot:"#2e1220", tmA:"rgba(176,69,92,.45)",   tmB:"rgba(220,130,120,.22)"}
+  };
+  // Aplica as variáveis de cor. Sem tema escolhido, usa o padrão do gênero (rosa / azul).
+  window.applyAppTheme = function (themeId, gender) {
+    try {
+      var T = window.ESTANTE_THEMES;
+      var id = (themeId && T[themeId]) ? themeId : (gender === "masculino" ? "azul" : "rosa");
+      var t = T[id], st = document.documentElement.style;
+      var pattern = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'440\' height=\'520\' viewBox=\'0 0 440 520\' fill=\'none\' stroke=\'%23' + t.deep.slice(1) + '\' stroke-opacity=\'.16\' stroke-width=\'1.2\'%3E%3Cpath d=\'M-20 150C80 60 170 210 270 120S400 40 470 110\'/%3E%3Cpath d=\'M-20 230C90 150 160 290 280 200S410 130 470 190\'/%3E%3C/svg%3E")';
+      var v = {
+        "--rose": t.rose, "--rose-deep": t.deep, "--heart": t.deep, "--accent-dark": t.dark, "--accent-rgb": t.rgb,
+        "--bg-top": t.bgTop, "--bg-mid": t.bgMid, "--glow-a": t.glowA, "--glow-b": t.glowB, "--hdr": t.hdr, "--card-a": t.card,
+        "--tm-top": t.tmTop, "--tm-bot": t.tmBot, "--tm-a": t.tmA, "--tm-b": t.tmB, "--pattern": pattern,
+        "--btn-primary": t.ink ? "var(--ink)" : "linear-gradient(135deg, " + t.deep + ", " + t.dark + ")",
+        "--btn-shadow": t.ink ? "rgba(58,51,102,.30)" : "rgba(" + t.rgb + ",.38)"
+      };
+      for (var k in v) st.setProperty(k, v[k]);
+      window.currentThemeId = id;
+    } catch (e) {}
+  };
   try {
     var g = localStorage.getItem("minha_estante_gender");
     if (!g) {
@@ -24,6 +54,12 @@
       document.documentElement.classList.add("user-masc");
       window.setThemeColor("#ffffff");
     }
+    var th = localStorage.getItem("minha_estante_theme");
+    if (!th) {
+      var sv = JSON.parse(localStorage.getItem("minha_estante_login") || "null");
+      th = sv && sv.user && sv.user.user_metadata && sv.user.user_metadata.theme;
+    }
+    window.applyAppTheme(th, g);
   } catch (e) {}
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -82,6 +118,13 @@
   --butter-deep: #f0b445;
   --sky-deep: #6a8fe0;
   --heart: #e0709b;
+  /* variáveis de tema (padrão Rosa; o JS troca conforme a cor escolhida) */
+  --accent-dark: #c4578a; --accent-rgb: 224,112,155;
+  --glow-a: rgba(247,191,210,.7); --glow-b: rgba(207,190,245,.6);
+  --hdr: 246,226,246; --card-a: rgba(247,191,210,.55);
+  --tm-top: #403878; --tm-bot: #2a2457; --tm-a: rgba(224,112,155,.38); --tm-b: rgba(150,130,230,.28);
+  --btn-primary: var(--ink); --btn-shadow: rgba(58,51,102,.30);
+  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='440' height='520' viewBox='0 0 440 520' fill='none' stroke='%23e0709b' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M-20 150C80 60 170 210 270 120S400 40 470 110'/%3E%3Cpath d='M-20 230C90 150 160 290 280 200S410 130 470 190'/%3E%3C/svg%3E");
 
   --bg-top: #f6e2f6;
   --bg-mid: #fbf1fb;
@@ -97,15 +140,8 @@
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Perfil masculino: rosa vira azul em todo o app */
-html.user-masc, body.user-masc {
-  --rose: #b4cdf5;
-  --rose-deep: #5b80d4;
-  --heart: #5b80d4;
-  --bg-top: #dfe8fa;
-  --bg-mid: #eef3fc;
-}
-body.user-masc .logout-btn-masc { color: #5b80d4 !important; }
+/* Cores do app: definidas por tema (ESTANTE_THEMES no <head>) */
+body.user-masc .logout-btn-masc { color: var(--rose-deep) !important; }
 
 /* ---------- Base ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -122,15 +158,8 @@ html { scroll-behavior: smooth; background: #ffffff; }
 
 body {
   background:
-    radial-gradient(520px 320px at 105% -4%, rgba(247, 191, 210, .65), transparent 70%),
-    radial-gradient(460px 360px at -12% 14%, rgba(207, 190, 245, .55), transparent 70%),
-    linear-gradient(180deg, var(--bg-top) 0, var(--bg-mid) 340px, #fff 100%);
-  background-attachment: fixed;
-}
-body.user-masc {
-  background:
-    radial-gradient(520px 320px at 105% -4%, rgba(160, 196, 245, .6), transparent 70%),
-    radial-gradient(460px 360px at -12% 14%, rgba(196, 210, 250, .55), transparent 70%),
+    radial-gradient(520px 320px at 105% -4%, var(--glow-a), transparent 70%),
+    radial-gradient(460px 360px at -12% 14%, var(--glow-b), transparent 70%),
     linear-gradient(180deg, var(--bg-top) 0, var(--bg-mid) 340px, #fff 100%);
   background-attachment: fixed;
 }
@@ -167,11 +196,10 @@ button { font-family: inherit; }
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  background: linear-gradient(180deg, rgba(246, 226, 246, .92), rgba(246, 226, 246, .72) 70%, rgba(246, 226, 246, 0));
+  background: linear-gradient(180deg, rgba(var(--hdr), .92), rgba(var(--hdr), .72) 70%, rgba(var(--hdr), 0));
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
-body.user-masc .header { background: linear-gradient(180deg, rgba(223, 232, 250, .92), rgba(223, 232, 250, .72) 70%, rgba(223, 232, 250, 0)); }
 
 .logo-mark {
   font-family: var(--font-display);
@@ -297,7 +325,7 @@ body.user-masc .header { background: linear-gradient(180deg, rgba(223, 232, 250,
   max-width: 440px;
 }
 .hero h1 em { font-style: normal; color: var(--rose-deep); }
-.hero h1 em.gender-masc { color: var(--sky-deep); }
+.hero h1 em.gender-masc { color: var(--rose-deep); }
 .hero p { margin-top: 10px; font-size: 14px; line-height: 1.5; color: var(--ink-soft); max-width: 380px; }
 .hero-deco {
   position: absolute; top: 2px; right: 22px;
@@ -352,16 +380,15 @@ body.user-masc .header { background: linear-gradient(180deg, rgba(223, 232, 250,
   bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));
   width: 56px; height: 56px;
   border: 0; border-radius: 50%;
-  background: linear-gradient(135deg, var(--rose-deep), #c4578a);
+  background: linear-gradient(135deg, var(--rose-deep), var(--accent-dark));
   color: #fff;
   font-size: 30px; font-weight: 300; line-height: 1;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  box-shadow: 0 12px 28px rgba(224, 112, 155, .5);
+  box-shadow: 0 12px 28px rgba(var(--accent-rgb), .5);
   z-index: 55;
   transition: transform .2s;
 }
-body.user-masc .fab { background: linear-gradient(135deg, #5b80d4, #4560b8); box-shadow: 0 12px 28px rgba(91, 128, 212, .5); }
 .fab:active { transform: scale(.9); }
 
 /* ---------- Stats / filtros de ano ---------- */
@@ -883,11 +910,10 @@ body.user-masc .fab { background: linear-gradient(135deg, #5b80d4, #4560b8); box
 .book-view-card {
   display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 18px; align-items: center;
   margin: 12px 0 18px; padding: 18px; border-radius: 26px;
-  background: linear-gradient(135deg, rgba(247, 191, 210, .55), rgba(228, 218, 248, .8));
+  background: linear-gradient(135deg, var(--card-a), rgba(228, 218, 248, .8));
   position: relative; overflow: hidden; isolation: isolate;
   box-shadow: var(--shadow-md);
 }
-body.user-masc .book-view-card { background: linear-gradient(135deg, rgba(180, 205, 245, .6), rgba(228, 218, 248, .8)); }
 .book-view-card.has-cover-bg::before {
   content: ''; position: absolute; inset: -42px;
   background-image: var(--book-cover-bg); background-size: cover; background-position: center;
@@ -969,7 +995,7 @@ body.user-masc .book-view-card { background: linear-gradient(135deg, rgba(180, 2
 .timer-overlay {
   position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column;
   padding: calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 34px);
-  background: radial-gradient(600px 400px at 90% -5%, rgba(224, 112, 155, .35), transparent 70%), linear-gradient(180deg, #403878 0%, #2a2457 100%);
+  background: radial-gradient(600px 400px at 90% -5%, var(--tm-a), transparent 70%), linear-gradient(180deg, var(--tm-top) 0%, var(--tm-bot) 100%);
   color: var(--cream); overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 .timer-overlay.open { display: flex; }
@@ -989,7 +1015,7 @@ body.user-masc .book-view-card { background: linear-gradient(135deg, rgba(180, 2
 .timer-btn:active { transform: scale(.97); }
 .timer-btn.primary { background: var(--cream); color: var(--ink); }
 .timer-btn.secondary { background: transparent; color: var(--cream); border: 1.5px solid rgba(255, 250, 253, .5); }
-.timer-btn.done { background: var(--rose-deep); color: #fff; box-shadow: 0 10px 24px rgba(224, 112, 155, .45); }
+.timer-btn.done { background: var(--rose-deep); color: #fff; box-shadow: 0 10px 24px rgba(var(--accent-rgb), .45); }
 .timer-target-setup { background: rgba(255, 255, 255, .1); border-radius: 16px; padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .timer-target-label { font-size: 12px; opacity: .7; flex: 1; }
 .timer-target-input { background: transparent; border: 1.5px solid var(--cream); border-radius: 10px; color: var(--cream); padding: 6px 10px; width: 68px; text-align: center; }
@@ -1025,6 +1051,12 @@ body.user-masc .book-view-card { background: linear-gradient(135deg, rgba(180, 2
 .gender-btn { flex: 1; padding: 12px 8px; border: 2px solid transparent; border-radius: 16px; background: var(--cream-dark); font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .gender-btn.selected-fem { border-color: var(--rose-deep); background: #fdeaf1; color: #c4578a; }
 .gender-btn.selected-masc { border-color: var(--sky-deep); background: #e6eefc; color: #4560b8; }
+.theme-group-label { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--ink-soft); margin: 12px 0 6px; }
+.theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.theme-sw { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 2px 8px; border: 2px solid transparent; border-radius: 16px; background: var(--cream-dark); font: inherit; font-size: 11px; font-weight: 600; color: var(--ink-soft); cursor: pointer; transition: border-color .2s, background .2s; min-width: 0; }
+.theme-sw i { display: block; width: 34px; height: 34px; border-radius: 50%; box-shadow: 0 3px 8px rgba(58,51,102,.18); }
+.theme-sw.on { border-color: var(--ink); background: #fff; color: var(--ink); }
+.theme-reset { display: block; width: 100%; margin-top: 12px; padding: 11px; border: 1.5px solid var(--cream-dark); border-radius: 14px; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
 
 /* ---------- Configurações / gêneros ---------- */
 .genre-list-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; margin-bottom: 8px; background: var(--cream-dark); }
@@ -1135,17 +1167,9 @@ body.user-masc .book-view-card { background: linear-gradient(135deg, rgba(180, 2
 html { background: #f3dff3; }
 body {
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='440' height='520' viewBox='0 0 440 520' fill='none' stroke='%23e0709b' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M-20 150C80 60 170 210 270 120S400 40 470 110'/%3E%3Cpath d='M-20 230C90 150 160 290 280 200S410 130 470 190'/%3E%3C/svg%3E") top center / 440px auto no-repeat,
-    radial-gradient(520px 320px at 105% -4%, rgba(247, 191, 210, .7), transparent 70%),
-    radial-gradient(460px 360px at -12% 14%, rgba(207, 190, 245, .6), transparent 70%),
-    linear-gradient(180deg, var(--bg-top) 0, var(--bg-mid) 340px, #fff 100%);
-  background-attachment: scroll, fixed, fixed, fixed;
-}
-body.user-masc {
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='440' height='520' viewBox='0 0 440 520' fill='none' stroke='%235b80d4' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M-20 150C80 60 170 210 270 120S400 40 470 110'/%3E%3Cpath d='M-20 230C90 150 160 290 280 200S410 130 470 190'/%3E%3C/svg%3E") top center / 440px auto no-repeat,
-    radial-gradient(520px 320px at 105% -4%, rgba(160, 196, 245, .6), transparent 70%),
-    radial-gradient(460px 360px at -12% 14%, rgba(196, 210, 250, .55), transparent 70%),
+    var(--pattern) top center / 440px auto no-repeat,
+    radial-gradient(520px 320px at 105% -4%, var(--glow-a), transparent 70%),
+    radial-gradient(460px 360px at -12% 14%, var(--glow-b), transparent 70%),
     linear-gradient(180deg, var(--bg-top) 0, var(--bg-mid) 340px, #fff 100%);
   background-attachment: scroll, fixed, fixed, fixed;
 }
@@ -1162,7 +1186,7 @@ body.user-masc {
 }
 
 /* Cabeçalho: ícone de app + título numa linha + avatar */
-.header { padding: calc(env(safe-area-inset-top) + 12px) 18px 8px; background: linear-gradient(180deg, rgba(246,226,246,.96), rgba(246,226,246,.8) 75%, rgba(246,226,246,0)); }
+.header { padding: calc(env(safe-area-inset-top) + 12px) 18px 8px; background: linear-gradient(180deg, rgba(var(--hdr),.96), rgba(var(--hdr),.8) 75%, rgba(var(--hdr),0)); }
 .logo-mark { display: flex; align-items: center; gap: 9px; font-size: 18px; font-weight: 700; white-space: nowrap; }
 .logo-mark::after { content: none; }
 .logo-mark::before {
@@ -1354,18 +1378,16 @@ body.user-masc .logo-mark::before { background-color: #fff; }
 .reading-stat span { font-size: 10.5px; color: var(--ink-soft); }
 
 .reading-progress-bar { background: rgba(58,51,102,.10); }
-.reading-progress-fill { background: linear-gradient(90deg, var(--rose-deep), #c4578a); }
-body.user-masc .reading-progress-fill { background: linear-gradient(90deg, #6a8fe0, #4560b8); }
+.reading-progress-fill { background: linear-gradient(90deg, var(--rose-deep), var(--accent-dark)); }
 
 .reading-btn.primary {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  background: var(--ink); color: #fff; box-shadow: 0 10px 22px rgba(58,51,102,.30);
+  background: var(--btn-primary); color: #fff; box-shadow: 0 10px 22px var(--btn-shadow);
 }
 .reading-btn.primary .arrow {
   width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.18);
   display: grid; place-items: center; font-size: 13px;
 }
-body.user-masc .reading-btn.primary { background: linear-gradient(135deg, #5b80d4, #4560b8); box-shadow: 0 10px 22px rgba(69,96,184,.38); }
 
 /* ---- Layout compacto (estilo "Continue Reading") ---- */
 .reading-card.compact {
@@ -1392,15 +1414,9 @@ body.user-masc .reading-btn.primary { background: linear-gradient(135deg, #5b80d
 /* ---- Sessão de leitura v2 ---- */
 .timer-overlay {
   background:
-    radial-gradient(520px 380px at 100% -6%, rgba(224,112,155,.38), transparent 70%),
-    radial-gradient(420px 320px at -10% 105%, rgba(150,130,230,.28), transparent 70%),
-    linear-gradient(180deg, #403878 0%, #2a2457 100%);
-}
-body.user-masc .timer-overlay {
-  background:
-    radial-gradient(520px 380px at 100% -6%, rgba(106,143,224,.45), transparent 70%),
-    radial-gradient(420px 320px at -10% 105%, rgba(120,160,240,.25), transparent 70%),
-    linear-gradient(180deg, #2f4585 0%, #1b2a5c 100%);
+    radial-gradient(520px 380px at 100% -6%, var(--tm-a), transparent 70%),
+    radial-gradient(420px 320px at -10% 105%, var(--tm-b), transparent 70%),
+    linear-gradient(180deg, var(--tm-top) 0%, var(--tm-bot) 100%);
 }
 .timer-header { margin-bottom: 0; }
 .timer-label { font-size: 13px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,.75); }
@@ -1431,8 +1447,7 @@ body.user-masc .timer-overlay {
 .timer-actions-row { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; }
 .timer-btn { border-radius: 20px; padding: 17px 12px; }
 .timer-btn.primary { background: rgba(255,255,255,.95); color: var(--ink); }
-.timer-btn.done { background: linear-gradient(135deg, var(--rose-deep), #c4578a); }
-body.user-masc .timer-btn.done { background: linear-gradient(135deg, #5b80d4, #4560b8); box-shadow: 0 10px 24px rgba(69,96,184,.5); }
+.timer-btn.done { background: linear-gradient(135deg, var(--rose-deep), var(--accent-dark)); box-shadow: 0 10px 24px rgba(var(--accent-rgb), .45); }
 .timer-btn.link { background: transparent; color: rgba(255,255,255,.65); padding: 10px; font-weight: 500; font-size: 13px; }
 
 /* ---- Barras do Safari (iOS 26 pinta com a cor das bordas da página) ----
@@ -2378,6 +2393,11 @@ create policy "usuario ve sua wishlist" on wishlist
           <button type="button" class="gender-btn" id="profileGenderMasc" onclick="selectProfileGender('masculino')">🌊 Masculino</button>
         </div>
       </div>
+      <div class="login-field" style="margin: 16px 0 8px;">
+        <label class="form-label">Cor do app</label>
+        <div id="themePicker"></div>
+        <button type="button" class="theme-reset" onclick="setAppTheme('')">Usar a cor padrão do meu perfil</button>
+      </div>
       <button class="form-btn" onclick="saveProfileGender()" style="margin-top:4px;">Salvar perfil ✦</button></section>
     </div>
     <footer class="settings-footer"><button class="settings-back" onclick="closeGenresModal()"><span aria-hidden="true">←</span> Voltar</button><span>Minha estante ✦</span></footer>
@@ -2679,7 +2699,7 @@ async function saveProfileGender() {
     const resp = await fetch(`${url}/auth/v1/user`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${currentUser.token}` },
-      body: JSON.stringify({ data: { display_name: currentUser.name, gender: _selectedProfileGender } }),
+      body: JSON.stringify({ data: { display_name: currentUser.name, gender: _selectedProfileGender, theme: currentUser.theme || null } }),
     });
     if (!resp.ok) throw new Error("Erro ao salvar");
     currentUser.gender = _selectedProfileGender;
@@ -2697,6 +2717,44 @@ async function saveProfileGender() {
   } catch(e) {
     console.error(e);
     setSyncStatus("error", "⚠ erro ao salvar perfil");
+  }
+}
+
+function renderThemePicker() {
+  const box = document.getElementById("themePicker");
+  if (!box) return;
+  const T = window.ESTANTE_THEMES, cur = window.currentThemeId;
+box.innerHTML = '<div class="theme-grid">' + Object.keys(T).map(k =>
+    '<button type="button" class="theme-sw' + (k === cur ? ' on' : '') + '" aria-pressed="' + (k === cur) + '" onclick="setAppTheme(\'' + k + '\')">' +
+    '<i style="background:linear-gradient(135deg,' + T[k].rose + ',' + T[k].deep + ')"></i>' + T[k].n + '</button>').join('') + '</div>';
+}
+
+// Escolhe a cor do app (id vazio = volta ao padrão do gênero). Aplica na hora e salva na conta.
+async function setAppTheme(id) {
+  if (!currentUser) return;
+  currentUser.theme = id || null;
+  applyGender(currentUser.gender);
+  renderThemePicker();
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOGIN_KEY) || "null");
+    if (saved && saved.user) {
+      saved.user.user_metadata = Object.assign({}, saved.user.user_metadata, { theme: currentUser.theme });
+      localStorage.setItem(LOGIN_KEY, JSON.stringify(saved));
+    }
+  } catch(e) {}
+  const { url, key } = getSupabaseCreds();
+  try {
+    setSyncStatus("syncing", "↻ salvando cor");
+    const resp = await fetch(`${url}/auth/v1/user`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${currentUser.token}` },
+      body: JSON.stringify({ data: { display_name: currentUser.name, gender: currentUser.gender || undefined, theme: currentUser.theme } }),
+    });
+    if (!resp.ok) throw new Error("Erro ao salvar");
+    setSyncStatus("synced", "✦ cor salva");
+  } catch(e) {
+    console.error(e);
+    setSyncStatus("error", "⚠ erro ao salvar a cor");
   }
 }
 
@@ -2830,6 +2888,7 @@ function applySession(authData, options = {}) {
     refresh: authData.refresh_token,
     expiresAt: authData.expires_at || (Math.floor(Date.now() / 1000) + (authData.expires_in || 3600)),
     gender:  gender,
+    theme:   (user.user_metadata && user.user_metadata.theme) || null,
   };
   try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: currentUser.token, refresh: currentUser.refresh, user, expiresAt: currentUser.expiresAt })); } catch(e) {}
 
@@ -2870,7 +2929,11 @@ function applyGender(gender) {
   document.body.classList.toggle("user-masc", isMasc);
   document.documentElement.classList.toggle("user-masc", isMasc);
   window.setThemeColor("#ffffff");
-  
+  // Cor escolhida pelo usuário; sem escolha, vale o padrão do gênero
+  const _th = (typeof currentUser !== "undefined" && currentUser && currentUser.theme) || null;
+  try { if (_th) localStorage.setItem("minha_estante_theme", _th); else localStorage.removeItem("minha_estante_theme"); } catch(e) {}
+  window.applyAppTheme(_th, gender);
+
   const el = document.getElementById("heroWord");
   if (!el) return;
   if (gender === "masculino") {
@@ -2918,7 +2981,8 @@ function doLogout() {
   document.getElementById("userChipName").textContent = "—";
   document.body.classList.remove("user-masc");
   document.documentElement.classList.remove("user-masc");
-  try { localStorage.removeItem("minha_estante_gender"); } catch(e) {}
+  try { localStorage.removeItem("minha_estante_gender"); localStorage.removeItem("minha_estante_theme"); } catch(e) {}
+  window.applyAppTheme(null, null);
   window.setThemeColor("#ffffff");
   state = { books: [], filter: "reading", covers: {}, selectedYear: null };
   renderAll();
@@ -8300,6 +8364,7 @@ function openGenresModal() {
   if (currentUser && currentUser.gender) {
     selectProfileGender(currentUser.gender);
   }
+  renderThemePicker();
   document.getElementById("genresModal").classList.add("open");
   lockPageBehindModal();
 }
