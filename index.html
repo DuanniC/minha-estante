@@ -1497,6 +1497,200 @@ body.user-masc, html.user-masc { background-color: #ffffff; }
   background: linear-gradient(180deg, rgba(18,14,44,.35), rgba(18,14,44,.62));
 }
 .timer-overlay > *:not(.timer-bg) { position: relative; z-index: 1; }
+
+/* =====================================================================
+   PERFIL (página) + SEQUÊNCIAS (coleções) — ajuste de estrutura
+   ===================================================================== */
+.header-actions .icon-btn[aria-label="Menu"], #menu { display: none !important; }
+
+/* aba Perfil na navegação inferior (mesmo visual das outras abas) */
+.nav-profile {
+  flex: 1; min-width: 0; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 10px 0 4px; border: 0; border-radius: 14px;
+  background: transparent; box-shadow: none; color: #a29cbd;
+  font-size: 9.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  font-family: inherit; transition: color .25s, transform .15s;
+}
+.nav-profile svg { width: 21px; height: 21px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav-profile::before {
+  content: ''; position: absolute; top: 0; left: 50%; width: 0; height: 3px; border-radius: 0 0 4px 4px;
+  background: var(--rose-deep); transform: translateX(-50%); transition: width .25s;
+}
+.nav-profile:active { transform: scale(.94); }
+.nav-profile.active { color: var(--ink); }
+.nav-profile.active::before { width: 26px; }
+.nav-profile.active svg { stroke: var(--rose-deep); }
+body.profile-open .fab { display: none !important; }
+
+/* página */
+.pf-page {
+  position: fixed; inset: 0; z-index: 58; display: none; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: var(--bg-mid);
+  padding: calc(env(safe-area-inset-top) + 18px) 0 calc(var(--nav-h) + 36px + env(safe-area-inset-bottom));
+}
+.pf-page.open { display: block; }
+.pf-wrap { max-width: var(--col, 440px); margin: 0 auto; padding: 0 18px; }
+.pf-card { position: relative; overflow: hidden; border-radius: 28px; padding: 18px 16px; color: var(--ink); }
+.pf-card::after {
+  content: ''; position: absolute; right: -26px; bottom: -30px; width: 110px; height: 110px;
+  background: rgba(255,255,255,.38); border-radius: 58% 42% 55% 45% / 46% 58% 42% 54%; pointer-events: none;
+}
+.pf-card > * { position: relative; z-index: 1; }
+.pf-yellow { background: #f8e18a; } .pf-pink { background: var(--rose); } .pf-green { background: #cfe3b0; }
+.pf-blue { background: #c2d6f6; } .pf-lilac { background: #ddd0f5; } .pf-peach { background: #fbd3b8; }
+.pf-k { font-size: 12px; font-weight: 700; opacity: .72; margin-bottom: 8px; }
+.pf-big { font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -.5px; }
+.pf-big small { font-size: 15px; font-weight: 700; margin-left: 3px; opacity: .7; }
+.pf-sub { font-size: 12px; font-weight: 600; margin-top: 6px; opacity: .78; line-height: 1.3; }
+.pf-name { font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.15; word-break: break-word; }
+
+.pf-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.pf-avatar {
+  width: 68px; height: 68px; border-radius: 24px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  background: var(--rose); color: var(--ink); font-family: var(--font-display); font-weight: 800; font-size: 30px;
+  box-shadow: var(--shadow-md);
+}
+.pf-title { font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1.02; letter-spacing: -1px; color: var(--ink); }
+.pf-meta { font-size: 13px; color: var(--ink-soft); font-weight: 600; margin-top: 4px; }
+
+.pf-general { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.pf-mini { background: #fff; border-radius: 18px; padding: 12px 6px; text-align: center; box-shadow: var(--shadow-sm); }
+.pf-mini b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--ink); }
+.pf-mini span { font-size: 10.5px; font-weight: 600; color: var(--ink-soft); }
+
+.pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pf-span2 { grid-column: 1 / -1; }
+.pf-ring-row { display: flex; align-items: center; gap: 16px; }
+.pf-ring { width: 104px; height: 104px; flex: 0 0 auto; }
+.pf-ring text { font-family: var(--font-display); font-weight: 800; fill: var(--ink); }
+.pf-bookrow { display: flex; align-items: center; gap: 10px; }
+.pf-thumb { width: 38px; height: 56px; border-radius: 4px 8px 8px 4px; object-fit: cover; flex: 0 0 auto; box-shadow: 0 6px 12px rgba(36,30,74,.25); background: rgba(255,255,255,.55); }
+.pf-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 800; font-size: 13.5px; line-height: 1.2; }
+
+.pf-section { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -.6px; color: var(--ink); margin: 30px 0 4px; }
+.pf-section-sub { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; margin-bottom: 14px; }
+
+/* retrospectiva */
+.pf-years { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; scrollbar-width: none; }
+.pf-years::-webkit-scrollbar { display: none; }
+.pf-chip {
+  flex: 0 0 auto; border: 0; cursor: pointer; font-family: var(--font-display); font-weight: 800; font-size: 14px;
+  padding: 10px 18px; border-radius: 16px; background: #fff; color: var(--ink-soft); box-shadow: var(--shadow-sm);
+}
+.pf-chip.on { background: var(--ink); color: var(--cream); }
+.pf-months { display: flex; align-items: flex-end; gap: 6px; height: 92px; margin-top: 4px; }
+.pf-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; font-size: 10px; font-weight: 700; }
+.pf-bar i { display: block; width: 100%; border-radius: 8px 8px 4px 4px; background: rgba(58,51,102,.78); min-height: 4px; }
+.pf-bar i.zero { background: rgba(58,51,102,.14); }
+.pf-covers { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: none; }
+.pf-covers::-webkit-scrollbar { display: none; }
+.pf-cv { flex: 0 0 72px; width: 72px; cursor: pointer; border: 0; background: none; text-align: left; padding: 0; font-family: inherit; }
+.pf-cv .pf-cvimg { width: 72px; height: 108px; border-radius: 5px 10px 10px 5px; overflow: hidden; background: var(--cream-dark); box-shadow: 0 10px 18px rgba(36,30,74,.22); display: flex; align-items: center; justify-content: center; padding: 6px; font-size: 10px; font-weight: 700; color: var(--ink); text-align: center; }
+.pf-cv .pf-cvimg img { width: 100%; height: 100%; object-fit: cover; display: block; margin: -6px; width: calc(100% + 12px); height: calc(100% + 12px); }
+.pf-cv .pf-cvt { font-size: 10.5px; font-weight: 700; color: var(--ink); margin-top: 6px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pf-cv.aband .pf-cvimg { filter: grayscale(.85); opacity: .85; }
+.pf-empty { background: #fff; border-radius: 22px; padding: 20px; text-align: center; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+
+/* sequências: coleção com capas lado a lado */
+.seq-card { background: #fff; border-radius: 26px; padding: 16px 14px 14px; margin-bottom: 14px; box-shadow: var(--shadow-sm); }
+.seq-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.seq-name { font-family: var(--font-display); font-weight: 800; font-size: 17px; color: var(--ink); line-height: 1.15; }
+.seq-type { font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-top: 3px; }
+.seq-prog { flex: 0 0 auto; font-size: 11px; font-weight: 800; color: var(--ink); background: var(--rose); padding: 6px 10px; border-radius: 12px; }
+.seq-books { display: flex; gap: 10px; overflow-x: auto; padding: 4px 6px 10px; scrollbar-width: none; align-items: flex-end; }
+.seq-books::-webkit-scrollbar { display: none; }
+.seq-book { flex: 0 0 auto; width: 84px; border: 0; background: none; padding: 0; cursor: pointer; font-family: inherit; text-align: center; }
+.seq-cover { position: relative; width: 84px; height: 126px; border-radius: 5px 11px 11px 5px; overflow: hidden; background: var(--cream-dark); box-shadow: 0 14px 22px rgba(36,30,74,.28), inset 3px 0 0 rgba(255,255,255,.4); display: flex; align-items: center; justify-content: center; padding: 8px; font-size: 11px; font-weight: 800; color: var(--ink); }
+.seq-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.seq-vol { margin-top: 8px; font-size: 11px; font-weight: 800; color: var(--ink-soft); }
+.seq-book.done .seq-vol { color: var(--sage-deep); }
+.seq-book.todo .seq-cover { filter: saturate(.55); opacity: .88; }
+.seq-shelf-wrap { grid-column: 1 / -1; margin-bottom: 8px; }
+.seq-shelf-title { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -.4px; color: var(--ink); margin: 6px 2px 12px; }
+
+/* configurações dentro do perfil */
+.pf-set { background: #fff; border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.pf-set button {
+  width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 16px; border: 0; background: none; cursor: pointer;
+  font-family: inherit; font-size: 14px; font-weight: 700; color: var(--ink); text-align: left; border-bottom: 1px solid var(--line);
+}
+.pf-set button:last-child { border-bottom: 0; }
+.pf-set button .pf-ico { width: 38px; height: 38px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex: 0 0 auto; }
+.pf-set button small { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-soft); margin-top: 2px; }
+.pf-set button.danger { color: #c0584f; }
+@media (prefers-reduced-motion: reduce) { .nav-profile, .nav-profile::before { transition: none; } }
+
+</style>
+<style id="reading-settings-adjustments">
+/* Ajustes de leitura e configurações — estilos centralizados, sem framework. */
+:root {
+  --settings-surface: var(--surface);
+  --settings-tint: color-mix(in srgb, var(--cream-dark) 65%, var(--surface));
+  --settings-selected: var(--ink);
+  --settings-selected-text: var(--cream);
+  --reading-day-fill: var(--rose-deep);
+  --reading-day-text: var(--surface);
+  --reading-day-empty: var(--cream-dark);
+}
+#genresModal .settings-sheet { display:flex; flex-direction:column; padding:0; width:100%; max-width:560px; height:min(640px,88dvh); max-height:88dvh; overflow:hidden; background:var(--settings-surface); border-radius:24px 24px 0 0; }
+.settings-header { flex:none; padding:16px 20px 0; background:var(--settings-surface); border-bottom:1px solid var(--line); }
+.settings-header .modal-head { display:grid; grid-template-columns:minmax(0,1fr) auto; margin-bottom:18px; }
+.settings-header .modal-title { font-size:24px; letter-spacing:0; }
+.settings-header .modal-close { flex-shrink:0; }
+.settings-header .modal-handle { margin-bottom:14px; }
+.settings-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding-bottom:14px; }
+.settings-tabs button { min-width:0; display:flex; flex-direction:column; align-items:center; gap:6px; border:0; border-radius:8px; padding:10px 3px; background:transparent; color:var(--ink-soft); font-size:12px; font-weight:600; cursor:pointer; transition:background .2s,color .2s; }
+.settings-tabs button span { display:grid; place-items:center; height:30px; width:30px; font-size:20px; }
+.settings-tabs button[aria-selected="true"] { color:var(--settings-selected); background:var(--settings-tint); }
+.settings-content { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; padding:20px; scrollbar-width:thin; scrollbar-color:var(--cream-dark) transparent; }
+.settings-content [hidden] { display:none !important; }
+.settings-section-title, #genresModal #genresList > div:first-child:not(.genre-list-item) { font-family:var(--font-display); font-size:15px; font-weight:600; color:var(--ink); margin:0 0 14px; }
+#genresModal .genre-list-item { display:grid; grid-template-columns:32px minmax(0,1fr) auto; gap:10px; border-radius:8px; background:var(--settings-surface); border:1px solid var(--line); box-shadow:none; padding:12px 10px; margin-bottom:8px; }
+#genresModal .genre-list-item:has(input) { display:flex; }
+#genresModal .genre-list-item input { min-width:0; }
+#genresModal .genre-list-name { overflow-wrap:anywhere; font-size:14px; }
+#genresModal .genre-list-emoji { width:32px; text-align:center; font-size:20px; }
+#genresModal .genre-list-actions { flex-shrink:0; }
+#genresModal .sess-btn { box-shadow:none; width:32px; height:32px; background:var(--settings-tint); }
+.settings-add { margin-top:14px; border-top:1px solid var(--line); }
+.settings-add summary { display:flex; gap:8px; align-items:center; padding:16px 0; color:var(--rose-deep); font-weight:600; font-size:14px; cursor:pointer; list-style:none; }
+.settings-add summary::-webkit-details-marker { display:none; }
+.settings-add[open] summary { color:var(--ink); }
+.settings-add-form { padding-bottom:8px; }
+#genresModal .form-input { border-radius:8px; background:var(--settings-tint); }
+#genresModal .color-picker { grid-template-columns:repeat(4,minmax(0,1fr)); }
+#genresModal .color-option { aspect-ratio:auto; min-height:48px; border-radius:8px; }
+#genresModal .form-btn { border-radius:8px; box-shadow:none; padding:14px; }
+#genresModal .gender-btn { border-radius:8px; min-width:0; }
+.settings-footer { flex:none; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:12px; border-top:1px solid var(--line); padding:12px 20px max(12px,env(safe-area-inset-bottom)); background:var(--settings-surface); }
+.settings-footer > span { color:var(--ink-soft); font-size:11px; }
+.settings-back { width:fit-content; display:flex; align-items:center; gap:8px; padding:9px 14px; color:var(--ink); background:var(--settings-tint); border:0; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+.settings-tabs button:focus-visible, .settings-back:focus-visible, .reading-day:focus-visible, .reading-week-arrow:focus-visible, .settings-add summary:focus-visible { outline:2px solid var(--rose-deep); outline-offset:3px; }
+/* Cada livro e seus dias formam um único item no carrossel existente. */
+.genres:has(.reading-current) { display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 18px 20px; scrollbar-width:none; align-items:flex-start; }
+.reading-current { flex:0 0 calc(100% - 4px); min-width:0; scroll-snap-align:center; }
+.reading-current > .reading-card { width:100%; margin:0; }
+.reading-days { margin-top:12px; padding:16px 4px 4px; text-align:left; color:var(--ink); }
+.reading-days-head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; margin-bottom:12px; }
+.reading-days h3 { font:600 16px var(--font-display); letter-spacing:0; }
+.reading-days-range { font-size:11px; color:var(--ink-soft); margin-top:4px; }
+.reading-week-nav { display:flex; align-items:center; gap:4px; }
+.reading-week-arrow { width:30px; height:30px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--settings-tint); color:var(--ink); font-size:20px; cursor:pointer; }
+.reading-week-arrow:disabled { opacity:.35; cursor:default; }
+.reading-days-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
+.reading-day { width:100%; min-width:0; display:flex; flex-direction:column; gap:6px; align-items:center; padding:0 0 5px; border:0; background:transparent; color:var(--ink-soft); font-size:10px; cursor:default; }
+.reading-day-mark { width:30px; height:30px; display:grid; place-items:center; border-radius:50%; background:var(--reading-day-empty); color:var(--ink-soft); font-size:16px; font-weight:600; }
+.reading-day.is-done .reading-day-mark { background:var(--reading-day-fill); color:var(--reading-day-text); }
+.reading-day.is-today .reading-day-mark { outline:2px solid var(--rose-deep); outline-offset:2px; }
+.reading-day:disabled { cursor:default; }
+.reading-day.is-future { opacity:.45; }
+.reading-days-count { font-size:11px; color:var(--ink-soft); margin-top:8px; }
+.reading-days-weekdays { margin-bottom:6px; font-size:10px; color:var(--ink-soft); text-align:center; }
+.reading-day.is-blank { visibility:hidden; }
+.reading-day:not(.is-done) .reading-day-mark { font-size:12px; font-weight:500; }
+@media(min-width:720px) { #genresModal .settings-sheet { border-radius:24px; } }
+@media(prefers-reduced-motion:reduce) { .settings-tabs button { transition:none; } }
 </style>
 </head>
 <body>
@@ -1722,12 +1916,6 @@ create policy "usuario ve sua wishlist" on wishlist
     </div>
     <div class="menu" id="menu">
       <button onclick="openAddBook()">✦ Adicionar livro</button>
-      
-      <button onclick="openProfileModal()">☺ Meu Perfil</button>
-      <button onclick="openGenresModal()">⚙ Configurações</button>
-      <button onclick="forceSync()">↻ Sincronizar agora</button>
-      <button onclick="exportHtml()">⬇ Baixar backup (HTML)</button>
-      <button class="logout-btn-masc" onclick="doLogout()" style="color:#c97b72;">⏻ Sair da conta</button>
     </div>
   </div>
   
@@ -1737,13 +1925,14 @@ create policy "usuario ve sua wishlist" on wishlist
     <p id="heroSub">Gire a roda e deixa a sorte escolher por você.</p>
   </div>
   
+  <div class="pf-page" id="profilePage" aria-label="Meu Perfil"></div>
   <nav class="bottom-nav" aria-label="Navegação principal">
     <button class="tab active" data-filter="reading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg><span>Lendo</span></button>
     <button class="tab" data-filter="pendente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Todos</span></button>
     <button class="tab" data-filter="favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.6-9.3-9A5.3 5.3 0 0 1 12 6a5.3 5.3 0 0 1 9.3 6c-2.3 4.4-9.3 9-9.3 9z"/></svg><span>Favoritos</span></button>
     <button class="tab" data-filter="lido"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span>Já lidos</span></button>
-    <button class="tab" data-filter="abandoned"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg><span>Abandonados</span></button>
     <button class="tab" data-filter="wishlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg><span>Wishlist</span></button>
+    <button class="nav-profile" id="tabProfile" onclick="toggleProfilePage()" aria-label="Meu Perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Perfil</span></button>
   </nav>
   
   
@@ -1754,6 +1943,7 @@ create policy "usuario ve sua wishlist" on wishlist
   <div class="genres" id="genres"></div>
   
 </div>
+
 
 <button class="fab" onclick="openAddBook()" aria-label="Adicionar livro"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
 
@@ -2141,41 +2331,22 @@ create policy "usuario ve sua wishlist" on wishlist
   </div>
 </div>
 
-<!-- MODAL CONFIGURAÇÕES -->
-<div class="modal-backdrop" id="genresModal">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-head">
-      <h2 class="modal-title"><em>Configu</em>rações</h2>
-      <button class="modal-close" onclick="closeGenresModal()">×</button>
-    </div>
-    <p class="modal-sub">Perfil, gêneros, sequências e mais ✦</p>
-    
-    <div id="genresList"></div>
-
-    <div style="border-top: 1px solid var(--cream-dark); padding-top: 20px; margin-top: 20px;">
-      <div style="font-family: 'Outfit', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">suas sequências</div>
-      <div id="sequencesList"></div>
-    </div>
-    
-    <div class="profile-section">
-      <div style="font-family: 'Outfit', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">meu perfil</div>
-      <div class="login-field" style="margin-bottom: 8px;">
-        <label class="form-label">Você é</label>
-        <div class="gender-toggle">
-          <button type="button" class="gender-btn" id="profileGenderFem" onclick="selectProfileGender('feminino')">🌸 Feminino</button>
-          <button type="button" class="gender-btn" id="profileGenderMasc" onclick="selectProfileGender('masculino')">🌊 Masculino</button>
-        </div>
+<!-- MODAL CONFIGURAÇÕES: cabeçalho e rodapé fora da área de rolagem -->
+<div class="modal-backdrop" id="genresModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal settings-sheet">
+    <header class="settings-header">
+      <div class="modal-handle"></div>
+      <div class="modal-head"><h2 class="modal-title" id="settingsTitle">Configurações</h2><button class="modal-close" onclick="closeGenresModal()" aria-label="Fechar configurações">×</button></div>
+      <div class="settings-tabs" role="tablist" aria-label="Configurações">
+        <button id="settings-tab-genres" role="tab" aria-selected="true" aria-controls="settings-panel-genres" onclick="switchSettingsTab('genres')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13 13 20a2 2 0 0 1-3 0L3 13V3h10l7 7a2 2 0 0 1 0 3Z"/><circle cx="7.5" cy="7.5" r="1"/></svg></span>Gêneros</button>
+        <button id="settings-tab-sequences" role="tab" aria-selected="false" aria-controls="settings-panel-sequences" tabindex="-1" onclick="switchSettingsTab('sequences')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="4" height="16" rx="1"/><rect x="9" y="4" width="4" height="16" rx="1"/><path d="m15 5 4-1 4 15-4 1Z"/></svg></span>Sequências</button>
+        <button id="settings-tab-appearance" role="tab" aria-selected="false" aria-controls="settings-panel-appearance" tabindex="-1" onclick="switchSettingsTab('appearance')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-3.7c-.7-.4-.3-1.8.7-1.8H17a4 4 0 0 0 4-4C21 7 17 3 12 3Z"/><circle cx="7.5" cy="10" r=".7"/><circle cx="11" cy="7" r=".7"/><circle cx="16" cy="8.5" r=".7"/></svg></span>Aparência</button>
       </div>
-      <button class="form-btn" onclick="saveProfileGender()" style="margin-top:4px;">Salvar perfil ✦</button>
-    </div>
-
-    <div style="border-top: 1px solid var(--cream-dark); padding-top: 20px; margin-top: 20px;">
-      <div style="font-family: 'Outfit', serif; font-style: italic; font-size: 16px; color: var(--ink-soft); margin-bottom: 12px;">
-        adicionar novo
-      </div>
-      
-      <div class="form-row" style="display: grid; grid-template-columns: 70px 1fr; gap: 10px;">
+    </header>
+    <div class="settings-content">
+      <section id="settings-panel-genres" role="tabpanel" aria-labelledby="settings-tab-genres" tabindex="0">
+        <div id="genresList"></div>
+        <details class="settings-add" id="settingsAddGenre"><summary><span aria-hidden="true">＋</span>Adicionar gênero</summary><div class="settings-add-form">      <div class="form-row" style="display: grid; grid-template-columns: 70px 1fr; gap: 10px;">
         <div class="form-group">
           <label class="form-label">Emoji</label>
           <input type="text" class="form-input" id="newGenreEmoji" maxlength="4" placeholder="📚" style="text-align:center; font-size:20px;">
@@ -2197,7 +2368,19 @@ create policy "usuario ve sua wishlist" on wishlist
       </div>
       
       <button class="form-btn" onclick="addGenre()">Adicionar gênero ✦</button>
+</div></details>
+      </section>
+      <section id="settings-panel-sequences" role="tabpanel" aria-labelledby="settings-tab-sequences" tabindex="0" hidden><h3 class="settings-section-title">Suas sequências</h3><div id="sequencesList"></div></section>
+      <section id="settings-panel-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3 class="settings-section-title">Aparência do perfil</h3>      <div class="login-field" style="margin-bottom: 8px;">
+        <label class="form-label">Você é</label>
+        <div class="gender-toggle">
+          <button type="button" class="gender-btn" id="profileGenderFem" onclick="selectProfileGender('feminino')">🌸 Feminino</button>
+          <button type="button" class="gender-btn" id="profileGenderMasc" onclick="selectProfileGender('masculino')">🌊 Masculino</button>
+        </div>
+      </div>
+      <button class="form-btn" onclick="saveProfileGender()" style="margin-top:4px;">Salvar perfil ✦</button></section>
     </div>
+    <footer class="settings-footer"><button class="settings-back" onclick="closeGenresModal()"><span aria-hidden="true">←</span> Voltar</button><span>Minha estante ✦</span></footer>
   </div>
 </div>
 
@@ -4321,7 +4504,11 @@ function renderGenres() {
     Object.entries(GENRES).forEach(([key, g]) => {
       const booksInGenre = state.books
         .filter(b => b.g === key)
-        .sort((a, b) => a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' }));
+        .sort((a, b) => {
+          const ka = (a.seriesType && a.seriesType !== 'unico' && a.seriesName) ? a.seriesName : a.t;
+          const kb = (b.seriesType && b.seriesType !== 'unico' && b.seriesName) ? b.seriesName : b.t;
+          return ka.localeCompare(kb, 'pt', { sensitivity: 'base' }) || ((parseInt(a.seriesVolume) || 0) - (parseInt(b.seriesVolume) || 0)) || a.t.localeCompare(b.t, 'pt', { sensitivity: 'base' });
+        });
       if (booksInGenre.length === 0) return;
       html += `<div class="month-group collapsed">
         <div class="month-group-header" onclick="toggleMonthGroup(this)">
@@ -6746,7 +6933,6 @@ const HERO_TEXTS = {
   },
   reading: {
     html: `essa é a sua <em id="heroWord">leitura</em> atual.`,
-    sub: "Página por página.",
   },
   pendente: {
     html: `qual vai ser sua<br><em id="heroWord">próxima</em> leitura?`,
@@ -11012,6 +11198,8 @@ create policy "usuario ve sua wishlist" on wishlist
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);`;
 
   let wlMissing = false;
+  let wlErr = '';          // erro ao carregar do banco (aparece na aba)
+  let wlServerCount = null; // quantas séries o banco devolveu para esta conta
   window.wlEditId = null;
 
   const list = () => (Array.isArray(state.wishlist) ? state.wishlist : (state.wishlist = []));
@@ -11036,12 +11224,13 @@ create policy "usuario ve sua wishlist" on wishlist
     try { await supabaseFetch(`wishlist?id=eq.${id}`, { method: 'DELETE' }); } catch (e) { onErr(e); }
   }
   async function load() {
+    if (location.protocol === 'file:') { wlErr = 'Você abriu o arquivo direto do aparelho. Abra o app pelo link (HTTPS) para carregar a Wishlist do banco.'; if (state.filter === 'wishlist') renderWishlist(); return; }
     if (!syncOn() || !navigator.onLine) return;
     try {
       const rows = await supabaseFetch(`wishlist?user_id=eq.${encodeURIComponent(currentUser.id)}&select=*&order=id`);
       if (Array.isArray(rows)) {
         const server = rows.map(fromDb);
-        wlMissing = false;
+        wlMissing = false; wlErr = ''; wlServerCount = server.length;
         if (!state.wishlistSynced) {
           // 1ª vez: o que já estava salvo só neste aparelho sobe pro banco em vez de ser apagado
           const ids = new Set(server.map(w => w.id));
@@ -11055,7 +11244,7 @@ create policy "usuario ve sua wishlist" on wishlist
         }
         saveState();
       }
-    } catch (e) { onErr(e); }
+    } catch (e) { wlErr = String((e && e.message) || e).slice(0, 200); onErr(e); }
     if (state.filter === 'wishlist') renderWishlist();
   }
 
@@ -11091,6 +11280,8 @@ create policy "usuario ve sua wishlist" on wishlist
     const done = items.filter(isDone), ongoing = items.filter(w => !isDone(w));
     let html = '';
     if (wlMissing) html += `<div class="wl-note">Pra sincronizar a Wishlist entre dispositivos, rode este SQL uma vez no Supabase (SQL Editor). Enquanto isso, ela fica salva só neste aparelho.<br><button class="wl-btn" onclick="wlCopySql()">Copiar SQL</button></div>`;
+    if (wlErr) html += `<div class="wl-note">Não consegui carregar a Wishlist do banco.<br><small>${escapeHtml(wlErr)}</small></div>`;
+    else if (wlServerCount === 0) html += `<div class="wl-note">O banco não devolveu nenhuma série para esta conta. Se a tabela tem dados, confira se o <b>user_id</b> deles é o desta conta.</div>`;
     html += `<button class="wl-add" onclick="openWl()">+ Adicionar à Wishlist</button>`;
     if (!items.length) html += `<div class="empty"><div class="empty-icon">✦</div><div class="empty-text">nenhuma série esperando por aqui</div></div>`;
     if (done.length) html += `<div class="wl-title">prontas pra ler</div>` + done.map(cardHTML).join('');
@@ -11191,6 +11382,439 @@ create policy "usuario ve sua wishlist" on wishlist
   };
 
   list();
+  // ao abrir a aba Wishlist, busca de novo no banco
+  const wlTab = document.querySelector('.tab[data-filter="wishlist"]');
+  if (wlTab) wlTab.addEventListener('click', () => { load(); });
+})();
+</script>
+
+<script>
+/* =====================================================================
+   PERFIL (página completa), RETROSPECTIVA POR ANO e SEQUÊNCIAS (coleções)
+   Usa os dados que já existem: state.books, state.sessions, seriesType/Name/Volume.
+   ===================================================================== */
+(function () {
+  'use strict';
+  var selYear = null;           // ano escolhido na retrospectiva
+  var MONTHS = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  var TYPE_LABEL = { duologia: 'Duologia', trilogia: 'Trilogia', saga: 'Saga' };
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+  function pages(b) { return parseInt(b.pagesTotal) || 0; }
+  function yearOf(d) { var y = String(d || '').slice(0, 4); return /^\d{4}$/.test(y) ? y : null; }
+  function readYear(b) { return yearOf(b.endDate); }
+  function abandonYear(b) { return yearOf(b.endDate) || yearOf(b.startDate); }
+  function cover(b) { try { return getBookCover(b); } catch (e) { return null; } }
+  function fmtTime(sec) {
+    sec = Math.round(sec || 0);
+    if (sec < 60) return sec > 0 ? '<1<small>min</small>' : '0<small>min</small>';
+    var h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+    if (m === 60) { h++; m = 0; }
+    return h > 0 ? h + '<small>h</small> ' + (m ? m + '<small>min</small>' : '') : m + '<small>min</small>';
+  }
+  function genreInfo(g) {
+    var G = (typeof GENRES !== 'undefined' && GENRES[g]) || null;
+    return G ? { name: G.name, emoji: G.emoji || '📖' } : { name: g || '—', emoji: '📖' };
+  }
+
+  /* ---------- tempo de leitura: soma de TODAS as sessões de todos os livros ---------- */
+  var remoteSessions = null;   // [{startedAt, durationSeconds}] vindas do banco
+  var loadingSessions = false;
+  function sumSessionSeconds(year) {
+    var list = remoteSessions;
+    if (!list) {
+      list = (state.sessions || []).map(function (x) { return { startedAt: x.startedAt, durationSeconds: x.durationSeconds }; });
+    }
+    var total = 0;
+    list.forEach(function (x) {
+      if (!x.durationSeconds || x.durationSeconds <= 0) return;
+      if (year && yearOf(x.startedAt) !== year) return;
+      total += x.durationSeconds;
+    });
+    return total;
+  }
+  async function loadAllSessions() {
+    if (loadingSessions) return;
+    try {
+      if (typeof config === 'undefined' || !config.setupDone || config.skipSync) return;
+      loadingSessions = true;
+      var all = [], offset = 0, step = 1000;
+      while (true) {
+        var rows = await supabaseFetch('reading_sessions?select=started_at,duration_seconds&order=id.asc&limit=' + step + '&offset=' + offset);
+        if (!Array.isArray(rows)) break;
+        rows.forEach(function (r) { all.push({ startedAt: r.started_at, durationSeconds: r.duration_seconds || 0 }); });
+        if (rows.length < step) break;
+        offset += step;
+      }
+      remoteSessions = all;
+      var p = document.getElementById('profilePage');
+      if (p && p.classList.contains('open')) renderProfilePage();
+    } catch (e) {
+      console.warn('[perfil] sessões', e);
+    } finally {
+      loadingSessions = false;
+    }
+  }
+
+  /* ---------- estatísticas (período = ano ou null para tudo) ---------- */
+  function computeStats(year) {
+    var books = state.books || [];
+    var read = books.filter(function (b) { return b.status === 'lido' && (!year || readYear(b) === year); });
+    var aband = books.filter(function (b) { return b.status === 'abandoned' && (!year || abandonYear(b) === year); });
+    var totalPages = read.reduce(function (s, b) { return s + pages(b); }, 0);
+    var withPages = read.filter(function (b) { return pages(b) > 0; });
+    var avgPages = withPages.length ? Math.round(totalPages / withPages.length) : 0;
+    var rated = read.filter(function (b) { return Number(b.rating) > 0; });
+    var avgRating = rated.length ? rated.reduce(function (s, b) { return s + Number(b.rating); }, 0) / rated.length : 0;
+    var days = [];
+    read.forEach(function (b) {
+      if (b.startDate && b.endDate) {
+        var d = Math.round((new Date(b.endDate + 'T00:00:00') - new Date(b.startDate + 'T00:00:00')) / 86400000) + 1;
+        if (d > 0 && d < 1000) days.push(d);
+      }
+    });
+    var avgDays = days.length ? Math.round(days.reduce(function (a, b) { return a + b; }, 0) / days.length) : 0;
+    var secs = sumSessionSeconds(year);
+    var sorted = withPages.slice().sort(function (a, b) { return pages(b) - pages(a); });
+    var byGenre = {}, byAuthor = {};
+    read.forEach(function (b) {
+      var g = b.g || 'outro'; byGenre[g] = (byGenre[g] || 0) + 1;
+      var a = String(b.a || '').trim(); if (a) byAuthor[a] = (byAuthor[a] || 0) + 1;
+    });
+    var topGenre = Object.entries(byGenre).sort(function (a, b) { return b[1] - a[1]; })[0] || null;
+    var topAuthor = Object.entries(byAuthor).sort(function (a, b) { return b[1] - a[1]; })[0] || null;
+    var months = new Array(12).fill(0);
+    read.forEach(function (b) { var m = parseInt(String(b.endDate || '').slice(5, 7)); if (m >= 1 && m <= 12) months[m - 1]++; });
+    return {
+      read: read, aband: aband, totalPages: totalPages, avgPages: avgPages, avgRating: avgRating, ratedCount: rated.length,
+      avgDays: avgDays, secs: secs, biggest: sorted[0] || null, smallest: sorted.length > 1 ? sorted[sorted.length - 1] : null,
+      topGenre: topGenre, topAuthor: topAuthor, months: months
+    };
+  }
+
+  /* ---------- peças visuais ---------- */
+  function ringHTML(avg) {
+    var r = 44, c = 2 * Math.PI * r, off = c * (1 - Math.min(avg, 5) / 5);
+    return '<svg class="pf-ring" viewBox="0 0 104 104" aria-hidden="true">' +
+      '<circle cx="52" cy="52" r="' + r + '" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="10"/>' +
+      '<circle cx="52" cy="52" r="' + r + '" fill="none" stroke="#3a3366" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 52 52)"/>' +
+      '<text x="52" y="60" text-anchor="middle" font-size="26">' + (avg ? avg.toFixed(1).replace('.', ',') : '—') + '</text></svg>';
+  }
+  function bookCard(color, label, b, extra) {
+    if (!b) return '<div class="pf-card ' + color + '"><div class="pf-k">' + label + '</div><div class="pf-sub">Ainda sem dados ✦</div></div>';
+    var url = cover(b);
+    return '<div class="pf-card ' + color + '"><div class="pf-k">' + label + '</div><div class="pf-bookrow">' +
+      (url ? '<img class="pf-thumb" src="' + esc(url) + '" alt="" loading="lazy">' : '') +
+      '<div><div class="pf-clamp">' + esc(b.t) + '</div><div class="pf-sub">' + extra + '</div></div></div></div>';
+  }
+  function tilesHTML(s) {
+    var g = s.topGenre ? genreInfo(s.topGenre[0]) : null;
+    var h = '<div class="pf-grid">';
+    h += '<div class="pf-card pf-lilac pf-span2"><div class="pf-ring-row">' + ringHTML(s.avgRating) +
+      '<div><div class="pf-k">Nota média dos livros</div><div class="pf-big">' + (s.avgRating ? '★ ' + s.avgRating.toFixed(1).replace('.', ',') : '—') + '</div>' +
+      '<div class="pf-sub">' + (s.ratedCount ? s.ratedCount + ' livro' + (s.ratedCount > 1 ? 's' : '') + ' avaliado' + (s.ratedCount > 1 ? 's' : '') : 'Nenhum livro avaliado') + '</div></div></div></div>';
+    h += '<div class="pf-card pf-yellow"><div class="pf-k">Média por livro</div><div class="pf-big">' + (s.avgPages || '—') + '<small>pág.</small></div>' +
+      '<div class="pf-sub">' + (s.avgDays ? s.avgDays + ' dia' + (s.avgDays > 1 ? 's' : '') + ' por livro' : 'por livro lido') + '</div></div>';
+    h += '<div class="pf-card pf-blue"><div class="pf-k">Tempo registrado</div><div class="pf-big">' + fmtTime(s.secs) + '</div><div class="pf-sub">de leitura</div></div>';
+    h += bookCard('pf-green', 'Maior livro lido', s.biggest, s.biggest ? pages(s.biggest) + ' páginas' : '');
+    h += bookCard('pf-peach', 'Menor livro lido', s.smallest, s.smallest ? pages(s.smallest) + ' páginas' : '');
+    h += '<div class="pf-card pf-pink"><div class="pf-k">Gênero mais lido</div>' +
+      (g ? '<div style="font-size:30px;line-height:1;margin-bottom:6px">' + esc(g.emoji) + '</div><div class="pf-name">' + esc(g.name) + '</div><div class="pf-sub">' + s.topGenre[1] + ' livro' + (s.topGenre[1] > 1 ? 's' : '') + '</div>' : '<div class="pf-sub">Ainda sem dados ✦</div>') + '</div>';
+    h += '<div class="pf-card pf-yellow"><div class="pf-k">Autor favorito</div>' +
+      (s.topAuthor ? '<div class="pf-name">' + esc(s.topAuthor[0]) + '</div><div class="pf-sub">' + s.topAuthor[1] + ' livro' + (s.topAuthor[1] > 1 ? 's' : '') + ' lido' + (s.topAuthor[1] > 1 ? 's' : '') + '</div>' : '<div class="pf-sub">Ainda sem dados ✦</div>') + '</div>';
+    return h + '</div>';
+  }
+  function coverStrip(list, aband) {
+    return '<div class="pf-covers">' + list.map(function (b) {
+      var url = cover(b);
+      return '<button class="pf-cv' + (aband ? ' aband' : '') + '" onclick="openBookViewModal(' + b.id + ')"><div class="pf-cvimg">' +
+        (url ? '<img src="' + esc(url) + '" alt="" loading="lazy">' : esc(b.t)) + '</div><div class="pf-cvt">' + esc(b.t) + '</div></button>';
+    }).join('') + '</div>';
+  }
+
+  /* ---------- Sequências ---------- */
+  function getSeriesCollections() {
+    var map = {};
+    (state.books || []).forEach(function (b) {
+      var type = String(b.seriesType || 'unico').toLowerCase();
+      if (!type || type === 'unico') return;
+      var name = String(b.seriesName || b.t || '').trim();
+      if (!name) return;
+      var key = type + '::' + name.toLowerCase();
+      if (!map[key]) map[key] = { type: type, name: name, books: [] };
+      map[key].books.push(b);
+    });
+    return Object.keys(map).map(function (k) {
+      var g = map[k];
+      g.books.sort(function (a, b) { return (parseInt(a.seriesVolume) || 99) - (parseInt(b.seriesVolume) || 99) || String(a.t).localeCompare(String(b.t), 'pt'); });
+      return g;
+    }).sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
+  }
+  function seriesHTML() {
+    var cols = getSeriesCollections();
+    if (!cols.length) return '<div class="pf-empty">Quando você marcar livros como duologia, trilogia ou saga, eles aparecem aqui como coleção ✦</div>';
+    return cols.map(function (g) {
+      var done = g.books.filter(function (b) { return b.status === 'lido'; }).length;
+      return '<div class="seq-card"><div class="seq-top"><div><div class="seq-name">📚 ' + esc(g.name) + '</div>' +
+        '<div class="seq-type">' + (TYPE_LABEL[g.type] || g.type) + ' · ' + g.books.length + ' livro' + (g.books.length > 1 ? 's' : '') + '</div></div>' +
+        '<div class="seq-prog">' + done + ' de ' + g.books.length + ' lidos</div></div><div class="seq-books">' +
+        g.books.map(function (b) {
+          var url = cover(b);
+          return '<button class="seq-book ' + (b.status === 'lido' ? 'done' : 'todo') + '" onclick="openBookViewModal(' + b.id + ')">' +
+            '<div class="seq-cover">' + esc(b.t) + (url ? '<img src="' + esc(url) + '" alt="' + esc(b.t) + '" loading="lazy" onerror="this.remove()">' : '') + '</div>' +
+            '<div class="seq-vol">' + (b.status === 'lido' ? '✓ ' : '') + 'Livro ' + (b.seriesVolume || '?') + '</div></button>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+  window.renderSeriesShelf = seriesHTML;
+
+  /* ---------- página ---------- */
+  function availableYears() {
+    var set = {};
+    (state.books || []).forEach(function (b) {
+      if (b.status === 'lido' && readYear(b)) set[readYear(b)] = 1;
+      if (b.status === 'abandoned' && abandonYear(b)) set[abandonYear(b)] = 1;
+    });
+    return Object.keys(set).sort(function (a, b) { return Number(b) - Number(a); });
+  }
+
+  function renderProfilePage() {
+    var page = document.getElementById('profilePage');
+    if (!page) return;
+    var scroll = page.scrollTop;
+    var books = state.books || [];
+    var name = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : 'Leitor';
+    var all = computeStats(null);
+    var years = availableYears();
+    if (selYear && selYear !== 'todos' && years.indexOf(selYear) < 0) selYear = null;
+    var ys = computeStats(selYear && selYear !== 'todos' ? selYear : null);
+    var reading = books.filter(function (b) { return b.status === 'reading'; }).length;
+
+    var h = '<div class="pf-wrap">';
+    h += '<div class="pf-head"><div class="pf-avatar">' + esc((Array.from(name.trim())[0] || '?').toUpperCase()) + '</div>' +
+      '<div><div class="pf-title">' + esc(name) + '</div><div class="pf-meta">' + books.length + ' livro' + (books.length !== 1 ? 's' : '') + ' na estante</div></div></div>';
+    h += '<div class="pf-general">' +
+      '<div class="pf-mini"><b>' + all.read.length + '</b><span>lidos</span></div>' +
+      '<div class="pf-mini"><b>' + reading + '</b><span>lendo</span></div>' +
+      '<div class="pf-mini"><b>' + all.aband.length + '</b><span>abandonados</span></div>' +
+      '<div class="pf-mini"><b>' + all.totalPages.toLocaleString('pt-BR') + '</b><span>páginas</span></div></div>';
+    h += '<div class="pf-section">Retrospectiva</div><div class="pf-section-sub">Escolha o ano para ver como foi sua leitura</div>';
+    if (!years.length) {
+      h += '<div class="pf-empty">Marque livros como lidos (com data de término) para montar sua retrospectiva ✦</div>';
+    } else {
+      h += '<div class="pf-years">' + years.map(function (y) { return '<button class="pf-chip' + (selYear === y ? ' on' : '') + '" data-y="' + y + '">' + y + '</button>'; }).join('') +
+        '<button class="pf-chip' + (selYear === 'todos' ? ' on' : '') + '" data-y="todos">Tudo</button></div>';
+      if (selYear) {
+        var label = selYear === 'todos' ? 'no total' : 'em ' + selYear;
+        h += '<div class="pf-card pf-pink" style="margin-bottom:12px"><div class="pf-k">Livros lidos ' + label + '</div>' +
+          '<div class="pf-big">' + ys.read.length + '<small>livro' + (ys.read.length !== 1 ? 's' : '') + '</small></div>' +
+          '<div class="pf-sub">' + ys.totalPages.toLocaleString('pt-BR') + ' páginas · ' + ys.aband.length + ' abandonado' + (ys.aband.length !== 1 ? 's' : '') + '</div>';
+        if (selYear !== 'todos') {
+          var mx = Math.max.apply(null, ys.months.concat([1]));
+          h += '<div class="pf-months" style="margin-top:16px">' + ys.months.map(function (n, i) {
+            return '<div class="pf-bar"><span>' + (n || '') + '</span><i class="' + (n ? '' : 'zero') + '" style="height:' + (n ? Math.max(10, Math.round(n / mx * 62)) : 4) + 'px"></i><span style="opacity:.6">' + MONTHS[i] + '</span></div>';
+          }).join('') + '</div>';
+        }
+        h += '</div>';
+        h += tilesHTML(ys);
+      }
+    }
+    var abLabel = !selYear ? '' : (selYear === 'todos' ? ' no total' : ' em ' + selYear);
+    h += '<div class="pf-section" style="font-size:20px;margin-top:22px">Abandonados</div>';
+    h += ys.aband.length ? coverStrip(ys.aband, true) : '<div class="pf-empty">Nenhum livro abandonado' + abLabel + ' ✦</div>';
+
+    h += '<div class="pf-section">Configurações</div><div class="pf-set">' +
+      '<button onclick="openGenresModal()"><span class="pf-ico" style="background:#ddd0f5">🏷️</span><span>Gêneros, sequências e aparência<small>Gerenciar gêneros, renomear sequências, feminino/masculino</small></span></button>' +
+      '<button onclick="forceSync()"><span class="pf-ico" style="background:#c2d6f6">↻</span><span>Sincronizar agora<small>Atualiza seus dados com a nuvem</small></span></button>' +
+      '<button onclick="exportHtml()"><span class="pf-ico" style="background:#cfe3b0">⬇</span><span>Baixar backup (HTML)<small>Uma cópia dos seus livros</small></span></button>' +
+      '<button class="danger" onclick="doLogout()"><span class="pf-ico" style="background:#fbd3d0">⏻</span><span>Sair da conta</span></button></div>';
+    h += '</div>';
+    page.innerHTML = h;
+    page.scrollTop = scroll;
+    page.querySelectorAll('.pf-chip').forEach(function (c) {
+      c.addEventListener('click', function () { var y = c.getAttribute('data-y'); selYear = (selYear === y) ? null : y; renderProfilePage(); });
+    });
+  }
+
+  function setTabsActive(profileOn) {
+    var btn = document.getElementById('tabProfile');
+    if (btn) btn.classList.toggle('active', profileOn);
+    document.querySelectorAll('.bottom-nav .tab').forEach(function (t) {
+      t.classList.toggle('active', !profileOn && t.dataset.filter === state.filter);
+    });
+  }
+  window.openProfilePage = function () {
+    var page = document.getElementById('profilePage'); if (!page) return;
+    renderProfilePage();
+    loadAllSessions();
+    page.classList.add('open'); page.scrollTop = 0;
+    document.body.classList.add('profile-open');
+    setTabsActive(true);
+  };
+  window.closeProfilePage = function () {
+    var page = document.getElementById('profilePage');
+    if (!page || !page.classList.contains('open')) return;
+    page.classList.remove('open');
+    document.body.classList.remove('profile-open');
+    setTabsActive(false);
+  };
+  window.toggleProfilePage = function () {
+    var page = document.getElementById('profilePage');
+    if (page && page.classList.contains('open')) { window.closeProfilePage(); try { renderAll(); } catch (e) {} }
+    else window.openProfilePage();
+  };
+  window.openProfileModal = window.openProfilePage;    // atalhos antigos levam para a nova página
+  window.closeProfileModal = function () {};
+
+  // tocar em qualquer aba de livros fecha o perfil antes do handler normal
+  document.querySelectorAll('.bottom-nav .tab').forEach(function (t) {
+    t.addEventListener('click', function () { window.closeProfilePage(); }, true);
+  });
+
+  // fechar "Gêneros e sequências" volta atualizando o perfil
+  var _closeGenres = window.closeGenresModal;
+  if (typeof _closeGenres === 'function') {
+    window.closeGenresModal = function () {
+      _closeGenres.apply(this, arguments);
+      var p = document.getElementById('profilePage');
+      if (p && p.classList.contains('open')) renderProfilePage();
+    };
+  }
+
+  // renderAll: mantém perfil atualizado e mostra a prateleira de sequências na aba Todos
+  var _renderAll = window.renderAll;
+  window.renderAll = function () {
+    _renderAll.apply(this, arguments);
+    try {
+      if (state.filter === 'todos') {
+        var box = document.getElementById('genres');
+        if (box && getSeriesCollections().length && !box.querySelector('.seq-shelf-wrap')) {
+          box.insertAdjacentHTML('afterbegin', '<div class="seq-shelf-wrap"><div class="seq-shelf-title">Sequências</div>' + seriesHTML() + '</div>');
+        }
+      }
+      var p = document.getElementById('profilePage');
+      if (p && p.classList.contains('open')) renderProfilePage();
+    } catch (e) { console.warn('[perfil]', e); }
+  };
+})();
+
+</script>
+
+<script id="reading-settings-behavior">
+(function () {
+  'use strict';
+  var settingsReturnFocus = null;
+  window.switchSettingsTab = function (name) {
+    ['genres', 'sequences', 'appearance'].forEach(function (key) {
+      var tab = document.getElementById('settings-tab-' + key);
+      tab.setAttribute('aria-selected', String(key === name));
+      tab.tabIndex = key === name ? 0 : -1;
+      document.getElementById('settings-panel-' + key).hidden = key !== name;
+    });
+    document.querySelector('#genresModal .settings-content').scrollTop = 0;
+  };
+  var originalOpen = window.openGenresModal;
+  window.openGenresModal = function () {
+    settingsReturnFocus = document.activeElement;
+    originalOpen.apply(this, arguments);
+    switchSettingsTab('genres');
+    document.getElementById('settingsAddGenre').open = false;
+    document.querySelector('#genresModal .modal-close').focus();
+  };
+  var originalClose = window.closeGenresModal;
+  window.closeGenresModal = function () {
+    originalClose.apply(this, arguments);
+    if (settingsReturnFocus && settingsReturnFocus.isConnected) settingsReturnFocus.focus({ preventScroll:true });
+    else { var profileTab = document.getElementById('tabProfile'); if (profileTab) profileTab.focus({ preventScroll:true }); }
+  };
+  document.getElementById('genresModal').addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') { event.stopPropagation(); closeGenresModal(); return; }
+    if (event.target.getAttribute('role') === 'tab' && ['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key) >= 0) {
+      event.preventDefault();
+      var keys = ['genres','sequences','appearance'];
+      var idx = keys.indexOf(event.target.id.replace('settings-tab-',''));
+      idx = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (idx + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
+      switchSettingsTab(keys[idx]); document.getElementById('settings-tab-' + keys[idx]).focus();
+    }
+    if (event.key === 'Tab') {
+      var targets = Array.from(this.querySelectorAll('button, input, select, summary, [tabindex="0"]')).filter(function (el) { return !el.disabled && el.tabIndex >= 0 && el.getClientRects().length; });
+      var first = targets[0], last = targets[targets.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); if (last) last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); if (first) first.focus(); }
+    }
+  });
+  /* Dias de leitura — mês atual, todas as sessões (lendo + já lidos) */
+  var monthRows = [], monthPending = false, monthFetchedAt = 0;
+  function dateKey(date) { return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0'); }
+  function monthStart() { var d = new Date(); d.setHours(0,0,0,0); d.setDate(1); return d; }
+  function parseDay(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) { var p = v.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+    var d = new Date(typeof v === 'string' && /^\d+$/.test(v) ? Number(v) : v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function addSession(days, s) {
+    if (!s) return;
+    var st = parseDay(s.startedAt || s.started_at || s.date || s.created_at);
+    var en = parseDay(s.endedAt || s.ended_at);
+    if (!en && st) { var dur = Number(s.durationSeconds || s.duration_seconds || 0); if (dur > 0) en = new Date(st.getTime() + dur*1000); }
+    if (st) days.add(dateKey(st));
+    if (en) days.add(dateKey(en));
+    if (st && en && en > st) { var c = new Date(st); c.setHours(0,0,0,0); var guard = 0; while (c <= en && guard++ < 3) { days.add(dateKey(c)); c.setDate(c.getDate()+1); } }
+  }
+  function recordedDays() {
+    var days = new Set();
+    (state.sessions || []).forEach(function (s) { addSession(days, s); });
+    Object.keys(sessionsCache || {}).forEach(function (k) { (sessionsCache[k] || []).forEach(function (s) { addSession(days, s); }); });
+    monthRows.forEach(function (s) { addSession(days, s); });
+    return days;
+  }
+  function weekStart() { var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return d; }
+  function paintDays() {
+    var el = document.getElementById('reading-days-month'); if (!el) return;
+    var start = weekStart(), today = todayISO(), recorded = recordedDays();
+    var end = new Date(start); end.setDate(end.getDate()+6);
+    var sameMonth = start.getMonth() === end.getMonth();
+    var range = sameMonth
+      ? start.getDate() + '–' + end.getDate() + ' de ' + start.toLocaleDateString('pt-BR', { month:'long' })
+      : start.getDate() + ' de ' + start.toLocaleDateString('pt-BR', { month:'short' }).replace('.','') + ' – ' + end.getDate() + ' de ' + end.toLocaleDateString('pt-BR', { month:'long' });
+    var labels = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], count = 0;
+    var html = '<div class="reading-days-head"><div><h3>Dias de leitura</h3><div class="reading-days-range">' + range.charAt(0).toUpperCase() + range.slice(1) + '</div></div></div>';
+    html += '<div class="reading-days-grid reading-days-weekdays">' + labels.map(function (l) { return '<span>' + l + '</span>'; }).join('') + '</div><div class="reading-days-grid">';
+    for (var i=0;i<7;i++) {
+      var d = new Date(start); d.setDate(d.getDate()+i);
+      var key = dateKey(d), done = recorded.has(key), future = key > today;
+      if (done) count++;
+      var label = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long'}) + (done ? ': leitura registrada' : ': sem leitura registrada');
+      html += '<div class="reading-day' + (done ? ' is-done' : '') + (key === today ? ' is-today' : '') + (future ? ' is-future' : '') + '" role="img" data-day="' + key + '" aria-label="' + label + '"><span class="reading-day-mark" aria-hidden="true">' + (done ? '✓' : d.getDate()) + '</span></div>';
+    }
+    el.innerHTML = html + '</div><div class="reading-days-count" aria-live="polite">' + count + (count === 1 ? ' dia' : ' dias') + ' de leitura nesta semana · registrado pelas sessões</div>';
+  }
+  async function fetchMonth() {
+    if (!config.setupDone || config.skipSync || monthPending) return;
+    if (Date.now() - monthFetchedAt < 30000) return;
+    monthPending = true;
+    try {
+      var start = monthStart(), from = new Date(start); from.setDate(from.getDate()-1);
+      var rows = await supabaseFetch('reading_sessions?started_at=gte.' + encodeURIComponent(from.toISOString()) + '&select=started_at,ended_at,duration_seconds,book_id&order=started_at.asc&limit=2000');
+      if (Array.isArray(rows)) { monthRows = rows; monthFetchedAt = Date.now(); paintDays(); }
+    } catch (e) { console.warn('[dias de leitura] Não foi possível atualizar os registros.'); }
+    finally { monthPending = false; }
+  }
+  window.changeReadingWeek = function () {};
+  function attachReadingDays() {
+    if (state.filter !== 'reading') return;
+    var card = document.querySelector('#genres > .reading-card'); if (!card) return;
+    var wrap = document.createElement('section'); wrap.className = 'reading-current';
+    card.before(wrap); wrap.appendChild(card);
+    var track = document.createElement('div'); track.className = 'reading-days'; track.id = 'reading-days-month';
+    wrap.appendChild(track); paintDays(); fetchMonth();
+  }
+  var originalRender = window.renderAll;
+  window.renderAll = function () { var result = originalRender.apply(this,arguments); attachReadingDays(); return result; };
+  var originalGenres = window.renderGenres;
+  window.renderGenres = function () { var result = originalGenres.apply(this,arguments); attachReadingDays(); return result; };
+  attachReadingDays();
 })();
 </script>
 
