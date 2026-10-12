@@ -6445,16 +6445,35 @@ function startReadingFromView() {
 }
 
 function rereadBookFromView() {
-  const id = viewingBookId;
-  const book = getBookById(id);
+  const book = getBookById(viewingBookId);
   if (!book) return;
-  if (!confirm(`Marcar "${book.t}" como pendente para reler? O histórico de leitura anterior é mantido.`)) return;
-  book.status = "pendente";
-  book.pagesCurrent = 0;
-  saveState();
-  pushBook(book);
+  if (!createRereadCopy(book)) return;
   closeBookViewModal();
   renderAll();
+}
+
+// Reler: única situação em que duplicar livro é permitido.
+// O original (lido) fica intacto com datas, horários e histórico;
+// uma cópia nova é criada como pendente para a nova leitura.
+function createRereadCopy(book) {
+  if (!confirm(`Reler "${book.t}"? O registro original continua em Lidos com todo o histórico, e uma nova cópia será criada para a nova leitura.`)) return null;
+  if (!state.nextId) state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
+  const copy = {
+    id: state.nextId++,
+    t: book.t, a: book.a, g: book.g,
+    status: "pendente", favorite: !!book.favorite,
+    pagesCurrent: 0,
+    seriesType: book.seriesType || "unico",
+    seriesName: book.seriesName,
+    seriesVolume: book.seriesVolume,
+    rereadOf: book.id,
+  };
+  if (book.pagesTotal) copy.pagesTotal = book.pagesTotal;
+  if (book.coverUrl) { copy.coverUrl = book.coverUrl; copy.coverLocked = true; copy.coverStatus = book.coverStatus || "saved"; copy.coverAutoChecked = true; }
+  state.books.push(copy);
+  saveState();
+  pushNewBook(copy);
+  return copy;
 }
 
 function saveProgressFromView() {
@@ -6608,16 +6627,7 @@ function rereadBookFromEdit() {
   if (!editingBookId) return;
   const book = getBookById(editingBookId);
   if (!book) return;
-  if (!confirm(`Marcar "${book.t}" como pendente para reler? O histórico de leitura anterior é mantido.`)) return;
-  
-  // Volta o livro para pendente, mantendo rating e datas anteriores no histórico
-  // Limpa só pagesCurrent pra começar do zero a próxima leitura
-  book.status = "pendente";
-  book.pagesCurrent = 0;
-  // Mantém: rating, endDate (data da leitura anterior), favorite, pagesTotal
-  saveState();
-  pushBook(book);
-  
+  if (!createRereadCopy(book)) return;
   closeEditModal();
   renderAll();
 }
