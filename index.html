@@ -3148,6 +3148,7 @@ function applySession(authData, options = {}) {
   try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: currentUser.token, refresh: currentUser.refresh, user, expiresAt: currentUser.expiresAt })); } catch(e) {}
 
   STORAGE_KEY = `minha_estante_v3_${currentUser.id}`;
+  resetUserCaches(true); // mantém o cronômetro ao só atualizar a página (init() descarta se não for deste usuário)
   document.getElementById("userChip").style.display = "flex";
   document.getElementById("userChipName").textContent = (Array.from(String(currentUser.name || "?").trim())[0] || "?").toUpperCase();
   document.getElementById("userChip").title = currentUser.name + " · Sair";
@@ -3231,6 +3232,7 @@ async function tryAutoLogin() {
 function doLogout() {
   if (!confirm("Sair da conta?")) return;
   currentUser = null;
+  resetUserCaches();
   try { localStorage.removeItem(LOGIN_KEY); } catch(e) {}
   document.getElementById("userChip").style.display = "none";
   document.getElementById("userChipName").textContent = "—";
@@ -6670,6 +6672,24 @@ async function loadReadingTime(bookId) {
 }
 
 let sessionsCache = {};
+
+// Zera TUDO que é guardado em memória/aparelho e pertence a um usuário.
+// Chamado ao sair e ao entrar numa conta, para que nenhum dado de um perfil
+// apareça em outro (ex.: dias de leitura, sessões, tempo lido, timer).
+function resetUserCaches(keepTimer) {
+  sessionsCache = {};
+  if (!keepTimer) {
+    timerState = null;
+    try { localStorage.removeItem(TIMER_KEY); } catch(e) {}
+  }
+  try { localStorage.removeItem("minha_estante_readtime"); } catch(e) {}
+  try { if (window.__resetReadingDays) window.__resetReadingDays(); } catch(e) {}
+  try { if (window.__resetProfileSessions) window.__resetProfileSessions(); } catch(e) {}
+}
+// Ids dos livros do usuário logado — sessões de outros livros são ignoradas.
+function ownBookIdSet() {
+  return new Set((state.books || []).map(b => String(b.id)));
+}
 
 async function renderSessionsList(bookId, containerId = "sessionsListContainer", readOnly = false) {
   const container = document.getElementById(containerId);
@@ -11742,9 +11762,11 @@ create policy "usuario ve sua wishlist" on wishlist
   /* ---------- tempo de leitura: soma de TODAS as sessões de todos os livros ---------- */
   var remoteSessions = null;   // [{startedAt, durationSeconds}] vindas do banco
   var loadingSessions = false;
+  window.__resetProfileSessions = function () { remoteSessions = null; loadingSessions = false; };
   function sumSessionSeconds(year) {
     var list = remoteSessions;
-    if (!list) {
+    if (list) { var _own = ownBookIdSet(); list = list.filter(function (x) { return _own.has(String(x.bookId)); }); }
+    if (!remoteSessions) {
       list = (state.sessions || []).map(function (x) { return { startedAt: x.startedAt, durationSeconds: x.durationSeconds }; });
     }
     var total = 0;
@@ -11762,9 +11784,9 @@ create policy "usuario ve sua wishlist" on wishlist
       loadingSessions = true;
       var all = [], offset = 0, step = 1000;
       while (true) {
-        var rows = await supabaseFetch('reading_sessions?select=started_at,duration_seconds&order=id.asc&limit=' + step + '&offset=' + offset);
+        var rows = await supabaseFetch('reading_sessions?select=book_id,started_at,duration_seconds&order=id.asc&limit=' + step + '&offset=' + offset);
         if (!Array.isArray(rows)) break;
-        rows.forEach(function (r) { all.push({ startedAt: r.started_at, durationSeconds: r.duration_seconds || 0 }); });
+        rows.forEach(function (r) { all.push({ bookId: r.book_id, startedAt: r.started_at, durationSeconds: r.duration_seconds || 0 }); });
         if (rows.length < step) break;
         offset += step;
       }
@@ -12067,6 +12089,7 @@ create policy "usuario ve sua wishlist" on wishlist
   });
   /* Dias de leitura — mês atual, todas as sessões (lendo + já lidos) */
   var monthRows = [], monthPending = false, monthFetchedAt = 0;
+  window.__resetReadingDays = function () { monthRows = []; monthFetchedAt = 0; monthPending = false; };
   function dateKey(date) { return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0'); }
   function monthStart() { var d = new Date(); d.setHours(0,0,0,0); d.setDate(1); return d; }
   function parseDay(v) {
@@ -12087,8 +12110,9 @@ create policy "usuario ve sua wishlist" on wishlist
   function recordedDays() {
     var days = new Set();
     (state.sessions || []).forEach(function (s) { addSession(days, s); });
-    Object.keys(sessionsCache || {}).forEach(function (k) { (sessionsCache[k] || []).forEach(function (s) { addSession(days, s); }); });
-    monthRows.forEach(function (s) { addSession(days, s); });
+    Object.keys(sessionsCache || {}).forEach(function (k) { if (ownBookIdSet().has(String(k))) (sessionsCache[k] || []).forEach(function (s) { addSession(days, s); }); });
+    var _own = ownBookIdSet();
+    monthRows.forEach(function (s) { if (_own.has(String(s.book_id))) addSession(days, s); });
     return days;
   }
   function weekStart() { var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return d; }
