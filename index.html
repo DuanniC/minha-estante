@@ -9243,6 +9243,58 @@ saveState();
 // Sempre abre na aba "Lendo", independente do que estava salvo
 state.filter = "reading";
 
+// ============ DIÁLOGO "RETOMAR LEITURA" (no lugar do confirm() do navegador) ============
+(function injectResumeDialogCss() {
+  const st = document.createElement("style");
+  st.textContent = `
+.resume-dlg { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(58,51,102,.38); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); opacity: 0; transition: opacity .2s ease; }
+.resume-dlg.show { opacity: 1; }
+.resume-card { width: 100%; max-width: 340px; background: var(--cream); color: var(--ink); border-radius: 26px; padding: 28px 24px 22px; text-align: center; box-shadow: 0 24px 60px rgba(58,51,102,.28); transform: translateY(12px) scale(.97); transition: transform .25s cubic-bezier(.2,.9,.3,1.2); }
+.resume-dlg.show .resume-card { transform: none; }
+.resume-emoji { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; background: linear-gradient(135deg, var(--rose), var(--rose-deep)); box-shadow: 0 8px 20px rgba(58,51,102,.18); }
+.resume-title { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 1.1; letter-spacing: -.6px; margin: 0 0 8px; }
+.resume-title em { font-style: normal; color: var(--rose-deep); }
+.resume-text { font-family: var(--font-body); font-size: 14px; line-height: 1.45; color: var(--ink-soft); margin: 0 0 20px; }
+.resume-text b { color: var(--ink); font-weight: 600; }
+.resume-actions { display: flex; flex-direction: column; gap: 8px; }
+.resume-btn { font-family: var(--font-body); font-size: 15px; font-weight: 600; border: 0; border-radius: 999px; padding: 13px 18px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.resume-btn.primary { background: var(--ink); color: var(--cream); box-shadow: 0 6px 14px rgba(58,51,102,.28); }
+.resume-btn.ghost { background: transparent; color: var(--ink-soft); }
+.resume-btn:active { transform: scale(.98); }
+`;
+  document.head.appendChild(st);
+})();
+
+function askResumeTimer(book) {
+  return new Promise(resolve => {
+    const esc = (typeof escapeHtml === "function") ? escapeHtml : (t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])));
+    const wrap = document.createElement("div");
+    wrap.className = "resume-dlg";
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-modal", "true");
+    wrap.innerHTML = `
+      <div class="resume-card">
+        <div class="resume-emoji">📖</div>
+        <h3 class="resume-title">Continuar de onde <em>parou</em>?</h3>
+        <p class="resume-text">Você tinha uma leitura em andamento de <b>${esc(book.t)}</b>.</p>
+        <div class="resume-actions">
+          <button type="button" class="resume-btn primary" data-act="yes">Retomar leitura</button>
+          <button type="button" class="resume-btn ghost" data-act="no">Descartar sessão</button>
+        </div>
+      </div>`;
+    const done = (v) => {
+      wrap.classList.remove("show");
+      setTimeout(() => wrap.remove(), 200);
+      resolve(v);
+    };
+    wrap.querySelector('[data-act="yes"]').onclick = () => done(true);
+    wrap.querySelector('[data-act="no"]').onclick = () => done(false);
+    document.body.appendChild(wrap);
+    requestAnimationFrame(() => wrap.classList.add("show"));
+    setTimeout(() => { const b = wrap.querySelector('[data-act="yes"]'); if (b) b.focus(); }, 50);
+  });
+}
+
 async function init() {
   // Aviso se rodando via file:// (fetch bloqueado pelo browser)
   if (location.protocol === 'file:') {
@@ -9319,8 +9371,8 @@ async function init() {
   if (timerState && timerState.bookId) {
     const book = getBookById(timerState.bookId);
     if (book) {
-      setTimeout(() => {
-        if (confirm(`Você tinha uma sessão em andamento de "${book.t}". Retomar?`)) {
+      setTimeout(async () => {
+        if (await askResumeTimer(book)) {
           openTimer();
         } else {
           timerState = null;
