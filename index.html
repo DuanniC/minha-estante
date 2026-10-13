@@ -219,6 +219,9 @@
 
 
 
+<link rel="preconnect" href="https://covers.openlibrary.org" crossorigin>
+<link rel="preconnect" href="https://books.google.com" crossorigin>
+<link rel="preconnect" href="https://m.media-amazon.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -3162,6 +3165,7 @@ function applySession(authData, options = {}) {
   state.filter = "reading";
   updateHero("reading");
   saveState();
+  preloadCovers();
   renderAll();
 
   if (options.runInit) init();
@@ -3442,6 +3446,26 @@ function bookFromDb(row) {
   };
 }
 
+// Baixa as capas em segundo plano para o navegador guardar em cache:
+// quando a tela desenhar, a imagem já está pronta. Livros em leitura primeiro.
+let _preloadedCovers = new Set();
+function preloadCovers() {
+  try {
+    const order = { reading: 0, pendente: 1, lido: 2, abandoned: 3 };
+    const books = [...(state.books || [])].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+    let n = 0;
+    for (const b of books) {
+      const url = getBookCover(b);
+      if (!url || _preloadedCovers.has(url)) continue;
+      _preloadedCovers.add(url);
+      const im = new Image();
+      im.decoding = "async";
+      if (n++ < 6) im.fetchPriority = "high";
+      im.src = url;
+    }
+  } catch (e) {}
+}
+
 async function syncFromSupabase() {
   if (!config.setupDone || !config.supabaseUrl) return;
   if (syncing) return;
@@ -3475,6 +3499,7 @@ async function syncFromSupabase() {
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
       initialSyncDone = true; // agora pode buscar capas automáticas pros livros sem capa salva
+      preloadCovers();
       renderAll();
       setSyncStatus("synced", "✦ sincronizado");
     }
@@ -3755,9 +3780,13 @@ function setBookCover(book, url, options = {}) {
 function setCoverInstant(coverId, url, book, fallbackGenreKey) {
   const el = document.getElementById(coverId);
   if (!el || !url || url === "NONE") return false;
-  el.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(book.t)}" loading="lazy" decoding="async">`;
+  el.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(book.t)}" decoding="async" fetchpriority="high" style="opacity:0;transition:opacity .25s ease">`;
   const img = el.querySelector("img");
-  if (img) img.onerror = () => { el.innerHTML = coverFallbackHTML(book, fallbackGenreKey); };
+  if (img) {
+    img.onload = () => { img.style.opacity = "1"; };
+    img.onerror = () => { el.innerHTML = coverFallbackHTML(book, fallbackGenreKey); };
+    if (img.complete && img.naturalWidth) img.style.opacity = "1";
+  }
   return true;
 }
 
@@ -4726,7 +4755,7 @@ function renderGenres() {
       if (cached && cached !== "NONE") {
         const el = document.getElementById(coverId);
         if (!el) return;
-        loadCoverWithValidation(cached, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">` });
+        setCoverInstant(coverId, cached, book, book.g);
       } else if (initialSyncDone) {
         fetchCover(book.t, book.a).then(url => {
           if (!url) return;
@@ -4805,7 +4834,7 @@ function renderGenres() {
       if (cached && cached !== "NONE") {
         const el = document.getElementById(coverId);
         if (!el) return;
-        loadCoverWithValidation(cached, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">` });
+        setCoverInstant(coverId, cached, book, book.g);
       } else if (initialSyncDone) {
         fetchCover(book.t, book.a).then(url => {
           if (!url) return;
@@ -5730,9 +5759,15 @@ function openTimer() {
   // Cover
   const coverEl = document.getElementById("timerCover");
   coverEl.innerHTML = coverFallbackHTML(book, book.g);
-  setTimerBackground(getBookCover(book));
+  const _savedCover = getBookCover(book);
+  setTimerBackground(_savedCover);
+  if (_savedCover) {
+    coverEl.innerHTML = `<img src="${escapeHtml(_savedCover)}" alt="" decoding="async" fetchpriority="high">`;
+    const _im = coverEl.querySelector("img");
+    if (_im) _im.onerror = () => { coverEl.innerHTML = coverFallbackHTML(book, book.g); };
+  }
   fetchCover(book.t, book.a).then(url => {
-    if (!url) return;
+    if (!url || _savedCover) return;
     loadCoverWithValidation(url, (validUrl) => {
       if (document.getElementById("timerOverlay").classList.contains("open")) {
         coverEl.innerHTML = `<img src="${validUrl}" alt="">`;
@@ -9274,7 +9309,6 @@ function askResumeTimer(book) {
     wrap.setAttribute("aria-modal", "true");
     wrap.innerHTML = `
       <div class="resume-card">
-        <div class="resume-emoji">📖</div>
         <h3 class="resume-title">Continuar de onde <em>parou</em>?</h3>
         <p class="resume-text">Você tinha uma leitura em andamento de <b>${esc(book.t)}</b>.</p>
         <div class="resume-actions">
