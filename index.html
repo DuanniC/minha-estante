@@ -3573,7 +3573,12 @@ async function pushNewBook(book) {
 async function deleteBookFromDb(id) {
   if (!config.setupDone) return;
   try {
-    await supabaseFetch(`books?id=eq.${id}`, { method: 'DELETE' });
+    const deleted = await supabaseFetch(`books?id=eq.${id}`, { method: 'DELETE', headers: { 'Prefer': 'return=representation' } });
+    if (Array.isArray(deleted) && deleted.length === 0) {
+      console.warn("Livro não removido no banco (sem permissão ou inexistente):", id);
+      setSyncStatus("error", "⚠ não excluiu no banco");
+      return;
+    }
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
     console.error(e);
@@ -9276,23 +9281,11 @@ async function init() {
     const rows = await supabaseFetch(`books?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`);
 
     if (Array.isArray(rows) && rows.length === 0) {
-      // 2. Nenhum livro com esse user_id — pode ser que existam livros órfãos (user_id null)
-      //    Isso acontece quando livros foram adicionados antes do login estar ativo
-      const orphans = await supabaseFetch(`books?user_id=is.null&select=id&limit=1`);
-
-      if (Array.isArray(orphans) && orphans.length > 0) {
-        // Adota os livros órfãos: atualiza user_id para o usuário atual
-        setSyncStatus("syncing", "↻ vinculando livros");
-        await supabaseFetch(`books?user_id=is.null`, {
-          method: 'PATCH',
-          body: JSON.stringify({ user_id: userId }),
-          headers: { 'Prefer': 'return=minimal' },
-        });
-      } else {
-        // Realmente não tem nenhum livro — estante nova
-        await seedInitialBooks();
-        return;
-      }
+      // Nenhum livro para este usuário: estante nova, totalmente vazia.
+      // IMPORTANTE: nunca "adotar" livros sem dono (user_id null) — isso fazia
+      // todo usuário novo herdar os livros de outra pessoa.
+      await seedInitialBooks();
+      return;
     }
 
     // 3. Puxa todos os livros do usuário
