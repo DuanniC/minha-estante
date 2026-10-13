@@ -11604,7 +11604,6 @@ create policy "usuario ve sua wishlist" on wishlist
     let html = '';
     if (wlMissing) html += `<div class="wl-note">Pra sincronizar a Wishlist entre dispositivos, rode este SQL uma vez no Supabase (SQL Editor). Enquanto isso, ela fica salva só neste aparelho.<br><button class="wl-btn" onclick="wlCopySql()">Copiar SQL</button></div>`;
     if (wlErr) html += `<div class="wl-note">Não consegui carregar a Wishlist do banco.<br><small>${escapeHtml(wlErr)}</small></div>`;
-    else if (wlServerCount === 0) html += `<div class="wl-note">O banco não devolveu nenhuma série para esta conta. Se a tabela tem dados, confira se o <b>user_id</b> deles é o desta conta.</div>`;
     html += `<button class="wl-add" onclick="openWl()">+ Adicionar à Wishlist</button>`;
     if (!items.length) html += `<div class="empty"><div class="empty-icon">✦</div><div class="empty-text">nenhuma série esperando por aqui</div></div>`;
     if (done.length) html += `<div class="wl-title">prontas pra ler</div>` + done.map(cardHTML).join('');
