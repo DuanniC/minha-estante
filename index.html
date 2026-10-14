@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <style>
 .custom-color-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -1910,6 +1910,13 @@ body.profile-open .fab { display: none !important; }
 .celeb-balloon .b::after { content: ''; position: absolute; left: 50%; bottom: -44px; width: 1.5px; height: 40px; background: rgba(58, 51, 102, .35); transform: translateX(-50%); }
 @keyframes celebSway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
 </style>
+<style id="lock-zoom-css">
+/* Trava o zoom (app na tela de início): sem zoom por toque duplo, pinça ou foco em campos */
+html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: 16px !important; }
+}
+</style>
 <style id="reading-formats-css">
 /* Formatos de leitura (físico / iPad / Kindle) */
 .fmt-chips { display:flex; flex-wrap:wrap; gap:8px; }
@@ -2742,6 +2749,17 @@ create policy "usuario ve sua wishlist" on wishlist
 
 </div>
 
+<script id="lock-zoom-js">
+(function(){
+  ['gesturestart','gesturechange','gestureend'].forEach(function(t){
+    document.addEventListener(t,function(e){e.preventDefault();},{passive:false});
+  });
+  var last=0;
+  document.addEventListener('touchend',function(e){
+    var n=Date.now(); if(n-last<300 && !/INPUT|TEXTAREA|SELECT/.test((e.target||{}).tagName||'')) e.preventDefault(); last=n;
+  },{passive:false});
+})();
+</script>
 <script id="reading-formats-core">
 (function () {
   'use strict';
