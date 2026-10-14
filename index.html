@@ -1910,6 +1910,24 @@ body.profile-open .fab { display: none !important; }
 .celeb-balloon .b::after { content: ''; position: absolute; left: 50%; bottom: -44px; width: 1.5px; height: 40px; background: rgba(58, 51, 102, .35); transform: translateX(-50%); }
 @keyframes celebSway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
 </style>
+<style id="reading-formats-css">
+/* Formatos de leitura (físico / iPad / Kindle) */
+.fmt-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.fmt-chip { flex:1 1 auto; min-width:0; padding:11px 12px; border:2px solid transparent; border-radius:14px; background:var(--cream-dark); color:var(--ink-soft); font:600 13px var(--font-body, inherit); cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap; }
+.fmt-chip[aria-pressed="true"] { border-color:var(--rose-deep); color:var(--ink); background:color-mix(in srgb, var(--rose-deep) 12%, var(--surface, #fff)); }
+.fmt-chip:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+.fmt-hint { font-size:11px; color:var(--ink-soft); margin-top:6px; }
+.fmt-help { font-size:13px; color:var(--ink-soft); line-height:1.45; margin:-6px 0 14px; }
+.fmt-row { display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:start; padding:14px; margin-bottom:8px; border:1px solid var(--line); border-radius:8px; background:var(--settings-surface, var(--surface)); cursor:pointer; }
+.fmt-row:has(input:checked) { border-color:var(--rose-deep); background:color-mix(in srgb, var(--rose-deep) 8%, var(--settings-surface, var(--surface))); }
+.fmt-row:has(input:focus-visible) { outline:2px solid var(--ink); outline-offset:2px; }
+.fmt-row input { width:20px; height:20px; margin:2px 0 0; accent-color:var(--rose-deep); }
+.fmt-row-name { font-size:14px; font-weight:600; color:var(--ink); }
+.fmt-row-info { font-size:12px; color:var(--ink-soft); margin-top:3px; line-height:1.4; }
+.fmt-error { color:var(--ink); font-size:12px; margin-top:6px; min-height:16px; }
+.fmt-error:empty { display:none; }
+.settings-tabs { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+</style>
 </head>
 <body>
 <div class="edge-top" aria-hidden="true"></div><div class="edge-bottom" aria-hidden="true"></div>
@@ -1960,6 +1978,11 @@ body.profile-open .fab { display: none !important; }
           <button type="button" class="gender-btn" id="genderMasc" onclick="selectGender('masculino')">🌊 Masculino</button>
         </div>
       </div>
+      <div class="login-field">
+        <label>Como você lê?</label>
+        <div class="fmt-chips" id="signupFormats" role="group" aria-label="Formatos de leitura"></div>
+        <div class="fmt-hint">Escolha um ou mais. Você pode mudar depois em Configurações.</div>
+      </div>
       <button class="login-enter-btn" id="cadastroBtn" onclick="doSignUp()">Criar conta ✦</button>
     </div>
 
@@ -1997,6 +2020,7 @@ body.profile-open .fab { display: none !important; }
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_type text;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_name text;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_volume int;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS reading_format text;
 
 -- PARA BANCO NOVO, rode tudo abaixo:
 create table books (
@@ -2018,6 +2042,7 @@ create table books (
   series_type text,
   series_name text,
   series_volume int,
+  reading_format text,
   created_at timestamptz default now()
 );
 
@@ -2228,6 +2253,10 @@ create policy "usuario ve sua wishlist" on wishlist
       <select class="form-select" id="newGenre"></select>
     </div>
     <div class="form-group">
+      <label class="form-label">Formato de leitura</label>
+      <select class="form-select" id="newFormat"></select>
+    </div>
+    <div class="form-group">
       <label class="form-label">Total de páginas (opcional)</label>
       <input type="number" class="form-input" id="newPages" min="1" placeholder="deixa vazio pra buscar automático">
     </div>
@@ -2329,6 +2358,10 @@ create policy "usuario ve sua wishlist" on wishlist
     <div class="form-group">
       <label class="form-label">Gênero</label>
       <select class="form-select" id="editGenre"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Formato de leitura</label>
+      <select class="form-select" id="editFormat"></select>
     </div>
     <div class="form-group">
       <label class="form-label">Sequência</label>
@@ -2590,6 +2623,7 @@ create policy "usuario ve sua wishlist" on wishlist
         <button id="settings-tab-genres" role="tab" aria-selected="true" aria-controls="settings-panel-genres" onclick="switchSettingsTab('genres')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13 13 20a2 2 0 0 1-3 0L3 13V3h10l7 7a2 2 0 0 1 0 3Z"/><circle cx="7.5" cy="7.5" r="1"/></svg></span>Gêneros</button>
         <button id="settings-tab-sequences" role="tab" aria-selected="false" aria-controls="settings-panel-sequences" tabindex="-1" onclick="switchSettingsTab('sequences')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="4" height="16" rx="1"/><rect x="9" y="4" width="4" height="16" rx="1"/><path d="m15 5 4-1 4 15-4 1Z"/></svg></span>Sequências</button>
         <button id="settings-tab-appearance" role="tab" aria-selected="false" aria-controls="settings-panel-appearance" tabindex="-1" onclick="switchSettingsTab('appearance')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-3.7c-.7-.4-.3-1.8.7-1.8H17a4 4 0 0 0 4-4C21 7 17 3 12 3Z"/><circle cx="7.5" cy="10" r=".7"/><circle cx="11" cy="7" r=".7"/><circle cx="16" cy="8.5" r=".7"/></svg></span>Aparência</button>
+        <button id="settings-tab-formats" role="tab" aria-selected="false" aria-controls="settings-panel-formats" tabindex="-1" onclick="switchSettingsTab('formats')"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/></svg></span>Formatos</button>
       </div>
     </header>
     <div class="settings-content">
@@ -2620,6 +2654,7 @@ create policy "usuario ve sua wishlist" on wishlist
 </div></details>
       </section>
       <section id="settings-panel-sequences" role="tabpanel" aria-labelledby="settings-tab-sequences" tabindex="0" hidden><h3 class="settings-section-title">Suas sequências</h3><div id="sequencesList"></div></section>
+      <section id="settings-panel-formats" role="tabpanel" aria-labelledby="settings-tab-formats" tabindex="0" hidden><h3 class="settings-section-title">Formatos de leitura</h3><p class="fmt-help">Escolha onde você lê. O ritmo e o tempo de leitura são calculados de acordo com cada formato.</p><div id="formatsSettingsList"></div><div class="fmt-error" id="formatsSettingsErr" role="alert"></div></section>
       <section id="settings-panel-appearance" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden><h3 class="settings-section-title">Aparência do perfil</h3>      <div class="login-field" style="margin-bottom: 8px;">
         <label class="form-label">Você é</label>
         <div class="gender-toggle">
@@ -2707,6 +2742,196 @@ create policy "usuario ve sua wishlist" on wishlist
 
 </div>
 
+<script id="reading-formats-core">
+(function () {
+  'use strict';
+  var FORMATS = [
+    { id: 'fisico', name: 'Livro físico', icon: '📖', info: 'Ritmo calculado individualmente para cada livro.' },
+    { id: 'ipad',   name: 'iPad',         icon: '📱', info: 'Um ritmo geral para todos os livros lidos no iPad.' },
+    { id: 'kindle', name: 'Kindle',       icon: '📲', info: 'Um ritmo geral para todos os livros lidos no Kindle.' }
+  ];
+  var IDS = FORMATS.map(function (f) { return f.id; });
+  var MAX_SEC_PER_PAGE = 600; // sessões > 10 min/página = timer provavelmente esquecido
+
+  function info(id) { return FORMATS.filter(function (f) { return f.id === id; })[0] || FORMATS[0]; }
+  function norm(v) { v = String(v || '').toLowerCase(); return IDS.indexOf(v) >= 0 ? v : null; }
+  function normList(arr) {
+    var out = [];
+    (Array.isArray(arr) ? arr : []).forEach(function (v) { var n = norm(v); if (n && out.indexOf(n) < 0) out.push(n); });
+    return IDS.filter(function (id) { return out.indexOf(id) >= 0; });
+  }
+  function uid() { try { if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) return currentUser.id; } catch (e) {} return 'local'; }
+  function fmtKey() { return 'minha_estante_formats_' + uid(); }
+  function bookMapKey() { return 'minha_estante_book_formats_' + uid(); }
+
+  /* ----- formatos habilitados do usuário (padrão: só livro físico) ----- */
+  function getUserFormats() {
+    var list = [];
+    try { if (typeof currentUser !== 'undefined' && currentUser && Array.isArray(currentUser.formats)) list = normList(currentUser.formats); } catch (e) {}
+    if (!list.length) { try { list = normList(JSON.parse(localStorage.getItem(fmtKey()) || '[]')); } catch (e) {} }
+    return list.length ? list : ['fisico'];
+  }
+  // só devolve algo se o usuário já escolheu (evita gravar o padrão em contas antigas)
+  function metaFormats() {
+    try { if (typeof currentUser !== 'undefined' && currentUser && Array.isArray(currentUser.formats)) { var l = normList(currentUser.formats); if (l.length) return l; } } catch (e) {}
+    return undefined;
+  }
+  async function setUserFormats(list) {
+    list = normList(list);
+    if (!list.length) return false;
+    try { localStorage.setItem(fmtKey(), JSON.stringify(list)); } catch (e) {}
+    var hasUser = false;
+    try { hasUser = typeof currentUser !== 'undefined' && !!currentUser; } catch (e) {}
+    if (!hasUser) return true;
+    currentUser.formats = list;
+    try {
+      var saved = JSON.parse(localStorage.getItem(LOGIN_KEY) || 'null');
+      if (saved && saved.user) {
+        saved.user.user_metadata = Object.assign({}, saved.user.user_metadata, { formats: list });
+        localStorage.setItem(LOGIN_KEY, JSON.stringify(saved));
+      }
+    } catch (e) {}
+    try {
+      if (typeof ensureFreshToken === 'function') await ensureFreshToken();
+      var c = getSupabaseCreds();
+      setSyncStatus('syncing', '↻ salvando formatos');
+      var resp = await fetch(c.url + '/auth/v1/user', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'apikey': c.key, 'Authorization': 'Bearer ' + currentUser.token },
+        body: JSON.stringify({ data: { display_name: currentUser.name, gender: currentUser.gender || undefined, theme: currentUser.theme || null, formats: list } })
+      });
+      if (!resp.ok) throw new Error('Erro ao salvar');
+      setSyncStatus('synced', '✦ formatos salvos');
+    } catch (e) {
+      console.error(e);
+      try { setSyncStatus('error', '⚠ erro ao salvar formatos'); } catch (e2) {}
+    }
+    return true;
+  }
+
+  /* ----- formato de cada livro (livros antigos, sem formato, = físico) ----- */
+  function bookFormat(book) { return norm(book && book.format) || 'fisico'; }
+  function loadBookMap() { try { return JSON.parse(localStorage.getItem(bookMapKey()) || '{}') || {}; } catch (e) { return {}; } }
+  function setBookFormat(book, fmt) {
+    var f = norm(fmt); if (!book || !f) return;
+    book.format = f;
+    try { var m = loadBookMap(); m[book.id] = f; localStorage.setItem(bookMapKey(), JSON.stringify(m)); } catch (e) {}
+  }
+  function fromRow(row) {
+    var f = norm(row && row.reading_format);
+    if (!f && row) { var m = loadBookMap(); f = norm(m[row.id]); }
+    return f || undefined;
+  }
+  function defaultFormat() { var l = getUserFormats(); return l.indexOf('fisico') >= 0 ? 'fisico' : l[0]; }
+  function fillSelect(el, selectedId, alsoInclude) {
+    if (!el) return;
+    var ids = getUserFormats().slice();
+    if (alsoInclude && ids.indexOf(alsoInclude) < 0) ids.push(alsoInclude);
+    ids = IDS.filter(function (id) { return ids.indexOf(id) >= 0; });
+    var sel = ids.indexOf(selectedId) >= 0 ? selectedId : ids[0];
+    el.innerHTML = ids.map(function (id) { var f = info(id); return '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + f.icon + ' ' + f.name + '</option>'; }).join('');
+  }
+
+  /* ----- ritmo e tempo de leitura por formato ----- */
+  function sessionOk(s) {
+    return s && Number.isFinite(s.durationSeconds) && s.durationSeconds > 0 && Number.isFinite(s.pageStart) && Number.isFinite(s.pageEnd) &&
+      s.pageEnd > s.pageStart && s.durationSeconds / (s.pageEnd - s.pageStart) <= MAX_SEC_PER_PAGE;
+  }
+  function median(rates) {
+    rates = rates.slice().sort(function (a, b) { return a - b; });
+    if (!rates.length) return 0;
+    var mid = Math.floor(rates.length / 2);
+    return rates.length % 2 ? rates[mid] : (rates[mid - 1] + rates[mid]) / 2;
+  }
+  function formatOfSession(s) {
+    var b = null;
+    try { b = (state.books || []).filter(function (x) { return x.id === s.bookId; })[0]; } catch (e) {}
+    return b ? bookFormat(b) : 'fisico';
+  }
+  // book: livro (usa o formato dele). Para ver só o ritmo geral de um aparelho: { format: 'ipad' }
+  function computePace(book, opts) {
+    opts = opts || {};
+    var fmt = norm(opts.format) || bookFormat(book);
+    var sessions = (opts.sessions || (typeof state !== 'undefined' && state.sessions) || []).slice();
+    if (opts.extraSession && !sessions.some(function (s) { return s.startedAt === opts.extraSession.startedAt; })) sessions.push(opts.extraSession);
+    var valid = sessions.filter(sessionOk), pool, source, limit;
+    if (fmt === 'fisico') {
+      var own = book && book.id != null ? valid.filter(function (s) { return s.bookId === book.id; }) : [];
+      if (own.length) { pool = own; source = 'book'; }
+      else { pool = valid.filter(function (s) { return formatOfSession(s) === 'fisico'; }); source = 'physical'; }
+      limit = 10;
+    } else {
+      pool = valid.filter(function (s) { return formatOfSession(s) === fmt; });
+      source = 'device'; limit = 20;
+    }
+    var recent = pool.slice().sort(function (a, b) { return (a.startedAt || '').localeCompare(b.startedAt || ''); }).slice(-limit);
+    var rates = recent.map(function (s) { return s.durationSeconds / (s.pageEnd - s.pageStart); });
+    return { secondsPerPage: median(rates), sampleCount: rates.length, source: source, format: fmt };
+  }
+  function paceLabel(book) { var f = bookFormat(book); return f === 'fisico' ? 'Seu ritmo' : 'Ritmo no ' + info(f).name; }
+  function estimateNote(book, est) {
+    var f = bookFormat(book);
+    if (f === 'fisico') return est.secondsPerPage ? '✦ Sugestão pelo seu ritmo de leitura' : 'Seu ritmo aparece após a primeira sessão';
+    var n = info(f).name;
+    return est.secondsPerPage ? '✦ Sugestão pelo seu ritmo no ' + n : 'Seu ritmo no ' + n + ' aparece após a primeira sessão';
+  }
+  function paceTag(book) { var f = bookFormat(book); return f === 'fisico' ? '' : ' no ' + info(f).name; }
+
+  /* ----- cadastro: escolha dos formatos ----- */
+  window._signupFormats = [];
+  window.toggleSignupFormat = function (id) {
+    var l = window._signupFormats, i = l.indexOf(id);
+    if (i >= 0) l.splice(i, 1); else l.push(id);
+    window._signupFormats = normList(l);
+    window.renderSignupFormats();
+  };
+  window.renderSignupFormats = function () {
+    var box = document.getElementById('signupFormats'); if (!box) return;
+    box.innerHTML = FORMATS.map(function (f) {
+      var on = window._signupFormats.indexOf(f.id) >= 0;
+      return '<button type="button" class="fmt-chip" aria-pressed="' + on + '" onclick="toggleSignupFormat(\'' + f.id + '\')">' + f.icon + ' ' + f.name + '</button>';
+    }).join('');
+  };
+  window.resetSignupFormats = function () { window._signupFormats = []; window.renderSignupFormats(); };
+
+  /* ----- Configurações: aba "Formatos" ----- */
+  function fmtPaceText(id) {
+    if (id === 'fisico') return info(id).info;
+    var p = computePace(null, { format: id });
+    if (!p.sampleCount) return info(id).info + ' O ritmo aparece após a primeira sessão.';
+    var ppm = (60 / p.secondsPerPage).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    return info(id).info + ' Atual: ' + ppm + ' pág/min (' + p.sampleCount + (p.sampleCount === 1 ? ' sessão' : ' sessões') + ').';
+  }
+  window.renderFormatsSettings = function () {
+    var box = document.getElementById('formatsSettingsList'); if (!box) return;
+    var enabled = getUserFormats();
+    box.innerHTML = FORMATS.map(function (f) {
+      return '<label class="fmt-row"><input type="checkbox" value="' + f.id + '"' + (enabled.indexOf(f.id) >= 0 ? ' checked' : '') + ' onchange="onFormatToggle(this)">' +
+        '<span><span class="fmt-row-name">' + f.icon + ' ' + f.name + '</span><span class="fmt-row-info" style="display:block">' + fmtPaceText(f.id) + '</span></span></label>';
+    }).join('');
+    var err = document.getElementById('formatsSettingsErr'); if (err) err.textContent = '';
+  };
+  window.onFormatToggle = async function (input) {
+    var err = document.getElementById('formatsSettingsErr'); if (err) err.textContent = '';
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('#formatsSettingsList input[type=checkbox]'));
+    var list = boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+    if (!list.length) {
+      input.checked = true;
+      if (err) err.textContent = 'Mantenha pelo menos um formato selecionado ✦';
+      return;
+    }
+    await setUserFormats(list);
+  };
+
+  window.EstanteFormats = {
+    FORMATS: FORMATS, info: info, norm: norm, normList: normList,
+    getUserFormats: getUserFormats, metaFormats: metaFormats, setUserFormats: setUserFormats,
+    bookFormat: bookFormat, setBookFormat: setBookFormat, fromRow: fromRow, defaultFormat: defaultFormat, fillSelect: fillSelect,
+    computePace: computePace, paceLabel: paceLabel, estimateNote: estimateNote, paceTag: paceTag
+  };
+  document.addEventListener('DOMContentLoaded', function () { window.renderSignupFormats(); });
+})();
+</script>
 <script>
 // ============ CONFIGURAÇÃO EMBUTIDA ============
 // ⚠️ COLE SUA ANON KEY DO SUPABASE NA LINHA ABAIXO, ENTRE AS ASPAS
@@ -2941,7 +3166,7 @@ async function saveProfileGender() {
     const resp = await fetch(`${url}/auth/v1/user`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${currentUser.token}` },
-      body: JSON.stringify({ data: { display_name: currentUser.name, gender: _selectedProfileGender, theme: currentUser.theme || null } }),
+      body: JSON.stringify({ data: { display_name: currentUser.name, gender: _selectedProfileGender, theme: currentUser.theme || null, formats: EstanteFormats.metaFormats() } }),
     });
     if (!resp.ok) throw new Error("Erro ao salvar");
     currentUser.gender = _selectedProfileGender;
@@ -3006,7 +3231,7 @@ async function setAppTheme(id) {
     const resp = await fetch(`${url}/auth/v1/user`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${currentUser.token}` },
-      body: JSON.stringify({ data: { display_name: currentUser.name, gender: currentUser.gender || undefined, theme: currentUser.theme } }),
+      body: JSON.stringify({ data: { display_name: currentUser.name, gender: currentUser.gender || undefined, theme: currentUser.theme, formats: EstanteFormats.metaFormats() } }),
     });
     if (!resp.ok) throw new Error("Erro ao salvar");
     setSyncStatus("synced", "✦ cor salva");
@@ -3018,6 +3243,7 @@ async function setAppTheme(id) {
 
 function switchLoginTab(tab) {
   _selectedGender = null; window._selectedGender = null;
+  if (window.resetSignupFormats) window.resetSignupFormats();
   _loginTab = tab;
   document.getElementById("loginForm").style.display    = tab === "entrar"   ? "block" : "none";
   document.getElementById("cadastroForm").style.display = tab === "cadastro" ? "block" : "none";
@@ -3106,6 +3332,8 @@ async function doSignUp() {
   if (!name)  { setLoginError("Coloca seu nome ✦"); return; }
   if (!email) { setLoginError("Coloca seu e-mail ✦"); return; }
   if (password.length < 6) { setLoginError("Senha precisa ter pelo menos 6 caracteres ✦"); return; }
+  const chosenFormats = EstanteFormats.normList(window._signupFormats);
+  if (!chosenFormats.length) { setLoginError("Escolha pelo menos um formato de leitura ✦"); return; }
 
   const { url, key } = getSupabaseCreds();
   if (!url || !key || key === "SUA_CHAVE_AQUI") {
@@ -3117,7 +3345,7 @@ async function doSignUp() {
     const resp = await fetch(`${url}/auth/v1/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "apikey": key },
-      body: JSON.stringify({ email, password, data: { display_name: name, gender: window._selectedGender || null } }),
+      body: JSON.stringify({ email, password, data: { display_name: name, gender: window._selectedGender || null, formats: chosenFormats } }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error_description || data.msg || "Erro ao criar conta");
@@ -3147,6 +3375,7 @@ function applySession(authData, options = {}) {
     expiresAt: authData.expires_at || (Math.floor(Date.now() / 1000) + (authData.expires_in || 3600)),
     gender:  gender,
     theme:   (user.user_metadata && user.user_metadata.theme) || null,
+    formats: (user.user_metadata && Array.isArray(user.user_metadata.formats)) ? user.user_metadata.formats : null,
   };
   try { localStorage.setItem(LOGIN_KEY, JSON.stringify({ token: currentUser.token, refresh: currentUser.refresh, user, expiresAt: currentUser.expiresAt })); } catch(e) {}
 
@@ -3415,6 +3644,7 @@ function bookToDb(book) {
     series_type: book.seriesType && book.seriesType !== 'unico' ? book.seriesType : null,
     series_name: book.seriesName || null,
     series_volume: book.seriesVolume || null,
+    reading_format: (window.__noReadingFormatColumn || !book.format) ? undefined : book.format,
     user_id: currentUser ? currentUser.id : null,
   };
 }
@@ -3442,6 +3672,7 @@ function bookFromDb(row) {
     seriesType: row.series_type || 'unico',
     seriesName: row.series_name || undefined,
     seriesVolume: row.series_volume || undefined,
+    format: EstanteFormats.fromRow(row),
     _coverFromDb: row.cover_url || null, // temporário — consumido no sync
   };
 }
@@ -3530,7 +3761,7 @@ async function pushBook(book) {
       // Se o erro mencionar fav_rank, é coluna nova ainda não rodada no banco —
       // retira o campo e tenta de novo pra não quebrar o sync.
       const msg = String(innerErr && innerErr.message || '');
-      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank')) {
+      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank') || msg.includes('reading_format')) {
         const fallback = { ...data };
         delete fallback.fav_rank;
         delete fallback.series_type;
@@ -3538,6 +3769,8 @@ async function pushBook(book) {
         delete fallback.series_volume;
         delete fallback.top_general;
         delete fallback.top_general_rank;
+        delete fallback.reading_format;
+        if (msg.includes('reading_format')) window.__noReadingFormatColumn = true;
         await supabaseFetch("books", {
           method: 'POST',
           body: JSON.stringify(fallback),
@@ -3568,7 +3801,7 @@ async function pushNewBook(book) {
       });
     } catch (innerErr) {
       const msg = String(innerErr && innerErr.message || '');
-      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank')) {
+      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank') || msg.includes('reading_format')) {
         const fallback = { ...data };
         delete fallback.fav_rank;
         delete fallback.series_type;
@@ -3576,6 +3809,8 @@ async function pushNewBook(book) {
         delete fallback.series_volume;
         delete fallback.top_general;
         delete fallback.top_general_rank;
+        delete fallback.reading_format;
+        if (msg.includes('reading_format')) window.__noReadingFormatColumn = true;
         result = await supabaseFetch("books", {
           method: 'POST',
           body: JSON.stringify(fallback),
@@ -6077,56 +6312,17 @@ function showSessionResult(book, session) {
   // robusto a outliers (ex: sessão com timer esquecido rodando)
   const pagesLeft = Math.max(0, total - current);
 
+  // Ritmo por formato: livro físico usa o próprio livro; iPad/Kindle usam o ritmo geral do aparelho
   let secPerPage = 0;
-  const allSessions = (state.sessions || []).filter(s =>
-    s.bookId === book.id &&
-    s.durationSeconds > 0 &&
-    (s.pageEnd || 0) > (s.pageStart || 0)
-  );
-  // Garante que a sessão atual sempre está no pool
-  const currentInPool = allSessions.some(s => s.startedAt === session.startedAt);
-  if (!currentInPool && session.durationSeconds > 0 && pagesRead > 0) {
-    allSessions.push(session);
-  }
-  
-  if (allSessions.length > 0) {
-    // Calcula sec/página de cada sessão individual
-    let perPageRates = allSessions.map(s => {
-      const pages = (s.pageEnd || 0) - (s.pageStart || 0);
-      return s.durationSeconds / pages;
-    });
-    
-    // Descarta outliers extremos (sessões > 10 min/página = timer provavelmente esquecido)
-    const MAX_REASONABLE = 600; // 10 min por página
-    const filtered = perPageRates.filter(r => r <= MAX_REASONABLE);
-    if (filtered.length > 0) perPageRates = filtered;
-    
-    // Pega só as últimas 10 sessões (ordenadas por startedAt) — ritmo recente é mais relevante
-    const sessionsByDate = [...allSessions]
-      .filter(s => {
-        const r = s.durationSeconds / ((s.pageEnd || 0) - (s.pageStart || 0));
-        return r <= MAX_REASONABLE;
-      })
-      .sort((a, b) => (a.startedAt || '').localeCompare(b.startedAt || ''));
-    const recent = sessionsByDate.slice(-10);
-    if (recent.length > 0) {
-      perPageRates = recent.map(s => s.durationSeconds / ((s.pageEnd || 0) - (s.pageStart || 0)));
-    }
-    
-    // Usa mediana (mais robusta que média)
-    perPageRates.sort((a, b) => a - b);
-    const mid = Math.floor(perPageRates.length / 2);
-    secPerPage = perPageRates.length % 2 === 0
-      ? (perPageRates[mid - 1] + perPageRates[mid]) / 2
-      : perPageRates[mid];
-  } else if (pagesRead > 0 && session.durationSeconds > 0) {
+  try { secPerPage = EstanteFormats.computePace(book, { extraSession: session }).secondsPerPage || 0; } catch (e) { secPerPage = 0; }
+  if (!secPerPage && pagesRead > 0 && session.durationSeconds > 0) {
     secPerPage = session.durationSeconds / pagesRead;
   }
 
   if (pagesLeft > 0 && secPerPage > 0) {
     const secsLeft = Math.round(secPerPage * pagesLeft);
     document.getElementById("sessionResultEstimate").innerHTML =
-      `Nesse ritmo, faltam <strong>${formatDuration(secsLeft)}</strong> pra terminar ✦`;
+      `Nesse ritmo${EstanteFormats.paceTag(book)}, faltam <strong>${formatDuration(secsLeft)}</strong> pra terminar ✦`;
   } else if (pagesLeft > 0) {
     document.getElementById("sessionResultEstimate").innerHTML =
       `<em>Faltam ${pagesLeft} páginas</em>`;
@@ -6511,6 +6707,7 @@ function createRereadCopy(book) {
     rereadOf: book.id,
   };
   if (book.pagesTotal) copy.pagesTotal = book.pagesTotal;
+  if (book.format) EstanteFormats.setBookFormat(copy, book.format);
   if (book.coverUrl) { copy.coverUrl = book.coverUrl; copy.coverLocked = true; copy.coverStatus = book.coverStatus || "saved"; copy.coverAutoChecked = true; }
   state.books.push(copy);
   saveState();
@@ -6555,6 +6752,7 @@ function openEditModal(bookId) {
     `<option value="${k}"${book.g === k ? ' selected' : ''}>${g.emoji} ${g.name}</option>`
   ).join("");
   
+  EstanteFormats.fillSelect(document.getElementById("editFormat"), EstanteFormats.bookFormat(book), EstanteFormats.bookFormat(book));
   document.getElementById("editStartDate").value = book.startDate || todayISO();
   document.getElementById("editEndDate").value = book.endDate || todayISO();
   document.getElementById("editPagesCurrent").value = book.pagesCurrent || '';
@@ -7158,6 +7356,11 @@ function applyCommonEditFields(book) {
   }
   if (!isNaN(pagesCurrent)) book.pagesCurrent = pagesCurrent;
   if (!isNaN(pagesTotal)) book.pagesTotal = pagesTotal;
+  // Só grava o formato se o usuário trocou (livros antigos continuam intactos)
+  const editFormatEl = document.getElementById("editFormat");
+  if (editFormatEl && editFormatEl.value && editFormatEl.value !== EstanteFormats.bookFormat(book)) {
+    EstanteFormats.setBookFormat(book, editFormatEl.value);
+  }
 }
 
 function saveEditOnly() {
@@ -7465,6 +7668,7 @@ function getSeriesFormData(prefix, type) {
 // ============ ADD BOOK ============
 function openAddBook() {
   closeMenu();
+  EstanteFormats.fillSelect(document.getElementById("newFormat"), EstanteFormats.defaultFormat());
   const select = document.getElementById("newGenre");
   select.innerHTML = Object.entries(GENRES).map(([k, g]) => 
     `<option value="${k}"${currentGenre === k ? ' selected' : ''}>${g.emoji} ${g.name}</option>`
@@ -8254,6 +8458,8 @@ async function addBook() {
   if (!isNaN(pagesInput) && pagesInput > 0) {
     newBook.pagesTotal = pagesInput;
   }
+  const newFormatEl = document.getElementById("newFormat");
+  EstanteFormats.setBookFormat(newBook, (newFormatEl && newFormatEl.value) || EstanteFormats.defaultFormat());
   
   state.books.push(newBook);
   saveState();
@@ -11796,6 +12002,7 @@ create policy "usuario ve sua wishlist" on wishlist
       status: 'pendente', favorite: false, pagesCurrent: 0,
       seriesType: type, seriesName: type === 'unico' ? undefined : w.t, seriesVolume: type === 'unico' ? undefined : 1,
     };
+    EstanteFormats.setBookFormat(book, EstanteFormats.defaultFormat());
     state.books.push(book);
     state.wishlist = list().filter(x => x.id !== id);
     state.filter = 'pendente'; state.selectedYear = null;
@@ -12135,12 +12342,13 @@ create policy "usuario ve sua wishlist" on wishlist
   'use strict';
   var settingsReturnFocus = null;
   window.switchSettingsTab = function (name) {
-    ['genres', 'sequences', 'appearance'].forEach(function (key) {
+    ['genres', 'sequences', 'appearance', 'formats'].forEach(function (key) {
       var tab = document.getElementById('settings-tab-' + key);
       tab.setAttribute('aria-selected', String(key === name));
       tab.tabIndex = key === name ? 0 : -1;
       document.getElementById('settings-panel-' + key).hidden = key !== name;
     });
+    if (name === 'formats' && window.renderFormatsSettings) window.renderFormatsSettings();
     document.querySelector('#genresModal .settings-content').scrollTop = 0;
   };
   var originalOpen = window.openGenresModal;
@@ -12161,9 +12369,9 @@ create policy "usuario ve sua wishlist" on wishlist
     if (event.key === 'Escape') { event.stopPropagation(); closeGenresModal(); return; }
     if (event.target.getAttribute('role') === 'tab' && ['ArrowLeft','ArrowRight','Home','End'].indexOf(event.key) >= 0) {
       event.preventDefault();
-      var keys = ['genres','sequences','appearance'];
+      var keys = ['genres','sequences','appearance','formats'];
       var idx = keys.indexOf(event.target.id.replace('settings-tab-',''));
-      idx = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (idx + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
+      idx = event.key === 'Home' ? 0 : event.key === 'End' ? keys.length - 1 : (idx + (event.key === 'ArrowRight' ? 1 : keys.length - 1)) % keys.length;
       switchSettingsTab(keys[idx]); document.getElementById('settings-tab-' + keys[idx]).focus();
     }
     if (event.key === 'Tab') {
@@ -12253,16 +12461,12 @@ create policy "usuario ve sua wishlist" on wishlist
 <script>
 
 function estimateReadingPage(history, bookId, duration, start, total) {
-  const valid = history.filter(s => Number.isFinite(s.durationSeconds) && s.durationSeconds > 0 && Number.isFinite(s.pageEnd) && Number.isFinite(s.pageStart) && s.pageEnd > s.pageStart && s.durationSeconds / (s.pageEnd - s.pageStart) <= 600);
-  const sameBook = valid.filter(s => s.bookId === bookId);
-  const recent = (sameBook.length ? sameBook : valid).slice().sort((a, b) => (a.startedAt || '').localeCompare(b.startedAt || '')).slice(-10);
-  const rates = recent.map(s => s.durationSeconds / (s.pageEnd - s.pageStart)).sort((a, b) => a - b);
-  const mid = Math.floor(rates.length / 2);
-  const middleRate = rates[mid] ?? 0;
-  const secondsPerPage = rates.length ? (rates.length % 2 ? middleRate : ((rates[mid - 1] ?? middleRate) + middleRate) / 2) : 0;
+  const book = getBookById(bookId);
+  const pace = EstanteFormats.computePace(book || { id: bookId }, { sessions: history });
+  const secondsPerPage = pace.secondsPerPage;
   const base = Math.max(0, start || 0);
   const page = base + (secondsPerPage ? Math.round(Math.max(0, duration || 0) / secondsPerPage) : 0);
-  return { page: total > 0 ? Math.max(base, Math.min(total, page)) : page, secondsPerPage, sampleCount: rates.length, source: sameBook.length ? 'book' : 'personal' };
+  return { page: total > 0 ? Math.max(base, Math.min(total, page)) : page, secondsPerPage, sampleCount: pace.sampleCount, source: pace.source, format: pace.format };
 }
 const originalOpenSaveSession = openSaveSession;
 openSaveSession = function() {
@@ -12278,7 +12482,8 @@ openSaveSession = function() {
   document.getElementById('saveSessionInfo').textContent = formatDuration(pendingSession.durationSeconds);
   document.getElementById('sessionPace').textContent = estimate.secondsPerPage ? (60 / estimate.secondsPerPage).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' pág/min' : '—';
   document.getElementById('sessionCover').innerHTML = document.getElementById('timerCover').innerHTML;
-  document.getElementById('sessionEstimate').textContent = estimate.secondsPerPage ? '✦ Sugestão pelo seu ritmo de leitura' : 'Seu ritmo aparece após a primeira sessão';
+  document.getElementById('sessionEstimate').textContent = EstanteFormats.estimateNote(book, estimate);
+  document.getElementById('sessionPaceLabel').textContent = EstanteFormats.paceLabel(book);
   document.getElementById('sessionStart').textContent = 'Começou na pág. ' + pendingSession.pageStart;
   document.getElementById('sessionPageError').textContent = '';
   updateSessionPreview(false);
