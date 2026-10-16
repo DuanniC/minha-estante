@@ -3408,6 +3408,7 @@ function applySession(authData, options = {}) {
   // Mostra imediatamente o que já está salvo neste aparelho.
   // Depois o Supabase confirma/atualiza sem deixar a tela vazia no F5.
   state = loadState();
+  restoreCachedGenres();
   migrateBookData();
   state.filter = "reading";
   updateHero("reading");
@@ -3581,6 +3582,7 @@ function loadState() {
 
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  cacheGenres();
 }
 
 // ============ SUPABASE (REST API simples, sem SDK) ============
@@ -3721,6 +3723,7 @@ async function syncFromSupabase() {
   syncing = true;
   setSyncStatus("syncing", "↻ sincronizando");
   try {
+    await flushPendingChanges();
     const userId = currentUser ? currentUser.id : null;
     // Busca APENAS os livros do usuário logado — livros órfãos (user_id null)
     // são adotados no init() antes do sync, então aqui só pegamos os do usuário.
@@ -3731,6 +3734,7 @@ async function syncFromSupabase() {
     const rows = await supabaseFetch(`books?${filter}select=*&order=id`);
     if (rows && Array.isArray(rows)) {
       const oldCovers = state.covers || {};
+      const oldBooks = state.books || [];
       state.books = rows.map(row => {
         const book = bookFromDb(row);
         // Hidrata capa vinda do banco no cache local — garante que a escolha
@@ -3743,6 +3747,15 @@ async function syncFromSupabase() {
         }
         delete book._coverFromDb;
         return book;
+      });
+      // Mudanças ainda não enviadas (ex.: sem internet) têm prioridade sobre a nuvem
+      const pend = loadPending();
+      pend.del.forEach(id => { state.books = state.books.filter(b => !_sameId(b.id, id)); });
+      pend.up.forEach(id => {
+        const lb = oldBooks.find(b => _sameId(b.id, id));
+        if (!lb) return;
+        const i = state.books.findIndex(b => _sameId(b.id, id));
+        if (i >= 0) state.books[i] = lb; else state.books.push(lb);
       });
       state.covers = oldCovers;
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
@@ -3758,6 +3771,59 @@ async function syncFromSupabase() {
   } finally {
     syncing = false;
   }
+}
+
+// ============ FILA DE MUDANÇAS PENDENTES (offline) ============
+// Mudanças que não chegaram ao Supabase ficam marcadas no aparelho e são reenviadas
+// antes de qualquer sincronização, pra a nuvem nunca sobrescrever o que foi feito offline.
+function pendingKey() { return STORAGE_KEY + '_pending'; }
+function loadPending() {
+  try {
+    const p = JSON.parse(localStorage.getItem(pendingKey()) || 'null') || {};
+    return { up: Array.isArray(p.up) ? p.up : [], del: Array.isArray(p.del) ? p.del : [], sessions: Array.isArray(p.sessions) ? p.sessions : [] };
+  } catch (e) { return { up: [], del: [], sessions: [] }; }
+}
+function savePending(p) { try { localStorage.setItem(pendingKey(), JSON.stringify(p)); } catch (e) {} }
+const _sameId = (a, b) => String(a) === String(b);
+function markPending(kind, id) {
+  const p = loadPending();
+  if (kind === 'up') { if (!p.up.some(x => _sameId(x, id))) p.up.push(id); p.del = p.del.filter(x => !_sameId(x, id)); }
+  else { p.up = p.up.filter(x => !_sameId(x, id)); if (!p.del.some(x => _sameId(x, id))) p.del.push(id); }
+  savePending(p);
+}
+function clearPending(kind, id) {
+  const p = loadPending();
+  p[kind] = p[kind].filter(x => !_sameId(x, id));
+  savePending(p);
+}
+function queuePendingSession(session) {
+  const p = loadPending();
+  if (!p.sessions.some(x => x.bookId === session.bookId && x.startedAt === session.startedAt)) p.sessions.push(session);
+  savePending(p);
+}
+function hasPendingChanges() { const p = loadPending(); return p.up.length + p.del.length + p.sessions.length > 0; }
+let _flushingPending = false;
+async function flushPendingChanges() {
+  if (_flushingPending || !config.setupDone || config.skipSync || !currentUser) return;
+  if (navigator.onLine === false || !hasPendingChanges()) return;
+  _flushingPending = true;
+  try {
+    const p = loadPending();
+    for (const id of p.del.slice()) await deleteBookFromDb(id);
+    for (const id of p.up.slice()) {
+      const b = (state.books || []).find(x => _sameId(x.id, id));
+      if (!b) { clearPending('up', id); continue; }
+      await pushBook(b);
+    }
+    for (const sess of p.sessions.slice()) {
+      try {
+        await postSessionToDb(sess);
+        const cur = loadPending();
+        cur.sessions = cur.sessions.filter(x => !(x.bookId === sess.bookId && x.startedAt === sess.startedAt));
+        savePending(cur);
+      } catch (e) { console.error(e); }
+    }
+  } finally { _flushingPending = false; }
 }
 
 async function pushBook(book) {
@@ -3798,9 +3864,11 @@ async function pushBook(book) {
         throw innerErr;
       }
     }
+    clearPending('up', book.id);
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
     console.error(e);
+    markPending('up', book.id);
     setSyncStatus("error", "⚠ erro ao salvar");
   }
 }
@@ -3840,12 +3908,15 @@ async function pushNewBook(book) {
     }
     // Se o servidor devolveu um ID diferente (unlikely pq a gente envia), atualiza
     if (result && result[0] && result[0].id !== book.id) {
+      clearPending('up', book.id);
       book.id = result[0].id;
       saveState();
     }
+    clearPending('up', book.id);
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
     console.error(e);
+    markPending('up', book.id);
     setSyncStatus("error", "⚠ erro ao salvar");
   }
 }
@@ -3856,12 +3927,15 @@ async function deleteBookFromDb(id) {
     const deleted = await supabaseFetch(`books?id=eq.${id}`, { method: 'DELETE', headers: { 'Prefer': 'return=representation' } });
     if (Array.isArray(deleted) && deleted.length === 0) {
       console.warn("Livro não removido no banco (sem permissão ou inexistente):", id);
+      clearPending('del', id);
       setSyncStatus("error", "⚠ não excluiu no banco");
       return;
     }
+    clearPending('del', id);
     setSyncStatus("synced", "✦ sincronizado");
   } catch (e) {
     console.error(e);
+    markPending('del', id);
     setSyncStatus("error", "⚠ erro ao deletar");
   }
 }
@@ -6254,24 +6328,29 @@ function discardSession() {
   renderAll();
 }
 
+async function postSessionToDb(session) {
+  await supabaseFetch("reading_sessions", {
+    method: 'POST',
+    body: JSON.stringify({
+      book_id: session.bookId,
+      started_at: session.startedAt,
+      ended_at: session.endedAt,
+      duration_seconds: session.durationSeconds,
+      page_start: session.pageStart,
+      page_end: session.pageEnd,
+    }),
+  });
+}
+
 async function pushSession(session) {
   if (!config.setupDone || config.skipSync) return;
   setSyncStatus("syncing", "↻ salvando sessão");
   try {
-    await supabaseFetch("reading_sessions", {
-      method: 'POST',
-      body: JSON.stringify({
-        book_id: session.bookId,
-        started_at: session.startedAt,
-        ended_at: session.endedAt,
-        duration_seconds: session.durationSeconds,
-        page_start: session.pageStart,
-        page_end: session.pageEnd,
-      }),
-    });
+    await postSessionToDb(session);
     setSyncStatus("synced", "✦ sincronizado");
   } catch(e) {
     console.error(e);
+    queuePendingSession(session);
     setSyncStatus("error", "⚠ sessão não sincronizou");
   }
 }
@@ -8869,6 +8948,28 @@ function guessGenreFromSubjects(subjects) {
 }
 
 // ============ GERENCIAR GÊNEROS ============
+// Cache local dos gêneros personalizados: sem ele, livros de gêneros criados por você
+// ficam escondidos até a internet responder (ou pra sempre, se estiver offline).
+function cacheGenres() {
+  if (!window.__genresReady) return;
+  try {
+    const custom = {};
+    Object.entries(GENRES).forEach(([k, g]) => { if (g && g.custom) custom[k] = { g: g, p: PALETTE[k] }; });
+    localStorage.setItem(STORAGE_KEY + '_genres', JSON.stringify(custom));
+  } catch (e) {}
+}
+function restoreCachedGenres() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY + '_genres');
+    if (!raw) return;
+    const custom = JSON.parse(raw);
+    GENRES = { ...DEFAULT_GENRES };
+    PALETTE = { ...DEFAULT_PALETTE };
+    Object.entries(custom).forEach(([k, v]) => { GENRES[k] = v.g; if (v.p) PALETTE[k] = v.p; });
+    window.__genresReady = true;
+  } catch (e) {}
+}
+
 async function loadGenresFromDb() {
   if (!config.setupDone || config.skipSync) return;
   try {
@@ -8894,6 +8995,8 @@ async function loadGenresFromDb() {
         }
       });
     }
+    window.__genresReady = true;
+    cacheGenres();
   } catch(e) {
     // Se a tabela genres não existir ainda, não quebra — só usa defaults
     console.log("genres não disponível:", e.message);
@@ -9583,6 +9686,7 @@ async function init() {
       const localState = loadState();
       if (localState && localState.books && localState.books.length) {
         state = localState;
+        restoreCachedGenres();
         migrateBookData();
         state.filter = "reading";
         updateHero("reading");
@@ -9623,6 +9727,7 @@ async function init() {
 
   try {
     const userId = currentUser.id;
+    await flushPendingChanges();
 
     // 1. Verifica livros com user_id correto (em paralelo com os gêneros, pra abrir mais rápido)
     const [, rows] = await Promise.all([
@@ -9642,7 +9747,8 @@ async function init() {
     await syncFromSupabase();
   } catch (e) {
     console.error(e);
-    setSyncStatus("error", "⚠ erro de sync");
+    if (navigator.onLine === false) setSyncStatus("offline", "📡 sem conexão");
+    else setSyncStatus("error", "⚠ erro de sync");
   }
 
   // 4. Retoma timer em andamento
