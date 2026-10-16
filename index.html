@@ -9576,7 +9576,21 @@ async function init() {
 
   // Mostra a estante salva no aparelho já na abertura, sem esperar login nem rede
   try {
-    if (!currentUser && localStorage.getItem(LOGIN_KEY) && state.books && state.books.length) renderAll();
+    const savedLogin = JSON.parse(localStorage.getItem(LOGIN_KEY) || 'null');
+    if (!currentUser && savedLogin && savedLogin.user && savedLogin.user.id) {
+      const prevKey = STORAGE_KEY;
+      STORAGE_KEY = `minha_estante_v3_${savedLogin.user.id}`;
+      const localState = loadState();
+      if (localState && localState.books && localState.books.length) {
+        state = localState;
+        migrateBookData();
+        state.filter = "reading";
+        updateHero("reading");
+        renderAll();
+      } else {
+        STORAGE_KEY = prevKey;
+      }
+    }
   } catch (e) {}
 
   // 2. Tenta retomar sessão salva.
