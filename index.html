@@ -9574,6 +9574,11 @@ async function init() {
     }
   }
 
+  // Mostra a estante salva no aparelho já na abertura, sem esperar login nem rede
+  try {
+    if (!currentUser && localStorage.getItem(LOGIN_KEY) && state.books && state.books.length) renderAll();
+  } catch (e) {}
+
   // 2. Tenta retomar sessão salva.
   // Se voltar, continua o init para sincronizar com o Supabase.
   if (!currentUser) {
@@ -9602,13 +9607,14 @@ async function init() {
   // Isso é só visual: não envia o local antigo para o banco.
   if (state.books && state.books.length) renderAll();
 
-  await loadGenresFromDb();
-
   try {
     const userId = currentUser.id;
 
-    // 1. Verifica livros com user_id correto
-    const rows = await supabaseFetch(`books?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`);
+    // 1. Verifica livros com user_id correto (em paralelo com os gêneros, pra abrir mais rápido)
+    const [, rows] = await Promise.all([
+      loadGenresFromDb(),
+      supabaseFetch(`books?user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`),
+    ]);
 
     if (Array.isArray(rows) && rows.length === 0) {
       // Nenhum livro para este usuário: estante nova, totalmente vazia.
