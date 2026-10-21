@@ -12947,5 +12947,230 @@ saveSession = async function(markAsRead) {
   }
 };
 </script>
+<!-- =====================================================
+     CAPAS v13 — busca em várias fontes + só mostra capas que carregam
+     + reparo automático de capas quebradas
+     ===================================================== -->
+<script>
+(function(){
+  'use strict';
+  // OPCIONAL: chave grátis do Google Books (console.cloud.google.com → Books API).
+  // Sem chave funciona, mas pode dar limite (429) em dias de muito uso.
+  const GOOGLE_BOOKS_KEY = '';
+
+  const CACHE_KEY = 'minha_estante_cover_cache_v3';
+  const TTL = 14 * 24 * 3600 * 1000;
+  const txt = v => String(v || '').trim();
+  const norm = v => txt(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const https = u => txt(u).replace(/^http:/, 'https:');
+
+  function readCache(){ try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e){ return {}; } }
+  function writeCache(key, urls){ try { const d = readCache(); d[key] = { at: Date.now(), urls }; localStorage.setItem(CACHE_KEY, JSON.stringify(d)); } catch(e){} }
+  function fromCache(key){ const e = readCache()[key]; return (e && Date.now() - e.at < TTL && Array.isArray(e.urls) && e.urls.length) ? e.urls : null; }
+
+  async function getJson(url, ms = 8000){
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+    try { const r = await fetch(url, { signal: c.signal }); return r.ok ? await r.json() : null; }
+    catch(e){ return null; } finally { clearTimeout(t); }
+  }
+
+  // Testa se a imagem realmente carrega e não é um quadradinho vazio (Amazon/Google devolvem 1x1)
+  function probe(url, ms = 7000){
+    return new Promise(res => {
+      const img = new Image(); let done = false;
+      const end = ok => { if (done) return; done = true; clearTimeout(t); res(ok ? { url, w: img.naturalWidth, h: img.naturalHeight } : null); };
+      const t = setTimeout(() => end(false), ms);
+      img.referrerPolicy = 'no-referrer';
+      img.onload = () => end(img.naturalWidth >= 90 && img.naturalHeight >= 130);
+      img.onerror = () => end(false);
+      img.src = url;
+    });
+  }
+
+  function titleOk(book, candTitle, candAuthors){
+    const tk = norm(book.t).split(' ').filter(x => x.length > 2);
+    const ct = norm(candTitle);
+    if (!tk.length) return false;
+    const hit = tk.filter(x => ct.includes(x)).length / tk.length;
+    if (hit < 0.6) return false;
+    const last = norm(book.a).split(' ').filter(Boolean).pop();
+    const ca = norm((candAuthors || []).join(' '));
+    return !last || !ca || ca.includes(last);
+  }
+
+  // ---------- Fontes (cada uma devolve lista de URLs candidatas) ----------
+  async function srcGoogle(book){
+    const out = [], isbns = [];
+    const key = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : '';
+    const qs = [
+      `intitle:${book.t}` + (book.a ? `+inauthor:${book.a}` : ''),
+      `${book.t} ${book.a || ''}`
+    ];
+    for (const q of qs){
+      const d = await getJson(`https://books.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q).replace(/%2B/g,'+')}&maxResults=20&printType=books${key}`);
+      (d && d.items || []).forEach(it => {
+        const v = it.volumeInfo || {};
+        if (!titleOk(book, v.title, v.authors)) return;
+        (v.industryIdentifiers || []).forEach(i => { if (/^\d{10,13}$/.test(i.identifier)) isbns.push(i.identifier); });
+        if (it.id && v.imageLinks) {
+          out.push(`https://books.google.com/books/content?id=${it.id}&printsec=frontcover&img=1&zoom=2&source=gbs_api`);
+          out.push(`https://books.google.com/books/content?id=${it.id}&printsec=frontcover&img=1&zoom=1&source=gbs_api`);
+        }
+      });
+      if (out.length >= 4) break;
+    }
+    return { urls: out, isbns };
+  }
+
+  async function srcOpenLibrary(book){
+    const out = [], isbns = [];
+    const f = 'title,author_name,cover_i,isbn';
+    const urls = [
+      `https://openlibrary.org/search.json?title=${encodeURIComponent(book.t)}&author=${encodeURIComponent(book.a || '')}&limit=15&fields=${f}`,
+      `https://openlibrary.org/search.json?q=${encodeURIComponent(book.t + ' ' + (book.a || ''))}&limit=15&fields=${f}`
+    ];
+    for (const u of urls){
+      const d = await getJson(u);
+      (d && d.docs || []).forEach(doc => {
+        if (!titleOk(book, doc.title, doc.author_name)) return;
+        if (doc.cover_i) out.push(`https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`);
+        (doc.isbn || []).slice(0, 3).forEach(i => { if (/^\d{10,13}$/.test(i)) isbns.push(i); });
+      });
+      if (out.length) break;
+    }
+    return { urls: out, isbns };
+  }
+
+  async function srcApple(book){
+    const d = await getJson(`https://itunes.apple.com/search?term=${encodeURIComponent(book.t + ' ' + (book.a || ''))}&media=ebook&country=BR&limit=12`);
+    const out = [];
+    (d && d.results || []).forEach(r => {
+      if (!titleOk(book, r.trackName, [r.artistName])) return;
+      if (r.artworkUrl100) out.push(r.artworkUrl100.replace(/\/\d+x\d+bb/, '/600x600bb'));
+    });
+    return { urls: out, isbns: [] };
+  }
+
+  // ---------- Busca principal: mostra cada capa assim que validar ----------
+  async function searchCovers(book, onFound){
+    const seen = new Set(), isbnSet = new Set(); let count = 0;
+    const accept = async list => {
+      for (const u of list.map(https)) {
+        if (seen.has(u)) continue; seen.add(u);
+        const ok = await probe(u);
+        if (ok) { count++; onFound(ok.url); }
+        if (count >= 18) return;
+      }
+    };
+    const run = async fn => {
+      try { const r = await fn(book); r.isbns.forEach(i => isbnSet.add(i)); await accept(r.urls); } catch(e){}
+    };
+    await Promise.all([run(srcGoogle), run(srcOpenLibrary), run(srcApple)]);
+    // Amazon por ISBN (só os 3 primeiros, validados)
+    const amz = [...isbnSet].filter(i => i.length === 13 || i.length === 10).slice(0, 3)
+      .map(i => `https://images-na.ssl-images-amazon.com/images/P/${i}.01.LZZZZZZZ.jpg`);
+    await accept(amz);
+    return count;
+  }
+
+  window.__searchCoversV13 = searchCovers;
+
+  // ---------- Seletor de capas ----------
+  function manualBtn(book){
+    const q = encodeURIComponent(`${book.t || ''} ${book.a || ''} capa livro`.trim());
+    return `<a class="manual-cover-btn" href="https://www.google.com/search?tbm=isch&q=${q}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">Buscar no Google Imagens</a>`;
+  }
+
+  function addItem(grid, url, current){
+    const div = document.createElement('div');
+    div.className = 'cover-picker-item' + (url === current ? ' selected' : '');
+    const img = document.createElement('img');
+    img.referrerPolicy = 'no-referrer'; img.decoding = 'async'; img.src = url; img.alt = '';
+    div.appendChild(img);
+    div.addEventListener('click', () => window.selectCoverFromPicker(url));
+    const foot = grid.querySelector('.cover-picker-foot');
+    foot ? grid.insertBefore(div, foot) : grid.appendChild(div);
+  }
+
+  window.openCoverPicker = async function(e){
+    if (e) e.preventDefault();
+    if (!editingBookId) return;
+    const book = getBookById(editingBookId);
+    if (!book) return;
+    coverPickerCurrentBook = book;
+
+    const label = document.getElementById('coverPickerBook');
+    const input = document.getElementById('customCoverUrl');
+    const modal = document.getElementById('coverPickerModal');
+    const grid  = document.getElementById('coverPickerGrid');
+    if (label) label.textContent = `"${book.t || ''}" — ${book.a || ''}`;
+    if (input) input.value = '';
+    if (modal) modal.classList.add('open');
+    if (typeof lockPageBehindModal === 'function') lockPageBehindModal();
+    if (!grid) return;
+
+    const current = typeof getBookCover === 'function' ? getBookCover(book) : '';
+    const key = norm(`${book.t} ${book.a}`);
+    const token = (window.__coverPickToken = (window.__coverPickToken || 0) + 1);
+    grid.innerHTML = `<div class="cover-picker-empty" id="coverPickStatus">Buscando capas…</div><div class="cover-picker-empty cover-picker-foot" style="grid-column:1/-1">${manualBtn(book)}</div>`;
+
+    const cached = fromCache(key);
+    if (cached) {
+      document.getElementById('coverPickStatus')?.remove();
+      cached.forEach(u => addItem(grid, u, current));
+      return;
+    }
+
+    const found = [];
+    const n = await searchCovers(book, url => {
+      if (token !== window.__coverPickToken) return;
+      found.push(url);
+      document.getElementById('coverPickStatus')?.remove();
+      addItem(grid, url, current);
+    });
+    if (token !== window.__coverPickToken) return;
+    if (found.length) writeCache(key, found);
+    const st = document.getElementById('coverPickStatus');
+    if (st && !n) st.innerHTML = 'Nenhuma capa encontrada.<br><small style="opacity:.75">Tente o Google Imagens abaixo e cole o link da imagem.</small>';
+  };
+
+  // ---------- Reparo automático de capas quebradas ----------
+  async function repairBrokenCovers(){
+    if (!navigator.onLine || !Array.isArray(state && state.books)) return;
+    const DAY = 24 * 3600 * 1000, now = Date.now();
+    let fixed = 0, tried = 0;
+    for (const book of state.books) {
+      if (tried >= 6) break;
+      const url = typeof getBookCover === 'function' ? getBookCover(book) : book.coverUrl;
+      if (!url || url === 'NONE') continue;
+      if (book.coverRepairAt && now - book.coverRepairAt < DAY) continue;
+      // só considera quebrada se der ERRO ou vier minúscula; lentidão não conta
+      const bad = await new Promise(res => {
+        const img = new Image(); const t = setTimeout(() => res(false), 9000);
+        img.referrerPolicy = 'no-referrer';
+        img.onload = () => { clearTimeout(t); res(img.naturalWidth < 90 || img.naturalHeight < 130); };
+        img.onerror = () => { clearTimeout(t); res(true); };
+        img.src = url;
+      });
+      if (!bad) continue;
+      tried++;
+      book.coverRepairAt = now;
+      let best = null;
+      await searchCovers(book, u => { if (!best) best = u; });
+      if (best) {
+        setBookCover(book, best, {});
+        book.coverManual = false;
+        try { pushBook(book); } catch(e){}
+        fixed++;
+      }
+    }
+    if (tried) { try { saveState(); } catch(e){} }
+    if (fixed) { try { renderAll(); } catch(e){} }
+  }
+  window.repairBrokenCovers = repairBrokenCovers;
+  window.addEventListener('load', () => setTimeout(repairBrokenCovers, 6000));
+})();
+</script>
+
 </body>
 </html>
