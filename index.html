@@ -222,6 +222,7 @@
 <link rel="preconnect" href="https://covers.openlibrary.org" crossorigin>
 <link rel="preconnect" href="https://books.google.com" crossorigin>
 <link rel="preconnect" href="https://m.media-amazon.com" crossorigin>
+<link rel="preconnect" href="https://r.jina.ai" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -856,6 +857,13 @@ button { font-family: inherit; }
 .lido-gallery-info { display: flex; flex-direction: column; gap: 2px; }
 .lido-gallery-title { font-size: 11px; font-weight: 600; color: var(--ink); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lido-gallery-stars { font-size: 9px; color: var(--butter-deep); }
+.lido-gallery-author { font-size: 10px; color: var(--ink-soft); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.lido-gallery-series { font-size: 9px; color: var(--ink-soft); opacity: .85; line-height: 1.2; }
+.lido-gallery-status { align-self: flex-start; margin-top: 2px; font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--line); color: var(--ink-soft); }
+.lido-gallery-status.reading { background: var(--rose-deep); color: #fff; }
+.lido-gallery-status.read { background: var(--sage-deep); color: #fff; }
+.lido-gallery-status.abandoned { background: var(--ink-soft); color: #fff; }
+.lido-gallery-item.has-fav .lido-gallery-title::after { content: ' ♥'; color: var(--heart); }
 
 /* ---------- Favoritos (Top 10) ---------- */
 .fav-gallery-sub { font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--ink); letter-spacing: -.2px; }
@@ -7575,9 +7583,41 @@ function renderBookList(genreKey) {
   const order = { pendente: 0, reading: 1, lido: 2, abandoned: 3 };
   const sorted = [...books].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
 
-  let html = `<div class="book-list-title">do gênero · ${books.length}</div>`;
-  sorted.forEach(book => { html += renderBookItemHTML(book, false); });
+  const labels = { pendente: 'pendente', reading: 'lendo ✦', lido: '✓ lido', abandoned: 'abandonado' };
+  const cls = { pendente: '', reading: 'reading', lido: 'read', abandoned: 'abandoned' };
+  let html = `<div class="book-list-title">${genreKey === null ? 'todos os livros' : 'do gênero'} · ${books.length}</div><div class="lido-gallery-grid">`;
+  sorted.forEach(book => {
+    const seriesLabel = (typeof getManualSeriesLabel === 'function') ? getManualSeriesLabel(book) : '';
+    html += `
+      <div class="lido-gallery-item${book.favorite ? ' has-fav' : ''}" onclick="openBookViewModal(${book.id})">
+        <div class="lido-gallery-cover" id="bl-cover-${book.id}">${coverFallbackHTML(book, book.g)}</div>
+        <div class="lido-gallery-info">
+          <div class="lido-gallery-title">${escapeHtml(book.t)}</div>
+          <div class="lido-gallery-author">${escapeHtml(book.a || '')}</div>
+          ${seriesLabel ? `<div class="lido-gallery-series">${seriesLabel}</div>` : ''}
+          <span class="lido-gallery-status ${cls[book.status] || ''}">${labels[book.status] || ''}</span>
+        </div>
+      </div>`;
+  });
+  html += `</div>`;
   container.innerHTML = html;
+
+  // Hidrata capas (mesmo processo das outras abas)
+  sorted.forEach(book => {
+    const coverId = `bl-cover-${book.id}`;
+    const key = coverKey(book.t, book.a);
+    const cached = state.covers && state.covers[key];
+    if (cached && cached !== "NONE") {
+      setCoverInstant(coverId, cached, book, book.g);
+    } else if (initialSyncDone) {
+      fetchCover(book.t, book.a).then(url => {
+        if (!url) return;
+        const el = document.getElementById(coverId);
+        if (!el) return;
+        loadCoverWithValidation(url, v => { el.innerHTML = `<img src="${v}" alt="${escapeHtml(book.t)}">`; });
+      });
+    }
+  });
 }
 
 function refreshAfterBookChange() {
@@ -10553,7 +10593,105 @@ async function _fetchGoogleBooks(url, retries = 2) {
   return new Response(JSON.stringify({ items: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
 
-// Busca automática: Open Library primeiro (sem rate limit) → Amazon ISBN → Google Books (throttled)
+// Busca automática: capas SOMENTE da Amazon (via ISBN).
+// Open Library e Google Books são usados apenas para descobrir ISBN e nº de páginas — nunca para a capa.
+function _isbn13to10(isbn13) {
+  const d = String(isbn13 || '').replace(/[^0-9]/g, '');
+  if (d.length !== 13 || !d.startsWith('978')) return null;
+  const core = d.slice(3, 12);
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(core[i], 10) * (10 - i);
+  const c = (11 - (sum % 11)) % 11;
+  return core + (c === 10 ? 'X' : String(c));
+}
+
+// Detecta imagens de livro em 3D / mockup (margens brancas, formato quase quadrado) — capa "estranha".
+function _isMockupPixels(d, w, h) {
+  const light = (i) => d[i] > 228 && d[i+1] > 228 && d[i+2] > 228;
+  const frac = (x0, x1, y0, y1) => {
+    let n = 0, t = 0;
+    for (let y = Math.floor(y0); y < Math.floor(y1); y++) for (let x = Math.floor(x0); x < Math.floor(x1); x++) { t++; if (light((y * w + x) * 4)) n++; }
+    return t ? n / t : 0;
+  };
+  const L = frac(0, w * .08, 0, h), R = frac(w * .92, w, 0, h), T = frac(0, w, 0, h * .05), B = frac(0, w, h * .95, h);
+  return (L > 0.8 && R > 0.8) || (L > 0.7 && R > 0.7 && T > 0.7 && B > 0.7);
+}
+function _isFlatCover(url) {
+  return new Promise(res => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        if (img.naturalHeight && img.naturalWidth / img.naturalHeight > 0.88) return res(false);
+        const w = 60, h = 90, c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(img, 0, 0, w, h);
+        res(!_isMockupPixels(x.getImageData(0, 0, w, h).data, w, h));
+      } catch (e) { res(true); }
+    };
+    img.onerror = () => res(true);
+    img.src = url;
+  });
+}
+const _validFlat = (url) => new Promise(r => loadCoverWithValidation(url, async v => r((await _isFlatCover(v)) ? v : null), () => r(null)));
+
+// Busca capas direto na pesquisa da Amazon.com.br (funciona para edições brasileiras sem ISBN-10 na imagem).
+function _amzTitleMatch(book, alt) {
+  const norm = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const tk = norm(book.t).split(' ').filter(x => x.length > 2);
+  const ct = norm(String(alt || '').replace(/^Image \d+:\s*/i, ''));
+  if (!tk.length || !ct) return false;
+  return tk.filter(x => ct.includes(x)).length / tk.length >= 0.85;
+}
+
+// Corre os 3 melhores proxies ao mesmo tempo; o primeiro que responder com resultados vence.
+function _fetchAmazonPage(target) {
+  return new Promise(resolve => {
+    const proxies = AMAZON_PROXIES.slice(0, 3);
+    const ctrls = []; let pending = proxies.length, done = false;
+    proxies.forEach(mk => {
+      const c = new AbortController(); ctrls.push(c);
+      const t = setTimeout(() => c.abort(), 9000);
+      fetch(mk(target), { signal: c.signal })
+        .then(r => r.ok ? r.text() : '')
+        .then(txt => {
+          if (!done && txt && txt.length > 500 && /media-amazon\.com\/images\/I\//.test(txt)) {
+            done = true; ctrls.forEach(x => { try { x.abort(); } catch (e) {} }); resolve(txt);
+          }
+        })
+        .catch(() => {})
+        .finally(() => { clearTimeout(t); if (--pending === 0 && !done) resolve(''); });
+    });
+  });
+}
+
+const _amzSearchCache = {};
+function amazonSearchCovers(book, max = 8) {
+  const q = `${book.t || ''} ${book.a || ''}`.trim();
+  if (!_amzSearchCache[q]) {
+    _amzSearchCache[q] = (async () => {
+      const content = await _fetchAmazonPage(`https://www.amazon.com.br/s?k=${encodeURIComponent(q)}&i=stripbooks`);
+      if (!content) return [];
+      const out = [], seen = new Set();
+      const push = (alt, src) => {
+        const m = String(src).match(/\/images\/I\/([^./]+)\./);
+        if (!m || seen.has(m[1]) || !_amzTitleMatch(book, alt)) return;
+        seen.add(m[1]);
+        out.push(`https://m.media-amazon.com/images/I/${m[1]}._SL600_.jpg`);
+      };
+      for (const m of content.matchAll(/!\[([^\]]*)\]\((https?:\/\/[^)\s]*media-amazon\.com\/images\/I\/[^)\s]+)\)/g)) push(m[1], m[2]);
+      for (const m of content.matchAll(/<img\b[^>]*>/gi)) {
+        const src = (m[0].match(/\bsrc=["']([^"']+)["']/i) || [])[1];
+        const alt = (m[0].match(/\balt=["']([^"']*)["']/i) || [])[1] || '';
+        if (src && /media-amazon\.com\/images\/I\//.test(src)) push(alt, src);
+      }
+      return out;
+    })().then(r => { if (!r.length) delete _amzSearchCache[q]; return r; }).catch(() => { delete _amzSearchCache[q]; return []; });
+  }
+  return _amzSearchCache[q].then(a => a.slice(0, max));
+}
+
 fetchBookMeta = async function(title, author) {
   const key = coverKey(title, author);
   if (!state.covers) state.covers = {};
@@ -10571,18 +10709,40 @@ fetchBookMeta = async function(title, author) {
   const canWriteCover = !state.covers[key] || state.covers[key] === 'NONE';
   const saveValidatedCover = (url) => new Promise(resolve => {
     if (!canWriteCover || !url) return resolve(false);
-    loadCoverWithValidation(url, validUrl => { state.covers[key] = validUrl; resolve(true); }, () => resolve(false));
+    loadCoverWithValidation(url, async validUrl => {
+      if (!(await _isFlatCover(validUrl))) return resolve(false);
+      state.covers[key] = validUrl; resolve(true);
+    }, () => resolve(false));
   });
 
-  const isbnCandidates = [];
+  // Amazon só aceita ISBN-10 (ou ASIN) nesse endereço de imagem; ISBN-13 é convertido.
+  const isbn10List = [];
   const addIsbn = (isbn) => {
-    const clean = String(isbn || '').replace(/[^0-9X]/gi, '');
-    if ((clean.length === 10 || clean.length === 13) && !isbnCandidates.includes(clean)) isbnCandidates.push(clean);
+    const clean = String(isbn || '').replace(/[^0-9X]/gi, '').toUpperCase();
+    let i10 = null;
+    if (clean.length === 10) i10 = clean;
+    else if (clean.length === 13) i10 = _isbn13to10(clean);
+    if (i10 && !isbn10List.includes(i10)) isbn10List.push(i10);
   };
 
-  // ── 1) Open Library (sem rate limit, prioridade máxima) ──────────────────
+  const triedAmazon = new Set();
+  let amazonTries = 0;
+  const tryAmazon = async () => {
+    for (const isbn of isbn10List) {
+      if (state.covers[key] && state.covers[key] !== 'NONE') return;
+      if (triedAmazon.has(isbn)) continue;
+      if (amazonTries >= 8) return;
+      triedAmazon.add(isbn);
+      amazonTries++;
+      if (await saveValidatedCover(`https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`)) return;
+      if (await saveValidatedCover(`https://m.media-amazon.com/images/P/${isbn}.01._SCLZZZZZZZ_.jpg`)) return;
+    }
+  };
+
+  const searchP = canWriteCover ? amazonSearchCovers({ t: title, a: author }, 4).catch(() => []) : Promise.resolve([]);
+  // ── 1) Open Library: só ISBN e páginas ───────────────────────────────────
   try {
-    const fields = 'cover_i,number_of_pages_median,isbn,language,title,edition_count';
+    const fields = 'number_of_pages_median,isbn,language,title,edition_count';
     const q = `title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&limit=12&fields=${fields}`;
     const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
     if (resp.ok) {
@@ -10600,24 +10760,21 @@ fetchBookMeta = async function(title, author) {
       const withPages = ranked.find(d => d.number_of_pages_median);
       if (!state.bookPages[key] && withPages) state.bookPages[key] = withPages.number_of_pages_median;
       ranked.forEach(doc => (doc.isbn || []).forEach(addIsbn));
-
-      // Tenta capa Open Library diretamente
-      if (canWriteCover && !state.covers[key]) {
-        const withCover = ranked.find(d => d.cover_i);
-        if (withCover) await saveValidatedCover(`https://covers.openlibrary.org/b/id/${withCover.cover_i}-L.jpg`);
-      }
     }
   } catch(e) {}
 
-  // ── 2) Amazon via ISBN coletado acima ────────────────────────────────────
-  if (canWriteCover && !state.covers[key] && isbnCandidates.length > 0) {
-    for (const isbn of isbnCandidates) {
-      const ok = await saveValidatedCover(`https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`);
-      if (ok) break;
+  // ── 2) Capa da Amazon: primeiro a pesquisa (edição certa), validando todas juntas ──
+  if (canWriteCover) {
+    const sUrls = await searchP;
+    if (sUrls.length) {
+      const res = await Promise.all(sUrls.map(_validFlat));
+      const first = res.find(Boolean);
+      if (first) state.covers[key] = first;
     }
+    if (!state.covers[key] || state.covers[key] === 'NONE') await tryAmazon();
   }
 
-  // ── 3) Google Books via fila throttled (só se ainda precisar) ────────────
+  // ── 3) Google Books (throttled): só ISBN extra e páginas, sem capa ───────
   if ((canWriteCover && !state.covers[key]) || !state.bookPages[key]) {
     try {
       const q = `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`;
@@ -10625,48 +10782,29 @@ fetchBookMeta = async function(title, author) {
       const resp = await _gbQueue.enqueue(() => _fetchGoogleBooks(gbUrl));
       const data = resp.ok ? await resp.json() : { items: [] };
       let items = data.items || [];
-
-      // Se não achou em português, busca sem restrição (também throttled)
       if (items.length === 0) {
         const gbUrl2 = `https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=8`;
         const resp2 = await _gbQueue.enqueue(() => _fetchGoogleBooks(gbUrl2));
         const data2 = resp2.ok ? await resp2.json() : { items: [] };
         items = data2.items || [];
       }
-
-      const ranked = items.map(item => {
+      for (const item of items) {
         const info = item.volumeInfo || {};
-        let score = 0;
-        if (info.language === 'pt') score += 40;
-        if (info.imageLinks) score += 25;
-        if (info.pageCount) score += 10;
-        if (info.title && info.title.toLowerCase() === title.toLowerCase()) score += 15;
-        return { info, _score: score };
-      }).sort((a,b) => b._score - a._score);
-
-      for (const { info } of ranked) {
         if (!state.bookPages[key] && info.pageCount) state.bookPages[key] = info.pageCount;
         (info.industryIdentifiers || []).forEach(id => addIsbn(id.identifier));
-        if (canWriteCover && !state.covers[key] && info.imageLinks) {
-          const links = info.imageLinks;
-          let coverUrl = links.extraLarge || links.large || links.medium || links.thumbnail || links.smallThumbnail;
-          if (coverUrl) {
-            coverUrl = coverUrl.replace(/^http:/, 'https:').replace(/&edge=curl/, '').replace(/&zoom=\d+/, '');
-            const ok = await saveValidatedCover(coverUrl);
-            if (ok) break;
-          }
-        }
-        if (state.covers[key]) break;
       }
     } catch(e) {}
   }
 
-  // ── 4) Amazon de ISBNs extras do Google Books ────────────────────────────
-  if (canWriteCover && !state.covers[key] && isbnCandidates.length > 0) {
-    for (const isbn of isbnCandidates) {
-      const ok = await saveValidatedCover(`https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`);
-      if (ok) break;
-    }
+  // ── 4) Amazon com os ISBNs novos ─────────────────────────────────────────
+  if (canWriteCover && !state.covers[key]) await tryAmazon();
+
+  // ── 5) Pesquisa na Amazon.com.br (edições brasileiras) ───────────────────
+  if (canWriteCover && !state.covers[key]) {
+    try {
+      const urls = await amazonSearchCovers({ t: title, a: author }, 3);
+      for (const u of urls) { if (await saveValidatedCover(u)) break; }
+    } catch (e) {}
   }
 
   if (canWriteCover && !state.covers[key]) state.covers[key] = 'NONE';
@@ -10674,6 +10812,105 @@ fetchBookMeta = async function(title, author) {
   saveState();
   return { cover: state.covers[key] === 'NONE' ? null : state.covers[key], pages: getCachedPages(key) };
 };
+
+// ── Migração única: troca capas que não são da Amazon por capas da Amazon ──
+// Só troca se a imagem da Amazon for válida; se não achar, mantém a capa atual.
+async function _findAmazonCoverFor(book) {
+  const isbns = [];
+  const add = (v) => {
+    const c = String(v || '').replace(/[^0-9X]/gi, '').toUpperCase();
+    const i10 = c.length === 10 ? c : (c.length === 13 ? _isbn13to10(c) : null);
+    if (i10 && !isbns.includes(i10)) isbns.push(i10);
+  };
+  try {
+    const q = `title=${encodeURIComponent(book.t)}&author=${encodeURIComponent(book.a || '')}&limit=12&fields=isbn,language,edition_count`;
+    const resp = await apiFetch(`https://openlibrary.org/search.json?${q}`);
+    if (resp.ok) {
+      const data = await resp.json();
+      (data.docs || [])
+        .sort((a, b) => ((b.language || []).includes('por') ? 40 : 0) - ((a.language || []).includes('por') ? 40 : 0))
+        .forEach(d => (d.isbn || []).forEach(add));
+    }
+  } catch (e) {}
+  const test = _validFlat;
+  for (const isbn of isbns.slice(0, 8)) {
+    const a = await test(`https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`);
+    if (a) return a;
+    const b = await test(`https://m.media-amazon.com/images/P/${isbn}.01._SCLZZZZZZZ_.jpg`);
+    if (b) return b;
+  }
+  try {
+    for (const u of await amazonSearchCovers(book, 3)) { const ok = await test(u); if (ok) return ok; }
+  } catch (e) {}
+  return null;
+}
+
+async function migrateCoversToAmazon() {
+  const flag = (typeof STORAGE_KEY !== 'undefined' ? STORAGE_KEY : 'estante') + '_amazon_covers_v1';
+  try { if (localStorage.getItem(flag)) return; } catch (e) {}
+  const isAmazon = (u) => /amazon\./i.test(String(u || ''));
+  const list = (state.books || []).filter(b => {
+    const cur = getBookCover(b);
+    return cur && !isAmazon(cur);
+  });
+  let changed = 0;
+  for (const book of list) {
+    try {
+      const url = await _findAmazonCoverFor(book);
+      if (url) {
+        const key = coverKey(book.t, book.a);
+        if (!state.covers) state.covers = {};
+        state.covers[key] = url;
+        book.coverUrl = url;
+        book.coverLocked = true;
+        if (!book.coverStatus) book.coverStatus = 'saved';
+        saveState();
+        pushBook(book);
+        changed++;
+      }
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 300));
+  }
+  try { localStorage.setItem(flag, String(Date.now())); } catch (e) {}
+  if (changed) renderAll();
+  console.log(`[capas] migração Amazon: ${changed}/${list.length} trocadas`);
+}
+// Passada única: capas já salvas em 3D/mockup são trocadas por uma capa plana da Amazon (se existir).
+async function fixMockupCovers() {
+  const flag = (typeof STORAGE_KEY !== 'undefined' ? STORAGE_KEY : 'estante') + '_flat_covers_v1';
+  try { if (localStorage.getItem(flag)) return; } catch (e) {}
+  let changed = 0, checked = 0;
+  for (const book of (state.books || [])) {
+    const cur = getBookCover(book);
+    if (!cur) continue;
+    try {
+      checked++;
+      if (await _isFlatCover(cur)) continue;
+      const url = await _findAmazonCoverFor(book);
+      if (url && url !== cur) {
+        const key = coverKey(book.t, book.a);
+        if (!state.covers) state.covers = {};
+        state.covers[key] = url;
+        book.coverUrl = url;
+        saveState();
+        pushBook(book);
+        changed++;
+      }
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+  try { localStorage.setItem(flag, String(Date.now())); } catch (e) {}
+  if (changed) renderAll();
+  console.log(`[capas] 3D trocadas: ${changed} (de ${checked} verificadas)`);
+}
+(function waitSyncThenMigrate() {
+  const t = setInterval(() => {
+    if (typeof initialSyncDone !== 'undefined' && initialSyncDone) {
+      clearInterval(t);
+      setTimeout(() => { migrateCoversToAmazon().then(fixMockupCovers).catch(() => {}); }, 3000);
+    }
+  }, 1000);
+})();
 
 // Escolha de capa com botão direto para Google Imagens quando não encontrar.
 if (typeof renderCoverPicker === 'function') {
@@ -13051,25 +13288,47 @@ saveSession = async function(markAsRead) {
     return { urls: out, isbns: [] };
   }
 
-  // ---------- Busca principal: mostra cada capa assim que validar ----------
+  // ---------- Busca principal: SOMENTE capas da Amazon (via ISBN) ----------
+  // Google Books / Open Library servem só para descobrir os ISBNs.
+  function toIsbn10(raw){
+    const c = String(raw || '').replace(/[^0-9X]/gi, '').toUpperCase();
+    if (c.length === 10) return c;
+    if (c.length === 13 && typeof _isbn13to10 === 'function') return _isbn13to10(c);
+    return null;
+  }
+
   async function searchCovers(book, onFound){
-    const seen = new Set(), isbnSet = new Set(); let count = 0;
-    const accept = async list => {
-      for (const u of list.map(https)) {
-        if (seen.has(u)) continue; seen.add(u);
-        const ok = await probe(u);
-        if (ok) { count++; onFound(ok.url); }
-        if (count >= 18) return;
-      }
+    const seen = new Set(); let count = 0;
+    const tryUrl = async (u) => {
+      if (seen.has(u) || count >= 18) return;
+      seen.add(u);
+      const ok = await probe(u);
+      if (ok && count < 18) { count++; onFound(ok.url); }
     };
-    const run = async fn => {
-      try { const r = await fn(book); r.isbns.forEach(i => isbnSet.add(i)); await accept(r.urls); } catch(e){}
-    };
-    await Promise.all([run(srcGoogle), run(srcOpenLibrary), run(srcApple)]);
-    // Amazon por ISBN (só os 3 primeiros, validados)
-    const amz = [...isbnSet].filter(i => i.length === 13 || i.length === 10).slice(0, 3)
-      .map(i => `https://images-na.ssl-images-amazon.com/images/P/${i}.01.LZZZZZZZ.jpg`);
-    await accept(amz);
+
+    // A) Pesquisa direta na Amazon.com.br (edições brasileiras) — começa já
+    const pSearch = (async () => {
+      if (typeof amazonSearchCovers !== 'function') return;
+      const urls = await amazonSearchCovers(book, 8);
+      await Promise.all(urls.map(tryUrl));
+    })().catch(() => {});
+
+    // B) Via ISBN (Google/Open Library só descobrem o ISBN) — em paralelo
+    const pIsbn = (async () => {
+      const isbnSet = new Set();
+      const run = async fn => {
+        try { const r = await fn(book); (r.isbns || []).forEach(i => { const t = toIsbn10(i); if (t) isbnSet.add(t); }); } catch(e){}
+      };
+      await Promise.all([run(srcGoogle), run(srcOpenLibrary)]);
+      const jobs = [];
+      [...isbnSet].slice(0, 10).forEach(isbn => {
+        jobs.push(tryUrl(`https://images-na.ssl-images-amazon.com/images/P/${isbn}.01.LZZZZZZZ.jpg`));
+        jobs.push(tryUrl(`https://m.media-amazon.com/images/P/${isbn}.01._SCLZZZZZZZ_.jpg`));
+      });
+      await Promise.all(jobs);
+    })().catch(() => {});
+
+    await Promise.all([pSearch, pIsbn]);
     return count;
   }
 
@@ -13131,7 +13390,7 @@ saveSession = async function(markAsRead) {
     if (token !== window.__coverPickToken) return;
     if (found.length) writeCache(key, found);
     const st = document.getElementById('coverPickStatus');
-    if (st && !n) st.innerHTML = 'Nenhuma capa encontrada.<br><small style="opacity:.75">Tente o Google Imagens abaixo e cole o link da imagem.</small>';
+    if (st && !n) st.innerHTML = 'Nenhuma capa encontrada.<br><small style="opacity:.75">A Amazon não tem capa para este livro. Cole o link da Amazon ou da imagem abaixo.</small>';
   };
 
   // ---------- Reparo automático de capas quebradas ----------
