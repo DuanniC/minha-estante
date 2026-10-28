@@ -2295,14 +2295,6 @@ create policy "usuario ve sua wishlist" on wishlist
       <select class="form-select" id="newSeriesVolume"></select>
     </div>
 
-    <div class="amazon-divider" id="amazonSection">
-      <div class="amazon-divider-line"><span>ou cole o link da Amazon</span></div>
-      <div class="amazon-input-wrap">
-        <input type="url" class="form-input" id="amazonUrl" placeholder="https://amazon.com.br/... ou https://a.co/d/..." autocomplete="off">
-        <button class="amazon-fetch-btn" onclick="fetchFromAmazon()" id="amazonFetchBtn">Buscar ✦</button>
-      </div>
-      <div class="amazon-status" id="amazonStatus"></div>
-    </div>
     
     <button class="form-btn" onclick="addBook()">Adicionar à estante</button>
   </div>
@@ -13428,6 +13420,311 @@ saveSession = async function(markAsRead) {
   }
   window.repairBrokenCovers = repairBrokenCovers;
   window.addEventListener('load', () => setTimeout(repairBrokenCovers, 6000));
+})();
+</script>
+
+<script>
+/* Ajuste Duanni 28/10/2026 — Adicionar livro (automação):
+   • Autor completa sozinho com os autores já cadastrados (sem lista de opções).
+   • Ao digitar o título, preenche sozinho: autor, total de páginas, gênero e sequência
+     (biblioteca → Amazon.com.br → Google Livros → Open Library). Formato de leitura nunca é alterado.
+   • Nada que você digitou/escolheu à mão é sobrescrito. */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fold = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const titleEl = $('newTitle'), authorEl = $('newAuthor'), pagesEl = $('newPages'),
+        genreEl = $('newGenre'), typeEl = $('newSeriesType');
+  if (!titleEl || !authorEl) return;
+
+  authorEl.setAttribute('autocomplete', 'off');
+  authorEl.setAttribute('autocorrect', 'off');
+  authorEl.setAttribute('autocapitalize', 'words');
+  authorEl.setAttribute('spellcheck', 'false');
+
+  // Linha de status abaixo do título
+  let statusEl = $('bookAutoStatus');
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.id = 'bookAutoStatus';
+    statusEl.className = 'amazon-status';
+    statusEl.style.minHeight = '0';
+    titleEl.insertAdjacentElement('afterend', statusEl);
+  }
+  const say = (txt, cls) => { statusEl.textContent = txt || ''; statusEl.className = 'amazon-status' + (cls ? ' ' + cls : ''); statusEl.style.minHeight = txt ? '16px' : '0'; };
+
+  const books = () => ((typeof state !== 'undefined' && state && state.books) || []);
+
+  // ---------- Autores já cadastrados ----------
+  function knownAuthors() {
+    const map = new Map();
+    books().forEach(b => {
+      const a = String(b.a || '').trim(); if (!a) return;
+      const k = fold(a), e = map.get(k);
+      if (e) e.count++; else map.set(k, { name: a, count: 1 });
+    });
+    return [...map.values()].sort((x, y) => y.count - x.count);
+  }
+  function authorOfKnownTitle(t) {
+    const k = fold(t); if (!k) return '';
+    const b = books().find(x => fold(x.t) === k && x.a);
+    return b ? String(b.a).trim() : '';
+  }
+
+  // Completa inline: ao digitar "Pat", vira "Pat|rick Rothfuss" (parte nova selecionada).
+  authorEl.addEventListener('input', e => {
+    authorEl.dataset.auto = '';
+    if (e.isComposing) return;
+    if (e.inputType && e.inputType.indexOf('delete') === 0) return;
+    const typed = authorEl.value;
+    if (authorEl.selectionStart !== typed.length) return;
+    const q = fold(typed);
+    if (q.length < 2) return;
+    const hit = knownAuthors().find(a => fold(a.name).indexOf(q) === 0 && a.name.length > typed.length);
+    if (!hit) return;
+    authorEl.value = hit.name;
+    try { authorEl.setSelectionRange(typed.length, hit.name.length); } catch (_) {}
+  });
+  authorEl.addEventListener('blur', () => {
+    const q = fold(authorEl.value); if (!q) return;
+    const hit = knownAuthors().find(a => fold(a.name) === q);
+    if (hit) authorEl.value = hit.name;
+  });
+
+  // ---------- Marca o que você mexeu à mão ----------
+  let prog = false; // true enquanto o script mexe nos campos
+  if (pagesEl) pagesEl.addEventListener('input', () => { pagesEl.dataset.auto = ''; });
+  if (genreEl) genreEl.addEventListener('change', () => { if (!prog) genreEl.dataset.touched = '1'; });
+  const seriesTouched = () => { if (!prog && typeEl) typeEl.dataset.auto = ''; };
+  if (typeEl) typeEl.addEventListener('change', seriesTouched);
+  ['newSeriesNameSelect', 'newSeriesVolume'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', seriesTouched); });
+  const sn = $('newSeriesName'); if (sn) sn.addEventListener('input', seriesTouched);
+
+  const canAuthor = () => !authorEl.value.trim() || authorEl.dataset.auto === '1';
+  const canPages  = () => pagesEl && (!pagesEl.value.trim() || pagesEl.dataset.auto === '1');
+  const canGenre  = () => genreEl && genreEl.dataset.touched !== '1';
+  const canSeries = () => typeEl && (typeEl.value === 'unico' || typeEl.dataset.auto === '1');
+
+  // ---------- Leitura dos dados ----------
+  const tokens = s => fold(s).split(' ').filter(x => x.length > 2);
+  function titleMatches(typed, found) {
+    const tk = tokens(typed); if (!tk.length) return false;
+    const f = fold(found);
+    return tk.filter(x => f.indexOf(x) >= 0).length / tk.length >= 0.85;
+  }
+  function goodAuthor(a) {
+    a = (typeof cleanAuthorString === 'function' ? cleanAuthorString(a) : String(a || '').trim());
+    if (!a || a.length < 3 || a.length > 60 || /\d/.test(a)) return '';
+    if (!/^[A-ZÀ-Ý]/.test(a)) return '';
+    if (/\b(capa|edi[cç][aã]o|kindle|amazon|livro|box|volume|r\$|brochura|dura|comum)\b/i.test(a)) return '';
+    return a;
+  }
+  const okPages = n => Number.isFinite(n) && n >= 20 && n <= 5000;
+  const flat = s => String(s || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' \n').replace(/&nbsp;/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[ \t]+/g, ' ');
+
+  function seriesFrom(text, resTitle) {
+    let m, name = '', vol = 0, total = 0;
+    if ((m = text.match(/Livro\s+(\d{1,2})\s+de\s+(\d{1,2})\s*[:\-–]\s*([^\n|]{2,80})/i))) {
+      vol = +m[1]; total = +m[2]; name = m[3];
+    } else if ((m = text.match(/Parte de:?\s*([^\n|(]{2,80}?)\s*\((\d{1,2})\s*livros?\)/i))) {
+      name = m[1]; total = +m[2];
+    }
+    name = name.replace(/\s+/g, ' ').replace(/^[\s"'\[\(]+|[\s"'\]\)\.]+$/g, '').trim();
+    if (!name || name.length > 70 || !total || total < 2) return null;
+    if (!vol) { const v = String(resTitle || '').match(/(?:vol(?:ume)?\.?|livro|parte|#|n[º°o]\.?)\s*(\d{1,2})\b/i); if (v) vol = +v[1]; }
+    return { name, vol: vol || 1, total };
+  }
+
+  function parseProduct(raw, resTitle) {
+    const text = flat(raw), out = { pages: 0, cats: [], series: null };
+    const pm = text.match(/N[úu]mero de p[áa]ginas[\s\S]{0,200}?\b(\d{2,4})\b/i)
+      || text.match(/Print length[\s\S]{0,120}?\b(\d{2,4})\s*pages/i)
+      || String(raw).match(/"numberOfPages"\s*:\s*"?(\d{2,4})"?/i)
+      || text.match(/\b(\d{2,4})\s*p[áa]ginas\b/i);
+    if (pm && okPages(+pm[1])) out.pages = +pm[1];
+    const rankRe = /N[ºo°]?\s*\d+\s+em\s+([A-Za-zÀ-ú][^\n(<]{2,80}?)(?=\s*(?:\(|\n|$|N[ºo°]))/gi;
+    let cm; while ((cm = rankRe.exec(text)) !== null) {
+      const c = cm[1].trim().replace(/[.,;]+$/, '');
+      if (c && !/^livros$/i.test(c)) out.cats.push(c);
+    }
+    out.series = seriesFrom(text, resTitle);
+    return out;
+  }
+
+  // Amazon.com.br: busca → primeiro resultado que bate com o título → página do produto
+  async function fromAmazon(title) {
+    const res = { author: '', pages: 0, cats: [], series: null };
+    if (typeof _fetchAmazonPage !== 'function') return res;
+    const content = await _fetchAmazonPage('https://www.amazon.com.br/s?k=' + encodeURIComponent(title) + '&i=stripbooks');
+    if (!content) return res;
+    const re = /\[([^\]\[]{3,220})\]\((https?:\/\/[^)\s]*\/dp\/[A-Z0-9]{10}[^)\s]*)\)/g;
+    let m, tries = 0, first = null;
+    while ((m = re.exec(content)) && tries < 14) {
+      const resTitle = m[1].replace(/^!?\[?Image \d+:\s*/i, '').trim();
+      if (!titleMatches(title, resTitle)) continue;
+      tries++;
+      const link = (m[2].match(/^(https?:\/\/[^\/]+\/(?:[^\/]+\/)?dp\/[A-Z0-9]{10})/) || [])[1];
+      if (!first && link) first = { url: link, resTitle };
+      if (!res.author) {
+        const win = content.slice(re.lastIndex, re.lastIndex + 450).replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/!\[[^\]]*\]/g, ' ');
+        const am = win.match(/(?:^|[\s>])(?:por|de)\s+([A-ZÀ-Ý][^|\n(\d]{2,70})/);
+        if (am) res.author = goodAuthor(am[1].split(/\s+(?:e|&)\s+|;|\s{2,}/)[0]);
+      }
+    }
+    if (first) {
+      try {
+        const page = await _fetchAmazonPage(first.url);
+        if (page) {
+          const p = parseProduct(page, first.resTitle);
+          res.pages = p.pages; res.cats = p.cats; res.series = p.series;
+          if (!res.author) { const am = String(page).match(/\bpor\s+\[([^\]]+)\]/i); if (am) res.author = goodAuthor(am[1]); }
+        }
+      } catch (_) {}
+    }
+    return res;
+  }
+  async function fromGoogle(title) {
+    const res = { author: '', pages: 0, cats: [] };
+    for (const extra of ['&langRestrict=pt', '']) {
+      try {
+        const r = await apiFetch('https://www.googleapis.com/books/v1/volumes?q=intitle:' + encodeURIComponent(title) + '&maxResults=6&printType=books' + extra);
+        const d = r.ok ? await r.json() : null;
+        for (const it of (d && d.items) || []) {
+          const v = it.volumeInfo || {};
+          if (!v.title || !titleMatches(title, v.title)) continue;
+          if (!res.author) res.author = goodAuthor((v.authors || [])[0]);
+          if (!res.pages && okPages(+v.pageCount)) res.pages = +v.pageCount;
+          (v.categories || []).forEach(c => res.cats.push(c));
+        }
+      } catch (_) {}
+      if (res.author || res.pages || res.cats.length) break;
+    }
+    return res;
+  }
+  async function fromOpenLibrary(title) {
+    const res = { author: '', pages: 0, cats: [] };
+    try {
+      const r = await apiFetch('https://openlibrary.org/search.json?title=' + encodeURIComponent(title) + '&limit=6&fields=title,author_name,number_of_pages_median,subject');
+      const d = r.ok ? await r.json() : null;
+      for (const doc of (d && d.docs) || []) {
+        if (!doc.title || !titleMatches(title, doc.title)) continue;
+        if (!res.author) res.author = goodAuthor((doc.author_name || [])[0]);
+        if (!res.pages && okPages(+doc.number_of_pages_median)) res.pages = +doc.number_of_pages_median;
+        (doc.subject || []).slice(0, 15).forEach(c => res.cats.push(c));
+      }
+    } catch (_) {}
+    return res;
+  }
+
+  // ---------- Aplicar nos campos ----------
+  function applySeries(s) {
+    if (!typeEl || !s) return false;
+    let type = s.total >= 4 ? 'saga' : s.total === 3 ? 'trilogia' : s.total === 2 ? 'duologia' : '';
+    if (!type) return false;
+    // se a sequência já existe na sua estante, usa o tipo que você já definiu
+    try {
+      const g = (typeof getSeriesGroups === 'function' ? getSeriesGroups() : []).find(x => fold(x.name) === fold(s.name));
+      if (g) type = g.type;
+    } catch (_) {}
+    prog = true;
+    try {
+      typeEl.value = type;
+      typeEl.dispatchEvent(new Event('change'));
+      const sel = $('newSeriesNameSelect'), inp = $('newSeriesName');
+      if (sel && inp) {
+        const opt = [].slice.call(sel.options).find(o => o.value && fold(o.value) === fold(s.name));
+        if (opt) { sel.value = opt.value; } else { sel.value = ''; inp.value = s.name; }
+        if (typeof sel.onchange === 'function') sel.onchange();
+      }
+      const vs = $('newSeriesVolume');
+      if (vs && [].slice.call(vs.options).some(o => +o.value === s.vol)) vs.value = String(s.vol);
+    } finally { prog = false; }
+    typeEl.dataset.auto = '1';
+    return true;
+  }
+  function resetAutoSeries() {
+    if (typeEl && typeEl.dataset.auto === '1') {
+      prog = true;
+      try { typeEl.value = 'unico'; typeEl.dispatchEvent(new Event('change')); } finally { prog = false; }
+      typeEl.dataset.auto = '';
+    }
+  }
+
+  const cache = {};
+  let timer = null, token = 0;
+
+  async function lookup() {
+    const title = titleEl.value.trim();
+    const my = ++token;
+    if (title.length < 4 || /^https?:\/\//i.test(title)) { say(''); return; }
+
+    const key = fold(title);
+    let info = cache[key];
+    if (!info) {
+      const localAuthor = authorOfKnownTitle(title);
+      if (!navigator.onLine) { if (localAuthor && canAuthor()) { authorEl.value = localAuthor; authorEl.dataset.auto = '1'; } return; }
+      say('Buscando dados do livro…');
+      const fresh = { author: localAuthor, pages: 0, cats: [], series: null };
+      const merge = r => {
+        if (!fresh.author && r.author) fresh.author = r.author;
+        if (!fresh.pages && r.pages) fresh.pages = r.pages;
+        if (r.cats && r.cats.length) fresh.cats = fresh.cats.concat(r.cats);
+        if (!fresh.series && r.series) fresh.series = r.series;
+      };
+      try { merge(await fromAmazon(title)); } catch (_) {}
+      if (my !== token) return;
+      if (!fresh.author || !fresh.pages || !fresh.cats.length) { try { merge(await fromGoogle(title)); } catch (_) {} }
+      if (my !== token) return;
+      if (!fresh.author || !fresh.pages) { merge(await fromOpenLibrary(title)); }
+      if (my !== token) return;
+      info = cache[key] = fresh;
+    }
+
+    // limpa o que foi preenchido automaticamente para um título anterior
+    if (pagesEl && pagesEl.dataset.auto === '1') { pagesEl.value = ''; pagesEl.dataset.auto = ''; }
+    if (authorEl.dataset.auto === '1') { authorEl.value = ''; authorEl.dataset.auto = ''; }
+    resetAutoSeries();
+
+    const done = [];
+    if (info.author && canAuthor()) {
+      const mine = knownAuthors().find(a => fold(a.name) === fold(info.author));
+      authorEl.value = mine ? mine.name : info.author;
+      authorEl.dataset.auto = '1';
+      done.push('autor');
+    }
+    if (info.pages && canPages()) { pagesEl.value = info.pages; pagesEl.dataset.auto = '1'; done.push('páginas'); }
+    if (info.cats.length && canGenre() && typeof guessGenreFromSubjects === 'function') {
+      const before = genreEl.value;
+      prog = true; try { guessGenreFromSubjects(info.cats); } finally { prog = false; }
+      if (genreEl.value !== before) done.push('gênero');
+    }
+    if (info.series && canSeries() && applySeries(info.series)) done.push('sequência');
+
+    if (done.length) say('✦ Preenchi: ' + done.join(', ') + ' — confere!', 'ok');
+    else if (!info.author && !info.pages && !info.cats.length) say('Não achei dados desse livro — preencha manualmente ✦', 'err');
+    else say('');
+  }
+
+  const schedule = delay => { clearTimeout(timer); timer = setTimeout(lookup, delay); };
+  titleEl.addEventListener('input', () => { token++; schedule(900); });
+  titleEl.addEventListener('blur', () => schedule(150));
+
+  // Limpa o estado sempre que a tela abre
+  const prevOpen = window.openAddBook;
+  if (typeof prevOpen === 'function') {
+    window.openAddBook = function () {
+      clearTimeout(timer); token++;
+      authorEl.dataset.auto = '';
+      if (pagesEl) pagesEl.dataset.auto = '';
+      if (genreEl) genreEl.dataset.touched = '';
+      if (typeEl) typeEl.dataset.auto = '';
+      say('');
+      return prevOpen.apply(this, arguments);
+    };
+  }
 })();
 </script>
 
