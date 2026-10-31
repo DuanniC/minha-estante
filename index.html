@@ -1757,7 +1757,9 @@ body.profile-open .fab { display: none !important; }
 .seq-book.done .seq-vol { color: var(--sage-deep); }
 .seq-book.todo .seq-cover { filter: saturate(.55); opacity: .88; }
 .sq-wrap { margin-bottom: 2px; }
-.sq-chev { margin-left: auto; font-size: 22px; line-height: 1; color: var(--ink-soft); transition: transform .2s ease; padding: 0 4px; }
+.sq-row { cursor: pointer; }
+.sq-row .genre-list-actions { align-items: center; }
+.sq-chev { font-size: 22px; line-height: 1; color: var(--ink-soft); transition: transform .2s ease; padding: 0 4px; }
 .sq-wrap.open .sq-chev { transform: rotate(90deg); }
 .sq-minis { display: none; gap: 10px; overflow-x: auto; padding: 8px 6px 14px; scrollbar-width: none; align-items: flex-start; }
 .sq-minis::-webkit-scrollbar { display: none; }
@@ -3781,6 +3783,7 @@ async function syncFromSupabase() {
       state.covers = oldCovers;
       state.nextId = Math.max(0, ...state.books.map(b => b.id || 0)) + 1;
       saveState();
+      loadLastSessionEnds();
       initialSyncDone = true; // agora pode buscar capas automáticas pros livros sem capa salva
       preloadCovers();
       renderAll();
@@ -4527,7 +4530,40 @@ function formatReadingRange(startDate, endDate) {
   return `${formatShortDate(startDate, true)} – ${formatShortDate(endDate, true)}`;
 }
 
+window.__lastSessionEnd = window.__lastSessionEnd || {};
+function lastSessionTime(b) {
+  let t = (window.__lastSessionEnd || {})[String(b.id)] || 0;
+  (state.sessions || []).forEach(s => {
+    if (String(s.bookId) !== String(b.id)) return;
+    const e = Date.parse(s.endedAt || s.startedAt);
+    if (!isNaN(e) && e > t) t = e;
+  });
+  return t;
+}
+async function loadLastSessionEnds() {
+  try {
+    if (!config.setupDone || config.skipSync || window.__loadingLastEnds) return;
+    window.__loadingLastEnds = true;
+    const map = {}; let offset = 0; const step = 1000;
+    while (true) {
+      const rows = await supabaseFetch('reading_sessions?select=book_id,started_at,ended_at&order=id.asc&limit=' + step + '&offset=' + offset);
+      if (!Array.isArray(rows)) break;
+      rows.forEach(r => {
+        const t = Date.parse(r.ended_at || r.started_at);
+        if (!isNaN(t) && t > (map[String(r.book_id)] || 0)) map[String(r.book_id)] = t;
+      });
+      if (rows.length < step) break;
+      offset += step;
+    }
+    const old = JSON.stringify(window.__lastSessionEnd || {});
+    window.__lastSessionEnd = map;
+    if (JSON.stringify(map) !== old && state.filter === 'lido') renderAll();
+  } catch (e) { console.warn('[ordem lidos] sessões', e); }
+  finally { window.__loadingLastEnds = false; }
+}
 function endTime(b) {
+  const ls = lastSessionTime(b);
+  if (ls) return ls;
   if (b && b.endAt) { const t = Date.parse(b.endAt); if (!isNaN(t)) return t; }
   if (b && b.endDate) { const t = Date.parse(b.endDate + 'T00:00:00'); if (!isNaN(t)) return t; }
   return 0;
@@ -9247,13 +9283,18 @@ function getAllSequenceGroups() {
   return out;
 }
 
+function sqRowClick(ev, i) {
+  if (ev.target.closest('input, button')) return;
+  toggleSequenceBooks(i);
+}
+
 function toggleSequenceBooks(i) {
   const wrap = document.getElementById(`sqw-${i}`);
   if (!wrap) return;
   const open = !wrap.classList.contains('open');
-  document.querySelectorAll('.sq-wrap.open').forEach(w => { if (w !== wrap) { w.classList.remove('open'); const h = w.querySelector('.sq-head'); if (h) h.setAttribute('aria-expanded', 'false'); } });
+  document.querySelectorAll('.sq-wrap.open').forEach(w => { if (w !== wrap) { w.classList.remove('open'); const h = w.querySelector('.sq-row'); if (h) h.setAttribute('aria-expanded', 'false'); } });
   wrap.classList.toggle('open', open);
-  const head = wrap.querySelector('.sq-head');
+  const head = wrap.querySelector('.sq-row');
   if (head) head.setAttribute('aria-expanded', String(open));
 }
 
@@ -9280,17 +9321,15 @@ function renderSequencesList() {
       </div>`;
     }).join('');
     html += `<div class="sq-wrap" id="sqw-${i}">
-    <div class="genre-list-item" id="sqli-${i}">
-      <div class="sq-head" role="button" tabindex="0" aria-expanded="false" onclick="toggleSequenceBooks(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSequenceBooks(${i});}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;">
-        <div class="genre-list-emoji">${SEQUENCE_TYPE_EMOJI[s.type] || '📖'}</div>
-        <div class="genre-list-info">
-          <div class="genre-list-name">${escapeHtml(s.name)}</div>
-          <div class="genre-list-meta">${SEQUENCE_TYPE_LABELS[s.type] || s.type} · ${s.count} livro${s.count !== 1 ? 's' : ''}</div>
-        </div>
-        <span class="sq-chev" aria-hidden="true">›</span>
+    <div class="genre-list-item sq-row" id="sqli-${i}" role="button" tabindex="0" aria-expanded="false" onclick="sqRowClick(event, ${i})" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();toggleSequenceBooks(${i});}">
+      <div class="genre-list-emoji">${SEQUENCE_TYPE_EMOJI[s.type] || '📖'}</div>
+      <div class="genre-list-info">
+        <div class="genre-list-name">${escapeHtml(s.name)}</div>
+        <div class="genre-list-meta">${SEQUENCE_TYPE_LABELS[s.type] || s.type} · ${s.count} livro${s.count !== 1 ? 's' : ''}</div>
       </div>
       <div class="genre-list-actions">
-        <button class="sess-btn" onclick="openEditSequence(${i})" aria-label="Editar" title="Editar">✏</button>
+        <span class="sq-chev" aria-hidden="true">›</span>
+        <button class="sess-btn" onclick="event.stopPropagation(); openEditSequence(${i})" aria-label="Editar" title="Editar">✏</button>
       </div>
     </div>
     <div class="sq-minis">${minis}</div>
