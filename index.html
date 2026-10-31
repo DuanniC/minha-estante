@@ -2291,8 +2291,8 @@ create policy "usuario ve sua wishlist" on wishlist
       <input type="text" class="form-input" id="newSeriesName" placeholder="Nome da sequência, se for nova" style="margin-top:8px;">
     </div>
     <div class="form-group series-fields" id="newSeriesVolumeGroup" style="display:none;">
-      <label class="form-label">Volume</label>
-      <select class="form-select" id="newSeriesVolume"></select>
+      <label class="form-label">Volume (automático)</label>
+      <select class="form-select" id="newSeriesVolume" disabled></select>
     </div>
 
     
@@ -7738,7 +7738,7 @@ function fillSeriesVolume(prefix, type, selectedVolume) {
   const volumeEl = document.getElementById(`${prefix}SeriesVolume`);
   if (!volumeEl) return;
   const limits = { duologia: 2, trilogia: 3, saga: 20 };
-  const max = limits[type] || 10;
+  const max = Math.max(limits[type] || 10, Number(selectedVolume) || 0);
   volumeEl.innerHTML = Array.from({ length: max }, (_, i) => {
     const n = i + 1;
     return `<option value="${n}"${Number(selectedVolume) === n ? ' selected' : ''}>Volume ${n}</option>`;
@@ -7764,6 +7764,33 @@ function fillSeriesNameSelect(prefix, type, selectedName, currentBookId) {
   };
 }
 
+// Volume automático: conta os livros já salvos na mesma sequência (+1).
+function getNextSeriesVolume(name, currentBookId) {
+  const fold = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const key = fold(name);
+  if (!key) return 1;
+  const same = (state.books || []).filter(b => b && b.id !== currentBookId &&
+    String(b.seriesType || 'unico').toLowerCase() !== 'unico' &&
+    fold(b.seriesName || b.t) === key);
+  const taken = new Set(same.map(b => parseInt(b.seriesVolume)).filter(n => n > 0));
+  let next = same.length + 1;
+  while (taken.has(next)) next++;
+  return next;
+}
+
+function getNewSeriesName() {
+  const sel = document.getElementById('newSeriesNameSelect');
+  const inp = document.getElementById('newSeriesName');
+  return ((sel && sel.value.trim()) || (inp && inp.value.trim()) || '');
+}
+
+function autoFillNewSeriesVolume() {
+  const typeEl = document.getElementById('newSeriesType');
+  const type = typeEl ? typeEl.value : 'unico';
+  if (!type || type === 'unico') return;
+  fillSeriesVolume('new', type, getNextSeriesVolume(getNewSeriesName()));
+}
+
 function setupSeriesControls(prefix, book) {
   const typeEl = document.getElementById(`${prefix}SeriesType`);
   const fieldsEl = document.getElementById(`${prefix}SeriesFields`);
@@ -7777,6 +7804,14 @@ function setupSeriesControls(prefix, book) {
     if (show) {
       fillSeriesNameSelect(prefix, type, book?.seriesName || '', book?.id);
       fillSeriesVolume(prefix, type, book?.seriesVolume || 1);
+      if (prefix === 'new') {
+        const sel = document.getElementById('newSeriesNameSelect');
+        const inp = document.getElementById('newSeriesName');
+        const base = sel.onchange;
+        sel.onchange = () => { if (base) base(); autoFillNewSeriesVolume(); };
+        inp.oninput = autoFillNewSeriesVolume;
+        autoFillNewSeriesVolume();
+      }
     }
   };
   typeEl.onchange = () => { book = null; update(); };
@@ -7787,7 +7822,9 @@ function getSeriesFormData(prefix, type) {
   if (!type || type === 'unico') return { seriesName: undefined, seriesVolume: undefined };
   const selectName = document.getElementById(`${prefix}SeriesNameSelect`)?.value.trim() || '';
   const typedName = document.getElementById(`${prefix}SeriesName`)?.value.trim() || '';
-  const volume = parseInt(document.getElementById(`${prefix}SeriesVolume`)?.value || '1');
+  const volume = prefix === 'new'
+    ? getNextSeriesVolume(selectName || typedName)
+    : parseInt(document.getElementById(`${prefix}SeriesVolume`)?.value || '1');
   return {
     seriesName: selectName || typedName || undefined,
     seriesVolume: Number.isFinite(volume) && volume > 0 ? volume : 1,
@@ -13639,8 +13676,7 @@ saveSession = async function(markAsRead) {
         if (opt) { sel.value = opt.value; } else { sel.value = ''; inp.value = s.name; }
         if (typeof sel.onchange === 'function') sel.onchange();
       }
-      const vs = $('newSeriesVolume');
-      if (vs && [].slice.call(vs.options).some(o => +o.value === s.vol)) vs.value = String(s.vol);
+      if (typeof autoFillNewSeriesVolume === 'function') autoFillNewSeriesVolume();
     } finally { prog = false; }
     typeEl.dataset.auto = '1';
     return true;
