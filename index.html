@@ -1756,6 +1756,19 @@ body.profile-open .fab { display: none !important; }
 .seq-vol { margin-top: 8px; font-size: 11px; font-weight: 800; color: var(--ink-soft); }
 .seq-book.done .seq-vol { color: var(--sage-deep); }
 .seq-book.todo .seq-cover { filter: saturate(.55); opacity: .88; }
+.sq-wrap { margin-bottom: 2px; }
+.sq-chev { margin-left: auto; font-size: 22px; line-height: 1; color: var(--ink-soft); transition: transform .2s ease; padding: 0 4px; }
+.sq-wrap.open .sq-chev { transform: rotate(90deg); }
+.sq-minis { display: none; gap: 10px; overflow-x: auto; padding: 8px 6px 14px; scrollbar-width: none; align-items: flex-start; }
+.sq-minis::-webkit-scrollbar { display: none; }
+.sq-wrap.open .sq-minis { display: flex; }
+.sq-mini { flex: 0 0 auto; width: 56px; text-align: center; }
+.sq-mini-cover { position: relative; width: 56px; height: 84px; border-radius: 3px 7px 7px 3px; overflow: hidden; background: var(--cream-dark); box-shadow: 0 6px 12px rgba(36,30,74,.25), inset 2px 0 0 rgba(255,255,255,.4); display: flex; align-items: center; justify-content: center; padding: 4px; font-size: 8px; font-weight: 800; color: var(--ink); line-height: 1.1; word-break: break-word; overflow-wrap: anywhere; }
+.sq-mini-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sq-mini:not(.done) .sq-mini-cover { filter: saturate(.6); opacity: .9; }
+.sq-mini-check { position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--sage-deep, #4c9a6a); color: #fff; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.sq-mini-vol { margin-top: 5px; font-size: 10px; font-weight: 800; color: var(--ink-soft); }
+.sq-mini.done .sq-mini-vol { color: var(--sage-deep, #4c9a6a); }
 .seq-shelf-wrap { grid-column: 1 / -1; margin-bottom: 8px; }
 .seq-shelf-title { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -.4px; color: var(--ink); margin: 6px 2px 12px; }
 
@@ -2036,6 +2049,7 @@ html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-si
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_name text;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS series_volume int;
 -- ALTER TABLE books ADD COLUMN IF NOT EXISTS reading_format text;
+-- ALTER TABLE books ADD COLUMN IF NOT EXISTS end_at timestamptz;
 
 -- PARA BANCO NOVO, rode tudo abaixo:
 create table books (
@@ -2058,6 +2072,7 @@ create table books (
   series_name text,
   series_volume int,
   reading_format text,
+  end_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -3653,6 +3668,7 @@ function bookToDb(book) {
     status: book.status,
     start_date: book.startDate || null,
     end_date: book.endDate || null,
+    end_at: (window.__noEndAtColumn || !book.endAt) ? undefined : book.endAt,
     rating: book.rating || null,
     favorite: !!book.favorite,
     pages_total: book.pagesTotal || null,
@@ -3678,6 +3694,7 @@ function bookFromDb(row) {
     status: row.status,
     startDate: row.start_date || undefined,
     endDate: row.end_date || undefined,
+    endAt: row.end_at || undefined,
     rating: row.rating || undefined,
     favorite: !!row.favorite,
     pagesTotal: row.pages_total || undefined,
@@ -3746,6 +3763,10 @@ async function syncFromSupabase() {
           book.coverAutoChecked = true;
         }
         delete book._coverFromDb;
+        if (!book.endAt) {
+          const lb = oldBooks.find(x => _sameId(x.id, book.id));
+          if (lb && lb.endAt && lb.endDate === book.endDate) book.endAt = lb.endAt;
+        }
         return book;
       });
       // Mudanças ainda não enviadas (ex.: sem internet) têm prioridade sobre a nuvem
@@ -3845,8 +3866,13 @@ async function pushBook(book) {
       // Se o erro mencionar fav_rank, é coluna nova ainda não rodada no banco —
       // retira o campo e tenta de novo pra não quebrar o sync.
       const msg = String(innerErr && innerErr.message || '');
-      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank') || msg.includes('reading_format')) {
+      const _oldCols = msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank') || msg.includes('reading_format');
+      const _endAtMissing = msg.includes('end_at');
+      if (_oldCols || _endAtMissing) {
         const fallback = { ...data };
+        delete fallback.end_at;
+        if (_endAtMissing) window.__noEndAtColumn = true;
+        if (_oldCols) {
         delete fallback.fav_rank;
         delete fallback.series_type;
         delete fallback.series_name;
@@ -3855,6 +3881,7 @@ async function pushBook(book) {
         delete fallback.top_general_rank;
         delete fallback.reading_format;
         if (msg.includes('reading_format')) window.__noReadingFormatColumn = true;
+        }
         await supabaseFetch("books", {
           method: 'POST',
           body: JSON.stringify(fallback),
@@ -3887,8 +3914,13 @@ async function pushNewBook(book) {
       });
     } catch (innerErr) {
       const msg = String(innerErr && innerErr.message || '');
-      if (msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank') || msg.includes('reading_format')) {
+      const _oldCols = msg.includes('fav_rank') || msg.includes('series_type') || msg.includes('series_name') || msg.includes('series_volume') || msg.includes('top_general') || msg.includes('top_general_rank') || msg.includes('reading_format');
+      const _endAtMissing = msg.includes('end_at');
+      if (_oldCols || _endAtMissing) {
         const fallback = { ...data };
+        delete fallback.end_at;
+        if (_endAtMissing) window.__noEndAtColumn = true;
+        if (_oldCols) {
         delete fallback.fav_rank;
         delete fallback.series_type;
         delete fallback.series_name;
@@ -3897,6 +3929,7 @@ async function pushNewBook(book) {
         delete fallback.top_general_rank;
         delete fallback.reading_format;
         if (msg.includes('reading_format')) window.__noReadingFormatColumn = true;
+        }
         result = await supabaseFetch("books", {
           method: 'POST',
           body: JSON.stringify(fallback),
@@ -4494,6 +4527,20 @@ function formatReadingRange(startDate, endDate) {
   return `${formatShortDate(startDate, true)} – ${formatShortDate(endDate, true)}`;
 }
 
+function endTime(b) {
+  if (b && b.endAt) { const t = Date.parse(b.endAt); if (!isNaN(t)) return t; }
+  if (b && b.endDate) { const t = Date.parse(b.endDate + 'T00:00:00'); if (!isNaN(t)) return t; }
+  return 0;
+}
+function stampEndAt(book, endDate) {
+  if (!endDate) return;
+  if (book.endAt) {
+    const d = new Date(book.endAt);
+    const local = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (local === endDate) return;
+  }
+  book.endAt = (endDate === todayISO()) ? new Date().toISOString() : undefined;
+}
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -4965,7 +5012,7 @@ function renderGenres() {
     const PAGE_SIZE = 15;
     const allSorted = [];
     sortedKeys.forEach(key => {
-      byMonth[key].books.sort((a, b) => b.endDate.localeCompare(a.endDate));
+      byMonth[key].books.sort((a, b) => (endTime(b) - endTime(a)) || b.endDate.localeCompare(a.endDate));
       byMonth[key].books.forEach(b => allSorted.push(b));
     });
     semData.forEach(b => allSorted.push(b));
@@ -6287,6 +6334,7 @@ async function saveSession(markAsRead) {
   if (markAsRead) {
     book.status = "lido";
     book.endDate = todayISO();
+    book.endAt = new Date().toISOString();
     if (book.pagesTotal) book.pagesCurrent = book.pagesTotal;
   }
   
@@ -6747,6 +6795,7 @@ function finishReadingFromView() {
   book.favRank = selectedViewFavorite ? selectedViewFavRank : null;
   book.status = "lido";
   book.endDate = todayISO();
+  book.endAt = new Date().toISOString();
   if (!book.startDate) book.startDate = todayISO();
   saveState();
   pushBook(book);
@@ -7468,7 +7517,7 @@ function saveEditOnly() {
   
   applyCommonEditFields(book);
   if (startDate) book.startDate = startDate;
-  if (endDate && book.status !== "reading") book.endDate = endDate;
+  if (endDate && book.status !== "reading") { book.endDate = endDate; stampEndAt(book, endDate); }
   saveState();
   pushBook(book);
   
@@ -7487,6 +7536,7 @@ function confirmFinishReading() {
   book.status = "lido";
   if (startDate) book.startDate = startDate;
   book.endDate = endDate;
+  stampEndAt(book, endDate);
   if (book.pagesTotal && (!book.pagesCurrent || book.pagesCurrent < book.pagesTotal)) {
     book.pagesCurrent = book.pagesTotal;
   }
@@ -9188,10 +9238,23 @@ function getAllSequenceGroups() {
     const name = (book.seriesName || book.t || '').trim();
     if (!name) return;
     const key = `${type}::${name.toLowerCase()}`;
-    if (!groups[key]) groups[key] = { type, name, count: 0 };
+    if (!groups[key]) groups[key] = { type, name, count: 0, books: [] };
     groups[key].count++;
+    groups[key].books.push(book);
   });
-  return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const out = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  out.forEach(g => g.books.sort((a, b) => (parseInt(a.seriesVolume) || 99) - (parseInt(b.seriesVolume) || 99) || String(a.t).localeCompare(String(b.t), 'pt')));
+  return out;
+}
+
+function toggleSequenceBooks(i) {
+  const wrap = document.getElementById(`sqw-${i}`);
+  if (!wrap) return;
+  const open = !wrap.classList.contains('open');
+  document.querySelectorAll('.sq-wrap.open').forEach(w => { if (w !== wrap) { w.classList.remove('open'); const h = w.querySelector('.sq-head'); if (h) h.setAttribute('aria-expanded', 'false'); } });
+  wrap.classList.toggle('open', open);
+  const head = wrap.querySelector('.sq-head');
+  if (head) head.setAttribute('aria-expanded', String(open));
 }
 
 function renderSequencesList() {
@@ -9208,15 +9271,29 @@ function renderSequencesList() {
 
   let html = "";
   list.forEach((s, i) => {
-    html += `<div class="genre-list-item" id="sqli-${i}">
-      <div class="genre-list-emoji">${SEQUENCE_TYPE_EMOJI[s.type] || '📖'}</div>
-      <div class="genre-list-info">
-        <div class="genre-list-name">${escapeHtml(s.name)}</div>
-        <div class="genre-list-meta">${SEQUENCE_TYPE_LABELS[s.type] || s.type} · ${s.count} livro${s.count !== 1 ? 's' : ''}</div>
+    const minis = s.books.map(b => {
+      const url = (typeof getBookCover === 'function') ? getBookCover(b) : '';
+      const done = b.status === 'lido';
+      return `<div class="sq-mini${done ? ' done' : ''}" title="${escapeHtml(b.t)}">
+        <div class="sq-mini-cover">${escapeHtml(b.t)}${url && url !== 'NONE' ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(b.t)}" loading="lazy" onerror="this.remove()">` : ''}${done ? '<span class="sq-mini-check">✓</span>' : ''}</div>
+        <div class="sq-mini-vol">Vol. ${b.seriesVolume || '?'}</div>
+      </div>`;
+    }).join('');
+    html += `<div class="sq-wrap" id="sqw-${i}">
+    <div class="genre-list-item" id="sqli-${i}">
+      <div class="sq-head" role="button" tabindex="0" aria-expanded="false" onclick="toggleSequenceBooks(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSequenceBooks(${i});}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;">
+        <div class="genre-list-emoji">${SEQUENCE_TYPE_EMOJI[s.type] || '📖'}</div>
+        <div class="genre-list-info">
+          <div class="genre-list-name">${escapeHtml(s.name)}</div>
+          <div class="genre-list-meta">${SEQUENCE_TYPE_LABELS[s.type] || s.type} · ${s.count} livro${s.count !== 1 ? 's' : ''}</div>
+        </div>
+        <span class="sq-chev" aria-hidden="true">›</span>
       </div>
       <div class="genre-list-actions">
         <button class="sess-btn" onclick="openEditSequence(${i})" aria-label="Editar" title="Editar">✏</button>
       </div>
+    </div>
+    <div class="sq-minis">${minis}</div>
     </div>`;
   });
   container.innerHTML = html;
